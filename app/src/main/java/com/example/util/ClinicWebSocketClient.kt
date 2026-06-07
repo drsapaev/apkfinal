@@ -6,8 +6,6 @@ import com.example.data.database.ClinicDatabase
 import com.example.data.database.AppointmentEntity
 import com.example.data.database.MedicalRecordEntity
 import com.example.data.network.ApiClient
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.Types
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -30,18 +28,11 @@ class ClinicWebSocketClient(
     private val scope = CoroutineScope(Dispatchers.IO)
     private var isClosedManually = false
 
-    private val moshi = Moshi.Builder()
-        .build()
-
-    private val mapAdapter = moshi.adapter<Map<String, Any>>(
-        Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
-    )
-
     fun start() {
         val token = TokenManager.getToken(context)
         val wsUrl = try {
             val configUrl = com.example.BuildConfig.WEBSOCKET_URL
-            val targetUrl = if (!configUrl.isNullOrBlank()) configUrl else "ws://10.0.2.2:18000/ws"
+            val targetUrl = if (!configUrl.isNullOrBlank() && configUrl != "?") configUrl else "ws://10.0.2.2:18000/ws"
             if (targetUrl.contains("localhost") || targetUrl.contains("127.0.0.1")) {
                 targetUrl.replace("localhost", "10.0.2.2").replace("127.0.0.1", "10.0.2.2")
             } else {
@@ -137,21 +128,24 @@ class ClinicWebSocketClient(
     private fun handleSocketMessage(json: String) {
         scope.launch {
             try {
-                val parsed = mapAdapter.fromJson(json) ?: return@launch
-                val eventType = parsed["event"] as? String ?: return@launch
-                val data = parsed["data"] as? Map<String, Any> ?: return@launch
+                // Parse the websocket payload natively using org.json
+                val parsed = org.json.JSONObject(json)
+                val eventType = parsed.optString("event")
+                if (eventType.isNullOrEmpty()) return@launch
+                val data = parsed.optJSONObject("data") ?: return@launch
 
-                Log.i("WS_CLIENT", "Broadcasting backend event: $eventType with values: $data")
+                Log.i("WS_CLIENT", "Broadcasting backend event: $eventType")
 
                 when (eventType) {
                     "APPOINTMENT_STATUS" -> {
-                        val id = (data["id"] as? Double)?.toInt() ?: return@launch
-                        val status = data["status"] as? String ?: "PENDING"
-                        val doctorName = data["doctor_name"] as? String ?: "Доктор"
-                        val date = data["date"] as? String ?: ""
-                        val time = data["time"] as? String ?: ""
-                        val patientName = data["patient_name"] as? String ?: "Пациент"
-                        val patientPhone = data["patient_phone"] as? String ?: ""
+                        val id = data.optInt("id", -1)
+                        if (id == -1) return@launch
+                        val status = data.optString("status", "PENDING")
+                        val doctorName = data.optString("doctor_name", "Доктор")
+                        val date = data.optString("date", "")
+                        val time = data.optString("time", "")
+                        val patientName = data.optString("patient_name", "Пациент")
+                        val patientPhone = data.optString("patient_phone", "")
 
                         // 1. Sync SQLite Local DB
                         val appDao = database.appointmentDao()
@@ -165,11 +159,11 @@ class ClinicWebSocketClient(
                                     patientPhone = patientPhone,
                                     patientName = patientName,
                                     doctorName = doctorName,
-                                    specialty = data["specialty"] as? String ?: "Терапевт",
+                                    specialty = data.optString("specialty", "Терапевт"),
                                     date = date,
                                     time = time,
                                     status = status,
-                                    reason = data["reason"] as? String ?: ""
+                                    reason = data.optString("reason", "")
                                 )
                             )
                         }
@@ -194,13 +188,13 @@ class ClinicWebSocketClient(
                     }
 
                     "NEW_MEDICAL_RECORD" -> {
-                        val id = (data["id"] as? Double)?.toInt() ?: 0
-                        val patientPhone = data["patient_phone"] as? String ?: ""
-                        val doctorName = data["doctor_name"] as? String ?: "Врач"
-                        val diagnosis = data["diagnosis"] as? String ?: ""
-                        val prescription = data["prescription"] as? String ?: ""
-                        val visitDate = data["visit_date"] as? String ?: ""
-                        val recommendations = data["recommendations"] as? String ?: ""
+                        val id = data.optInt("id", 0)
+                        val patientPhone = data.optString("patient_phone", "")
+                        val doctorName = data.optString("doctor_name", "Врач")
+                        val diagnosis = data.optString("diagnosis", "")
+                        val prescription = data.optString("prescription", "")
+                        val visitDate = data.optString("visit_date", "")
+                        val recommendations = data.optString("recommendations", "")
 
                         // 1. Save locally in Room cache
                         val recordDao = database.medicalRecordDao()
@@ -238,13 +232,13 @@ class ClinicWebSocketClient(
                     }
 
                     "QUEUE_UPDATE" -> {
-                        val activeQueueList = data["queue"] as? List<Map<String, Any>> ?: return@launch
-                        Log.i("WS_CLIENT", "Queue length: ${activeQueueList.size}")
+                        val activeQueueList = data.optJSONArray("queue") ?: org.json.JSONArray()
+                        Log.i("WS_CLIENT", "Queue length: ${activeQueueList.length()}")
 
                         // Clear log and log queue positions
                         database.syncLogDao().insertLog(
                             com.example.data.database.SyncLogEntity(
-                                logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) сейчас ожидает",
+                                logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.length()} пациент(ов) сейчас ожидает",
                                 direction = "SYSTEM_SYNC"
                             )
                         )

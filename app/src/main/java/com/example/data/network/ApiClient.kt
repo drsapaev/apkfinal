@@ -9,8 +9,6 @@ import java.util.concurrent.TimeUnit
 
 /**
  * ApiClient handles the initialization and creation of the Retrofit HTTP client.
- * It integrates a Moshi JSON parser with Kotlin reflection support, as well as
- * logging capabilities to trace endpoints, request headers, payloads, and response times.
  */
 object ApiClient {
     // Default fallback to standard Android Emulator localhost address pointing to the FastAPI backend port
@@ -57,7 +55,7 @@ object ApiClient {
             // Check if there is an env-injected environment variable via BuildConfig.
             // Under normal circumstances, the secrets plugin exposes this from the .env property file.
             val url = com.example.BuildConfig.BACKEND_URL
-            if (!url.isNullOrBlank()) {
+            if (!url.isNullOrBlank() && url != "?") {
                 val cleaned = if (url.contains("localhost") || url.contains("127.0.0.1")) {
                     url.replace("localhost", "10.0.2.2").replace("127.0.0.1", "10.0.2.2")
                 } else {

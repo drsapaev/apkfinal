@@ -42,7 +42,9 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            val viewModel: ClinicViewModel = viewModel()
+            val viewModel: ClinicViewModel = viewModel(
+                factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(application)
+            )
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
             val systemTheme = androidx.compose.foundation.isSystemInDarkTheme()
             val useDarkTheme = when (themeMode) {
