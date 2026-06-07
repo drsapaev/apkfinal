@@ -1,0 +1,6 @@
+{
+  "name": "Clinic System",
+  "description": "Clinic management application with phone login, bio-auth, and real-time data sync between patients and clinic staff.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
