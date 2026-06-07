@@ -1,0 +1,169 @@
+package com.example.data.network
+
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
+import retrofit2.Response
+import retrofit2.http.*
+
+/**
+ * ApiService defines the Retrofit networking endpoints matching the FastAPI backend in the 'final' repository.
+ * It includes authorization requests, profile matching, appointments, medical records, and queue registries.
+ */
+interface ApiService {
+
+    // --- Authentication & User Cabinet ---
+
+    @POST("api/v1/auth/request-otp")
+    suspend fun requestOtp(
+        @Body request: OtpRequest
+    ): Response<OtpResponse>
+
+    @POST("api/v1/auth/login")
+    suspend fun login(
+        @Body request: LoginRequest
+    ): Response<AuthResponse>
+
+    @GET("api/v1/users/me")
+    suspend fun getProfile(
+        @Header("Authorization") token: String
+    ): Response<UserDto>
+
+    @POST("api/v1/users/telegram/link")
+    suspend fun linkTelegram(
+        @Header("Authorization") token: String,
+        @Query("chat_id") chatId: String
+    ): Response<Unit>
+
+    @POST("api/v1/users/telegram/unlink")
+    suspend fun unlinkTelegram(
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+
+    // --- Appointments ---
+
+    @GET("api/v1/appointments")
+    suspend fun getAppointments(
+        @Header("Authorization") token: String,
+        @Query("phone") phone: String? = null
+    ): Response<List<AppointmentDto>>
+
+    @POST("api/v1/appointments")
+    suspend fun createAppointment(
+        @Header("Authorization") token: String,
+        @Body appointment: AppointmentDto
+    ): Response<AppointmentDto>
+
+    @PUT("api/v1/appointments/{id}/status")
+    suspend fun updateAppointmentStatus(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Query("status") status: String,
+        @Query("notes") notes: String? = null
+    ): Response<AppointmentDto>
+
+
+    // --- Medical Records / Reports ---
+
+    @GET("api/v1/patients/records/all")
+    suspend fun getAllMedicalRecords(
+        @Header("Authorization") token: String
+    ): Response<List<MedicalRecordDto>>
+
+    @GET("api/v1/patients/records/{phone}")
+    suspend fun getMedicalRecordsForPatient(
+        @Header("Authorization") token: String,
+        @Path("phone") phone: String
+    ): Response<List<MedicalRecordDto>>
+
+    @POST("api/v1/patients/records")
+    suspend fun createMedicalRecord(
+        @Header("Authorization") token: String,
+        @Body record: MedicalRecordDto
+    ): Response<MedicalRecordDto>
+
+
+    // --- Queues (Active Waiting Rooms) ---
+
+    @GET("api/v1/queue")
+    suspend fun getQueue(
+        @Header("Authorization") token: String
+    ): Response<List<QueueDto>>
+
+    @POST("api/v1/queue/register")
+    suspend fun registerInQueue(
+        @Header("Authorization") token: String,
+        @Query("appointment_id") appointmentId: Int
+    ): Response<QueueDto>
+}
+
+// --- Moshi-Annotated DTOs (Data Transfer Objects) mapping matching JSON payloads ---
+
+@JsonClass(generateAdapter = true)
+data class OtpRequest(
+    @Json(name = "phone") val phone: String
+)
+
+@JsonClass(generateAdapter = true)
+data class OtpResponse(
+    @Json(name = "success") val success: Boolean,
+    @Json(name = "message") val message: String
+)
+
+@JsonClass(generateAdapter = true)
+data class LoginRequest(
+    @Json(name = "phone") val phone: String,
+    @Json(name = "otp") val otp: String
+)
+
+@JsonClass(generateAdapter = true)
+data class AuthResponse(
+    @Json(name = "access_token") val accessToken: String,
+    @Json(name = "token_type") val tokenType: String,
+    @Json(name = "user") val user: UserDto
+)
+
+@JsonClass(generateAdapter = true)
+data class UserDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "phone") val phone: String,
+    @Json(name = "full_name") val fullName: String,
+    @Json(name = "role") val role: String, // "PATIENT" or "STAFF"
+    @Json(name = "date_of_birth") val dateOfBirth: String?,
+    @Json(name = "biometric_enabled") val biometricEnabled: Boolean,
+    @Json(name = "telegram_chat_id") val telegramChatId: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class AppointmentDto(
+    @Json(name = "id") val id: Int?,
+    @Json(name = "patient_phone") val patientPhone: String,
+    @Json(name = "patient_name") val patientName: String,
+    @Json(name = "doctor_name") val doctorName: String,
+    @Json(name = "specialty") val specialty: String,
+    @Json(name = "date") val date: String,
+    @Json(name = "time") val time: String,
+    @Json(name = "status") val status: String, // "PENDING", "APPROVED", "COMPLETED", "CANCELLED"
+    @Json(name = "reason") val reason: String,
+    @Json(name = "notes") val notes: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class MedicalRecordDto(
+    @Json(name = "id") val id: Int?,
+    @Json(name = "patient_phone") val patientPhone: String,
+    @Json(name = "doctor_name") val doctorName: String,
+    @Json(name = "diagnosis") val diagnosis: String,
+    @Json(name = "prescription") val prescription: String,
+    @Json(name = "visit_date") val visitDate: String,
+    @Json(name = "recommendations") val recommendations: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class QueueDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "patient_name") val patientName: String,
+    @Json(name = "appointment_id") val appointmentId: Int,
+    @Json(name = "position") val position: Int,
+    @Json(name = "status") val status: String // "WAITING", "IN_PROGRESS", "COMPLETED"
+)
