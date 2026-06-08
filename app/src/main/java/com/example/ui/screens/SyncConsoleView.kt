@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.database.SyncLogEntity
+import com.example.data.db.SyncLogEntity
 import com.example.ui.viewmodel.ClinicViewModel
 import java.text.SimpleDateFormat
 import java.util.Date

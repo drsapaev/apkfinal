@@ -3,7 +3,7 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.database.*
+import com.example.data.db.*
 import com.example.data.repository.ClinicRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -15,7 +15,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
     private val authRepository = com.example.data.repository.AuthRepository(application, database)
-    private val wsClient = com.example.util.ClinicWebSocketClient(application, database)
+    private val wsClient = com.example.utils.ClinicWebSocketClient(application, database)
 
     // Global Active Session State
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
@@ -98,15 +98,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         // Wire up the Retrofit token interceptor to read dynamically from security preferences
-        com.example.data.network.ApiClient.tokenProvider = {
-            com.example.util.TokenManager.getToken(application)
+        com.example.data.api.ApiClient.tokenProvider = {
+            com.example.utils.TokenManager.getToken(application)
         }
-        com.example.util.FirestoreSyncManager.init(application, repository)
+        com.example.utils.FirestoreSyncManager.init(application, repository)
         viewModelScope.launch {
             repository.prepopulateDatabase()
 
             // Session restoration handler: Autologin and real-time WebSocket connection
-            val savedPhone = com.example.util.TokenManager.getPhone(application)
+            val savedPhone = com.example.utils.TokenManager.getPhone(application)
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -328,13 +328,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             )
             // 1. Save in local Room DB for offline fallback
             val savedApp = repository.insertAppointment(newApp)
-            com.example.util.FirestoreSyncManager.publishAppointment(savedApp)
+            com.example.utils.FirestoreSyncManager.publishAppointment(savedApp)
 
             // 2. Transmit to real FastAPI "final" backend
             try {
-                val token = com.example.util.TokenManager.getToken(getApplication())
+                val token = com.example.utils.TokenManager.getToken(getApplication())
                 val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-                val dto = com.example.data.network.AppointmentDto(
+                val dto = com.example.data.api.AppointmentDto(
                     id = null,
                     patientPhone = user.phone,
                     patientName = user.fullName,
@@ -346,7 +346,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     reason = reason,
                     notes = null
                 )
-                val response = com.example.data.network.ApiClient.service.createAppointment(authHeader, dto)
+                val response = com.example.data.api.ApiClient.service.createAppointment(authHeader, dto)
                 if (response.isSuccessful && response.body() != null) {
                     val saved = response.body()!!
                     // Update Room record with real server side ID
@@ -386,12 +386,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             if (appointment != null) {
                 val updated = appointment.copy(status = "APPROVED", notes = "Подтверждено администратором.")
                 repository.updateAppointment(updated)
-                com.example.util.FirestoreSyncManager.publishAppointment(updated)
+                com.example.utils.FirestoreSyncManager.publishAppointment(updated)
                 
                 // Transmit to FastAPI Server
                 try {
-                    val token = com.example.util.TokenManager.getToken(getApplication()) ?: ""
-                    val response = com.example.data.network.ApiClient.service.updateAppointmentStatus(
+                    val token = com.example.utils.TokenManager.getToken(getApplication()) ?: ""
+                    val response = com.example.data.api.ApiClient.service.updateAppointmentStatus(
                         token = "Bearer $token",
                         id = id,
                         status = "APPROVED",
@@ -408,7 +408,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 val patientName = patientUser?.fullName ?: "Пациент"
                 
                 // Trigger Real-time System Push Notification
-                com.example.util.NotificationHelper.sendAppointmentStatusNotification(
+                com.example.utils.NotificationHelper.sendAppointmentStatusNotification(
                     getApplication(),
                     appointment.id,
                     appointment.doctorName,
@@ -438,12 +438,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     notes = if (cancelReason.isNotEmpty()) "Отменено: $cancelReason" else "Отклонено."
                 )
                 repository.updateAppointment(updated)
-                com.example.util.FirestoreSyncManager.publishAppointment(updated)
+                com.example.utils.FirestoreSyncManager.publishAppointment(updated)
                 
                 // Transmit to FastAPI Server
                 try {
-                    val token = com.example.util.TokenManager.getToken(getApplication()) ?: ""
-                    val response = com.example.data.network.ApiClient.service.updateAppointmentStatus(
+                    val token = com.example.utils.TokenManager.getToken(getApplication()) ?: ""
+                    val response = com.example.data.api.ApiClient.service.updateAppointmentStatus(
                         token = "Bearer $token",
                         id = id,
                         status = "CANCELLED",
@@ -460,7 +460,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 val patientName = patientUser?.fullName ?: "Пациент"
 
                 // Trigger Real-time System Push Notification
-                com.example.util.NotificationHelper.sendAppointmentStatusNotification(
+                com.example.utils.NotificationHelper.sendAppointmentStatusNotification(
                     getApplication(),
                     appointment.id,
                     appointment.doctorName,
@@ -488,7 +488,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             if (appointment != null) {
                 val updated = appointment.copy(notes = notes)
                 repository.updateAppointment(updated)
-                com.example.util.FirestoreSyncManager.publishAppointment(updated)
+                com.example.utils.FirestoreSyncManager.publishAppointment(updated)
             }
         }
     }
@@ -509,12 +509,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             )
             // 1. Save in local SQLite
             val savedRecord = repository.insertMedicalRecord(newRecord)
-            com.example.util.FirestoreSyncManager.publishMedicalRecord(savedRecord)
+            com.example.utils.FirestoreSyncManager.publishMedicalRecord(savedRecord)
             
             // 2. Transmit to real FastAPI "final" server
             try {
-                val token = com.example.util.TokenManager.getToken(getApplication()) ?: ""
-                val dto = com.example.data.network.MedicalRecordDto(
+                val token = com.example.utils.TokenManager.getToken(getApplication()) ?: ""
+                val dto = com.example.data.api.MedicalRecordDto(
                     id = null,
                     patientPhone = patientPhone,
                     doctorName = doctor,
@@ -523,7 +523,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     visitDate = newRecord.visitDate,
                     recommendations = recommendations
                 )
-                val response = com.example.data.network.ApiClient.service.createMedicalRecord("Bearer $token", dto)
+                val response = com.example.data.api.ApiClient.service.createMedicalRecord("Bearer $token", dto)
                 if (response.isSuccessful && response.body() != null) {
                     repository.addSyncLog("🟢 API [POST /api/v1/patients/records]: Запись медкарты успешно синхронизирована с сервером.", "CLOUD_SYNC_SIMULATOR")
                 }
@@ -535,7 +535,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             val patientName = patientUser?.fullName ?: "Пациент"
 
             // Local System Push Notification for New Medical Report
-            com.example.util.NotificationHelper.sendMedicalRecordNotification(
+            com.example.utils.NotificationHelper.sendMedicalRecordNotification(
                 getApplication(),
                 (System.currentTimeMillis() % 100000).toInt(),
                 doctor,
@@ -563,20 +563,20 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             repository.addSyncLog("🟢 ПОДКЛЮЧЕНИЕ к серверу FastAPI 'final'...", "CLOUD_SYNC_SIMULATOR")
             delay(400)
 
-            val token = com.example.util.TokenManager.getToken(getApplication())
+            val token = com.example.utils.TokenManager.getToken(getApplication())
             val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
 
             try {
                 // 1. Fetch current profile from Server
                 repository.addSyncLog("🛰️ GET /api/v1/users/me (Проверка аутентификации сессии)", "CLOUD_SYNC_SIMULATOR")
-                val userResponse = com.example.data.network.ApiClient.service.getProfile(authHeader)
+                val userResponse = com.example.data.api.ApiClient.service.getProfile(authHeader)
                 if (userResponse.isSuccessful && userResponse.body() != null) {
                     repository.addSyncLog("✓ Сессия подтверждена для: ${userResponse.body()!!.fullName}", "CLOUD_SYNC_SIMULATOR")
                 }
 
                 // 2. Fetch all appointments from server and sync to Room SQLite database
                 repository.addSyncLog("🛰️ GET /api/v1/appointments (Синхронизация записей на прием)", "CLOUD_SYNC_SIMULATOR")
-                val appointmentsResponse = com.example.data.network.ApiClient.service.getAppointments(authHeader)
+                val appointmentsResponse = com.example.data.api.ApiClient.service.getAppointments(authHeader)
                 if (appointmentsResponse.isSuccessful && appointmentsResponse.body() != null) {
                     val serverList = appointmentsResponse.body()!!
                     repository.addSyncLog("✓ Успешно получено ${serverList.size} записей с сервера.", "CLOUD_SYNC_SIMULATOR")
@@ -604,7 +604,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
                 // 3. Sync Active Queue Status
                 repository.addSyncLog("🛰️ GET /api/v1/queue (Запрос текущей живой очереди клиники)", "CLOUD_SYNC_SIMULATOR")
-                val queueResponse = com.example.data.network.ApiClient.service.getQueue(authHeader)
+                val queueResponse = com.example.data.api.ApiClient.service.getQueue(authHeader)
                 if (queueResponse.isSuccessful && queueResponse.body() != null) {
                     val queueList = queueResponse.body()!!
                     repository.addSyncLog("✓ Активная очередь: ${queueList.size} пациент(ов) в кабинетах ожидания.", "CLOUD_SYNC_SIMULATOR")
@@ -694,11 +694,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             repository.addSyncLog("🛰️ CONNECTING to API: GET /api/v1/patients/records/${user.phone}", "CLOUD_SYNC_SIMULATOR")
 
             try {
-                val token = com.example.util.TokenManager.getToken(getApplication())
+                val token = com.example.utils.TokenManager.getToken(getApplication())
                 val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
                 
                 // Fetch medical records for active logged-in patient
-                val response = com.example.data.network.ApiClient.service.getMedicalRecordsForPatient(authHeader, user.phone)
+                val response = com.example.data.api.ApiClient.service.getMedicalRecordsForPatient(authHeader, user.phone)
                 
                 if (response.isSuccessful && response.body() != null) {
                     val reports = response.body()!!
@@ -718,7 +718,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                         if (existing == null) {
                             repository.insertMedicalRecord(recordEntity)
                             // Notify user about incoming new diagnosis entry
-                            com.example.util.NotificationHelper.sendMedicalRecordNotification(
+                            com.example.utils.NotificationHelper.sendMedicalRecordNotification(
                                 getApplication(),
                                 recordEntity.id,
                                 recordEntity.doctorName,
@@ -755,7 +755,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             repository.addSyncLog("✓ FETCH SUCCESS: Imported 1 dental medical report from Cloud database for ${user.fullName}", "CLOUD_SYNC_SIMULATOR")
             
             // Trigger Real-time push notification for imported report
-            com.example.util.NotificationHelper.sendMedicalRecordNotification(
+            com.example.utils.NotificationHelper.sendMedicalRecordNotification(
                 getApplication(),
                 101,
                 newRecord.doctorName,
@@ -777,7 +777,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 repository.addSyncLog("✓ FETCH SUCCESS: Imported 1 cardiology report from Cloud database for ${user.fullName}", "CLOUD_SYNC_SIMULATOR")
                 
                 // Trigger Real-time push notification for imported cardiology report
-                com.example.util.NotificationHelper.sendMedicalRecordNotification(
+                com.example.utils.NotificationHelper.sendMedicalRecordNotification(
                     getApplication(),
                     102,
                     cardState.doctorName,
@@ -799,7 +799,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     repository.addSyncLog("✓ FETCH SUCCESS: Imported 1 general practitioner report from Cloud database for ${user.fullName}", "CLOUD_SYNC_SIMULATOR")
                     
                     // Trigger Real-time push notification for imported GP report
-                    com.example.util.NotificationHelper.sendMedicalRecordNotification(
+                    com.example.utils.NotificationHelper.sendMedicalRecordNotification(
                         getApplication(),
                         103,
                         smirnovState.doctorName,

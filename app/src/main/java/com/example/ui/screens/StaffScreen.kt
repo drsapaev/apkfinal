@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.database.AppointmentEntity
-import com.example.data.database.UserEntity
+import com.example.data.db.AppointmentEntity
+import com.example.data.db.UserEntity
 import com.example.ui.viewmodel.ClinicViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

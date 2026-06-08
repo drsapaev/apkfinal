@@ -32,8 +32,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import com.example.data.database.AppointmentEntity
-import com.example.data.database.MedicalRecordEntity
+import com.example.data.db.AppointmentEntity
+import com.example.data.db.MedicalRecordEntity
 import com.example.ui.viewmodel.ClinicViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -857,7 +857,7 @@ fun HeaderGreetingBanner(
 // 2. HEALTH PROFILE CABINET COMPOSABLE
 @Composable
 fun ProfileCabinetCard(
-    user: com.example.data.database.UserEntity?,
+    user: com.example.data.db.UserEntity?,
     onEditClick: () -> Unit,
     onBiometricToggle: (Boolean) -> Unit
 ) {
@@ -1770,7 +1770,7 @@ fun MedicalHistoryCardItem(
 // TELEGRAM BOT CONFIGURATION CARD
 @Composable
 fun TelegramBotCard(
-    user: com.example.data.database.UserEntity?,
+    user: com.example.data.db.UserEntity?,
     onLinkClick: (String) -> Unit,
     onUnlinkClick: () -> Unit,
     onTestClick: () -> Unit

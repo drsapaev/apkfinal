@@ -2,18 +2,18 @@ package com.example.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.example.data.database.ClinicDatabase
-import com.example.data.database.UserEntity
-import com.example.data.network.ApiClient
-import com.example.data.network.LoginRequest
-import com.example.data.network.UserDto
-import com.example.util.TokenManager
+import com.example.data.db.ClinicDatabase
+import com.example.data.db.UserEntity
+import com.example.data.api.ApiClient
+import com.example.data.api.LoginRequest
+import com.example.data.api.UserDto
+import com.example.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * AuthRepository manages network authentication workflows with the backend FastAPI 'final' server,
- * while maintaining local cache synchronization in the Room database (`com.example.data.database.UserEntity`).
+ * while maintaining local cache synchronization in the Room database (`com.example.data.db.UserEntity`).
  */
 class AuthRepository(
     private val context: Context,

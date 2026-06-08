@@ -22,7 +22,7 @@ import com.example.ui.theme.MyApplicationTheme
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.ui.viewmodel.ClinicViewModel
-import com.example.util.NotificationHelper
+import com.example.utils.NotificationHelper
 
 class MainActivity : ComponentActivity() {
     private val requestNotificationPermissionLauncher = registerForActivityResult(
