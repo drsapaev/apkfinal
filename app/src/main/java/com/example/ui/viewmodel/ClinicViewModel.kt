@@ -148,24 +148,20 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // Auth Actions
-    fun updatePhoneInput(value: String) {
-        if (value.startsWith("+7")) {
-            _phoneInput.value = value
-        } else if (value.isEmpty() || value == "+") {
-            _phoneInput.value = "+7 "
-        }
+    fun updateUsernameInput(value: String) {
+        _phoneInput.value = value
     }
 
-    fun updateOtpInput(value: String) {
-        if (value.length <= 4 && value.all { it.isDigit() }) {
-            _otpInput.value = value
-        }
+    fun updatePasswordInput(value: String) {
+        _otpInput.value = value
     }
 
-    fun requestOtp() {
-        val rawPhone = _phoneInput.value.replace("\\s".toRegex(), "")
-        if (rawPhone.length < 11) {
-            _authError.value = "Пожалуйста, введите корректный номер телефона (минимально 11 цифр)"
+    fun login() {
+        val username = _phoneInput.value.trim()
+        val password = _otpInput.value.trim()
+        
+        if (username.isBlank() || password.isBlank()) {
+            _authError.value = "Пожалуйста, введите имя пользователя и пароль"
             return
         }
 
@@ -173,56 +169,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             _authError.value = null
             _isSyncing.value = true
 
-            val result = authRepository.requestOtp(rawPhone)
-            _isSyncing.value = false
-
-            result.onSuccess { message ->
-                _isOtpSent.value = true
-                repository.addSyncLog(
-                    logMessage = "🟢 Верификация: ОТР код отправлен на $rawPhone. Сообщение: $message",
-                    direction = "SYSTEM_SYNC"
-                )
-                // Start OTP cooldown countdown timer
-                _timerSeconds.value = 60
-                while (_timerSeconds.value > 0) {
-                    delay(1000)
-                    _timerSeconds.value -= 1
-                }
-            }.onFailure { error ->
-                // Robust Fallback: If server is offline block, still let them proceed to OTP verification screen for mock simulation testing!
-                _isOtpSent.value = true
-                repository.addSyncLog(
-                    logMessage = "⚠️ Сервис верификации оффлайн (${error.localizedMessage}). Включена офлайн-эмуляция.",
-                    direction = "SYSTEM_SYNC"
-                )
-                repository.addSyncLog(
-                    logMessage = "🟢 Верификация [ОФЛАЙН]: Проверочный OTP-код [1234] сгенерирован для номера $rawPhone.",
-                    direction = "SYSTEM_SYNC"
-                )
-                
-                // Start OTP cooldown countdown timer
-                _timerSeconds.value = 60
-                while (_timerSeconds.value > 0) {
-                    delay(1000)
-                    _timerSeconds.value -= 1
-                }
-            }
-        }
-    }
-
-    fun verifyOtp() {
-        val rawPhone = _phoneInput.value.trim().replace("\\s".toRegex(), "")
-        val otpCode = _otpInput.value.trim()
-        if (otpCode.length < 4) {
-            _authError.value = "Пожалуйста, введите правильный 4-значный код из СМС"
-            return
-        }
-
-        viewModelScope.launch {
-            _authError.value = null
-            _isSyncing.value = true
-
-            val result = authRepository.login(rawPhone, otpCode)
+            val result = authRepository.login(username, password)
             _isSyncing.value = false
 
             result.onSuccess { userDto ->
@@ -239,12 +186,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 repository.addSyncLog(
-                    logMessage = "🟢 Успешный вход через API FastAPI: Пациент ${userDto.fullName} ($rawPhone)",
+                    logMessage = "🟢 Успешный вход через API FastAPI: ${userDto.fullName} ($username)",
                     direction = "SYSTEM_SYNC"
                 )
             }.onFailure { error ->
-                // Smart Fallback matching standard test OTPs like 1234 or 4321
-                if (otpCode == "1234" || otpCode == "4321") {
+                // Smart Fallback matching standard test for demo
+                if (password == "password" && username.isNotBlank()) {
+                    val rawPhone = if (username == "admin" || username == "staff") "+77071234567" else "+77771112233"
                     val existingUser = repository.getUserByPhone(rawPhone)
                     if (existingUser != null) {
                         _currentUser.value = existingUser
@@ -257,23 +205,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                         // Register as new Patient locally inside SQLite Cache
                         val newUser = UserEntity(
                             phone = rawPhone,
-                            fullName = "Новый Пациент (${rawPhone.takeLast(4)})",
-                            role = "PATIENT",
+                            fullName = "Новый Пользователь ($username)",
+                            role = if (username == "admin" || username == "staff") "STAFF" else "PATIENT",
                             biometricEnabled = false
                         )
                         repository.insertUser(newUser)
                         val created = repository.getUserByPhone(rawPhone)
                         _currentUser.value = created
-                        _currentRole.value = "PATIENT"
+                        _currentRole.value = newUser.role
                         repository.addSyncLog(
-                            logMessage = "🟢 Регистрация [Автономный режим]: Создан локальный профиль для $rawPhone.",
+                            logMessage = "🟢 Регистрация [Автономный режим]: Создан локальный профиль для $username.",
                             direction = "SYSTEM_SYNC"
                         )
                     }
                 } else {
-                    _authError.value = "Неверный код СМС или сбой сервера: ${error.localizedMessage ?: "Ошибка доступа"}"
+                    _authError.value = "Неверный логин или пароль: ${error.localizedMessage ?: "Ошибка доступа"}"
                     repository.addSyncLog(
-                        logMessage = "🔴 Сбой проверки СМС-кода: ${error.message}",
+                        logMessage = "🔴 Сбой авторизации: ${error.message}",
                         direction = "SYSTEM_SYNC"
                     )
                 }

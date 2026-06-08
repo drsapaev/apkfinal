@@ -13,15 +13,20 @@ interface ApiService {
 
     // --- Authentication & User Cabinet ---
 
-    @POST("api/v1/auth/request-otp")
-    suspend fun requestOtp(
-        @Body request: OtpRequest
-    ): Response<OtpResponse>
-
-    @POST("api/v1/auth/login")
+    @POST("api/v1/authentication/login")
     suspend fun login(
         @Body request: LoginRequest
     ): Response<AuthResponse>
+
+    @POST("api/v1/authentication/refresh")
+    suspend fun refresh(
+        @Header("Authorization") token: String
+    ): Response<AuthResponse>
+
+    @POST("api/v1/authentication/logout")
+    suspend fun logout(
+        @Header("Authorization") token: String
+    ): Response<Unit>
 
     @GET("api/v1/users/me")
     suspend fun getProfile(
@@ -100,27 +105,16 @@ interface ApiService {
 // --- Moshi-Annotated DTOs (Data Transfer Objects) mapping matching JSON payloads ---
 
 @JsonClass(generateAdapter = true)
-data class OtpRequest(
-    @Json(name = "phone") val phone: String
-)
-
-@JsonClass(generateAdapter = true)
-data class OtpResponse(
-    @Json(name = "success") val success: Boolean,
-    @Json(name = "message") val message: String
-)
-
-@JsonClass(generateAdapter = true)
 data class LoginRequest(
-    @Json(name = "phone") val phone: String,
-    @Json(name = "otp") val otp: String
+    @Json(name = "username") val username: String,
+    @Json(name = "password") val password: String
 )
 
 @JsonClass(generateAdapter = true)
 data class AuthResponse(
     @Json(name = "access_token") val accessToken: String,
     @Json(name = "token_type") val tokenType: String,
-    @Json(name = "user") val user: UserDto
+    @Json(name = "expires_in") val expiresIn: Int? = null
 )
 
 @JsonClass(generateAdapter = true)

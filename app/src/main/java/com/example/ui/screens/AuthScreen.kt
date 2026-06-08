@@ -30,8 +30,8 @@ fun AuthScreen(
     viewModel: ClinicViewModel,
     modifier: Modifier = Modifier
 ) {
-    val phone by viewModel.phoneInput.collectAsStateWithLifecycle()
-    val otp by viewModel.otpInput.collectAsStateWithLifecycle()
+    val username by viewModel.phoneInput.collectAsStateWithLifecycle()
+    val password by viewModel.otpInput.collectAsStateWithLifecycle()
     val isOtpSent by viewModel.isOtpSent.collectAsStateWithLifecycle()
     val timer by viewModel.timerSeconds.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
@@ -112,7 +112,7 @@ fun AuthScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = if (!isOtpSent) "Вход по номеру телефона" else "Подтверждение кода СМС",
+                        text = "Вход в систему",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF2C3E50)
@@ -123,97 +123,57 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    AnimatedContent(
-                        targetState = isOtpSent,
-                        label = "auth_input_transition"
-                    ) { otpSent ->
-                        if (!otpSent) {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = "Введите ваш номер телефона для авторизации:",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(bottom = 6.dp)
-                                )
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Введите ваши учетные данные:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
 
-                                OutlinedTextField(
-                                    value = phone,
-                                    onValueChange = { viewModel.updatePhoneInput(it) },
-                                    label = { Text("Номер телефона") },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Phone,
-                                            contentDescription = "Phone icon",
-                                            tint = tealPrimary
-                                        )
-                                    },
-                                    placeholder = { Text("+7 777 111-22-33") },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = tealPrimary,
-                                        unfocusedBorderColor = Color.LightGray,
-                                        focusedLabelColor = tealPrimary
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
+                        OutlinedTextField(
+                            value = username,
+                            onValueChange = { viewModel.updateUsernameInput(it) },
+                            label = { Text("Имя пользователя") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "User icon",
+                                    tint = tealPrimary
                                 )
-                            }
-                        } else {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = "Код отправлен на номер: $phone",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(bottom = 6.dp)
+                            },
+                            placeholder = { Text("admin") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = tealPrimary,
+                                unfocusedBorderColor = Color.LightGray,
+                                focusedLabelColor = tealPrimary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { viewModel.updatePasswordInput(it) },
+                            label = { Text("Пароль") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "Lock icon",
+                                    tint = tealPrimary
                                 )
-
-                                OutlinedTextField(
-                                    value = otp,
-                                    onValueChange = { viewModel.updateOtpInput(it) },
-                                    label = { Text("Код из СМС") },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "Code icon",
-                                            tint = tealPrimary
-                                        )
-                                    },
-                                    placeholder = { Text("XXXX") },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = tealPrimary,
-                                        unfocusedBorderColor = Color.LightGray,
-                                        focusedLabelColor = tealPrimary
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = if (timer > 0) "Повторно через ${timer}с" else "Можно запросить заново",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (timer > 0) Color.Gray else tealPrimary,
-                                        fontWeight = if (timer == 0) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.clickable(enabled = timer == 0) {
-                                            viewModel.requestOtp()
-                                        }
-                                    )
-                                    Text(
-                                        text = "Тестовый код: 1234",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.DarkGray,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
+                            },
+                            placeholder = { Text("Пароль") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = tealPrimary,
+                                unfocusedBorderColor = Color.LightGray,
+                                focusedLabelColor = tealPrimary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     authError?.let { error ->
@@ -234,11 +194,7 @@ fun AuthScreen(
                     } else {
                         Button(
                             onClick = {
-                                if (!isOtpSent) {
-                                    viewModel.requestOtp()
-                                } else {
-                                    viewModel.verifyOtp()
-                                }
+                                viewModel.login()
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                             shape = RoundedCornerShape(12.dp),
@@ -247,7 +203,7 @@ fun AuthScreen(
                                 .height(50.dp)
                         ) {
                             Text(
-                                text = if (!isOtpSent) "Получить СМС-код" else "Войти",
+                                text = "Войти",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = Color.White
                             )
@@ -338,7 +294,7 @@ fun AuthScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "🚀 Тестовые аккаунты (Быстрый вход - СМС: 1234):",
+                        text = "🚀 Тестовые аккаунты:",
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                         color = Color(0xFF455A64)
                     )
@@ -349,18 +305,20 @@ fun AuthScreen(
                     ) {
                         AssistChip(
                             onClick = {
-                                viewModel.updatePhoneInput("+77771112233")
-                                viewModel.requestOtp()
+                                viewModel.updateUsernameInput("patient")
+                                viewModel.updatePasswordInput("password")
+                                viewModel.login()
                             },
-                            label = { Text("Пациент Иванов") }
+                            label = { Text("Пациент") }
                         )
 
                         AssistChip(
                             onClick = {
-                                viewModel.updatePhoneInput("+77071234567")
-                                viewModel.requestOtp()
+                                viewModel.updateUsernameInput("admin")
+                                viewModel.updatePasswordInput("password")
+                                viewModel.login()
                             },
-                            label = { Text("Врач Dr. Rustam") }
+                            label = { Text("Врач / Админ") }
                         )
                     }
                 }
