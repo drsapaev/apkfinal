@@ -101,6 +101,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         com.example.data.api.ApiClient.tokenProvider = {
             com.example.utils.TokenManager.getToken(application)
         }
+        com.example.data.api.ApiClient.onUnauthorized = {
+            viewModelScope.launch {
+                val user = _currentUser.value
+                if (user != null) {
+                    repository.addSyncLog("⚠️ Токен истек или недействителен (401). Автоматический выход из системы.", "SYSTEM_SYNC")
+                    logOut()
+                }
+            }
+        }
         com.example.utils.FirestoreSyncManager.init(application, repository)
         viewModelScope.launch {
             repository.prepopulateDatabase()
@@ -130,11 +139,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                         _currentRole.value = updated.role
                     }
                 }.onFailure { error ->
-                    val isNetworkError = error is java.net.ConnectException || 
-                                         error is java.net.UnknownHostException || 
-                                         error is java.net.SocketTimeoutException ||
-                                         error.message?.contains("Unable to resolve host") == true ||
-                                         error.message?.contains("Connect") == true
+                    val isNetworkError = error is java.io.IOException
                     if (!isNetworkError) {
                         // Force logout only if token is definitively expired, corrupted, or rejected by server actively
                         repository.addSyncLog("⚠️ Сессия устарела или недействительна: ${error.localizedMessage}. Сброс авторизации.", "SYSTEM_SYNC")
@@ -190,41 +195,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     direction = "SYSTEM_SYNC"
                 )
             }.onFailure { error ->
-                // Smart Fallback matching standard test for demo
-                if (password == "password" && username.isNotBlank()) {
-                    val rawPhone = if (username == "admin" || username == "staff") "+77071234567" else "+77771112233"
-                    val existingUser = repository.getUserByPhone(rawPhone)
-                    if (existingUser != null) {
-                        _currentUser.value = existingUser
-                        _currentRole.value = existingUser.role
-                        repository.addSyncLog(
-                            logMessage = "🟢 Вход (Автономный режим): Полномочия подтверждены для ${existingUser.fullName}.",
-                            direction = "SYSTEM_SYNC"
-                        )
-                    } else {
-                        // Register as new Patient locally inside SQLite Cache
-                        val newUser = UserEntity(
-                            phone = rawPhone,
-                            fullName = "Новый Пользователь ($username)",
-                            role = if (username == "admin" || username == "staff") "STAFF" else "PATIENT",
-                            biometricEnabled = false
-                        )
-                        repository.insertUser(newUser)
-                        val created = repository.getUserByPhone(rawPhone)
-                        _currentUser.value = created
-                        _currentRole.value = newUser.role
-                        repository.addSyncLog(
-                            logMessage = "🟢 Регистрация [Автономный режим]: Создан локальный профиль для $username.",
-                            direction = "SYSTEM_SYNC"
-                        )
-                    }
-                } else {
-                    _authError.value = "Неверный логин или пароль: ${error.localizedMessage ?: "Ошибка доступа"}"
-                    repository.addSyncLog(
-                        logMessage = "🔴 Сбой авторизации: ${error.message}",
-                        direction = "SYSTEM_SYNC"
-                    )
-                }
+                _authError.value = "Неверный логин или пароль: ${error.localizedMessage ?: "Ошибка доступа"}"
+                repository.addSyncLog(
+                    logMessage = "🔴 Сбой авторизации: ${error.message}",
+                    direction = "SYSTEM_SYNC"
+                )
             }
         }
     }
@@ -282,6 +257,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             val user = _currentUser.value
             if (user != null) {
                 repository.addSyncLog("Сессия пользователя ${user.fullName} успешно завершена.", "SYSTEM_SYNC")
+                // Clear sensitive data to prevent unauthorized access
+                if (user.role == "PATIENT") {
+                    repository.clearSensitiveDataForPatient(user.phone)
+                }
             }
             
             // Gracefully stop live web sockets first
@@ -650,7 +629,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val user = _currentUser.value ?: return
         viewModelScope.launch {
             _isSyncing.value = true
-            delay(600)
+            kotlinx.coroutines.delay(600)
             val updatedUser = user.copy(telegramChatId = null)
             _currentUser.value = updatedUser
             repository.updateUser(updatedUser)
@@ -672,7 +651,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val chatId = user.telegramChatId ?: return
         viewModelScope.launch {
             _isSyncing.value = true
-            delay(700)
+            kotlinx.coroutines.delay(700)
             _isSyncing.value = false
 
             repository.addSyncLog(
@@ -688,54 +667,61 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     fun fetchMedicalReports() {
         val user = _currentUser.value ?: return
+
         viewModelScope.launch {
             if (_isFetchingReports.value) return@launch
             _isFetchingReports.value = true
-            repository.addSyncLog("🛰️ CONNECTING to API: GET /api/v1/patients/records/${user.phone}", "CLOUD_SYNC_SIMULATOR")
 
-            try {
-                val token = com.example.utils.TokenManager.getToken(getApplication())
-                val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-                
-                // Fetch medical records for active logged-in patient
-                val response = com.example.data.api.ApiClient.service.getMedicalRecordsForPatient(authHeader, user.phone)
-                
-                if (response.isSuccessful && response.body() != null) {
-                    val reports = response.body()!!
-                    repository.addSyncLog("✓ УСПЕШНЫЙ ЗАПРОС: Импортировано ${reports.size} записей медкарт с сервера final.", "CLOUD_SYNC_SIMULATOR")
-                    for (dto in reports) {
-                        val recordEntity = MedicalRecordEntity(
-                            id = dto.id ?: (System.currentTimeMillis() % 100000).toInt(),
-                            patientPhone = dto.patientPhone,
-                            doctorName = dto.doctorName,
-                            diagnosis = dto.diagnosis,
-                            prescription = dto.prescription,
-                            visitDate = dto.visitDate,
-                            recommendations = dto.recommendations ?: ""
-                        )
-                        // Cache locally in SQLite
-                        val existing = repository.getMedicalRecordById(recordEntity.id)
-                        if (existing == null) {
-                            repository.insertMedicalRecord(recordEntity)
-                            // Notify user about incoming new diagnosis entry
-                            com.example.utils.NotificationHelper.sendMedicalRecordNotification(
-                                getApplication(),
-                                recordEntity.id,
-                                recordEntity.doctorName,
-                                recordEntity.diagnosis,
-                                user.fullName
+            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
+
+            com.example.data.repository.networkBoundResource(
+                query = { repository.getRecordsForPatient(user.phone) },
+                fetch = {
+                    repository.addSyncLog("🛰️ CONNECTING to API: GET /api/v1/patients/records/${user.phone}", "CLOUD_SYNC_SIMULATOR")
+                    com.example.data.api.ApiClient.service.getMedicalRecordsForPatient(authHeader, user.phone)
+                },
+                saveFetchResult = { response ->
+                    if (response.isSuccessful && response.body() != null) {
+                        val reports = response.body()!!
+                        repository.addSyncLog("✓ УСПЕШНЫЙ ЗАПРОС: Импортировано ${reports.size} записей медкарт с сервера final.", "CLOUD_SYNC_SIMULATOR")
+                        for (dto in reports) {
+                            val recordEntity = MedicalRecordEntity(
+                                id = dto.id ?: (System.currentTimeMillis() % 100000).toInt(),
+                                patientPhone = dto.patientPhone,
+                                doctorName = dto.doctorName,
+                                diagnosis = dto.diagnosis,
+                                prescription = dto.prescription,
+                                visitDate = dto.visitDate,
+                                recommendations = dto.recommendations ?: ""
                             )
+                            // Cache locally in SQLite
+                            val existing = repository.getMedicalRecordById(recordEntity.id)
+                            if (existing == null) {
+                                repository.insertMedicalRecord(recordEntity)
+                                // Notify user about incoming new diagnosis entry
+                                com.example.utils.NotificationHelper.sendMedicalRecordNotification(
+                                    getApplication(),
+                                    recordEntity.id,
+                                    recordEntity.doctorName,
+                                    recordEntity.diagnosis,
+                                    user.fullName
+                                )
+                            }
                         }
+                    } else {
+                        repository.addSyncLog("⚠️ Сервер вернул код ${response.code()}. Используем резервные заготовки медкарты.", "CLOUD_SYNC_SIMULATOR")
+                        loadSimulatedReports(user)
                     }
-                } else {
-                    repository.addSyncLog("⚠️ Сервер вернул код ${response.code()}. Используем резервные заготовки медкарты.", "CLOUD_SYNC_SIMULATOR")
+                },
+                onFetchFailed = { e ->
+                    repository.addSyncLog("⏳ Сервер временно недоступен: (${e.localizedMessage}). Подключаем резервный набор медицинских данных.", "CLOUD_SYNC_SIMULATOR")
                     loadSimulatedReports(user)
                 }
-            } catch (e: Exception) {
-                repository.addSyncLog("⏳ Сервер временно недоступен: (${e.localizedMessage}). Подключаем резервный набор медицинских данных.", "CLOUD_SYNC_SIMULATOR")
-                loadSimulatedReports(user)
-            } finally {
-                _isFetchingReports.value = false
+            ).collect { resource ->
+                if (resource !is com.example.data.repository.Resource.Loading) {
+                    _isFetchingReports.value = false
+                }
             }
         }
     }

@@ -7,13 +7,17 @@ import okhttp3.Response
  * AuthInterceptor automatically appends the user's JWT bearer token under
  * the standard HTTP 'Authorization' header for private, secure endpoints.
  */
-class AuthInterceptor(private val tokenProvider: () -> String?) : Interceptor {
+class AuthInterceptor(
+    private val tokenProvider: () -> String?,
+    private val onUnauthorized: () -> Unit = {}
+) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         
         // If the request already contains an Authorization header, respect it and continue
         if (originalRequest.header("Authorization") != null) {
-            return chain.proceed(originalRequest)
+            val response = chain.proceed(originalRequest)
+            return handleUnauthorized(originalRequest.url.encodedPath, response)
         }
 
         val token = tokenProvider()
@@ -28,6 +32,14 @@ class AuthInterceptor(private val tokenProvider: () -> String?) : Interceptor {
             builder.header("Authorization", bearerValue)
         }
         
-        return chain.proceed(builder.build())
+        val response = chain.proceed(builder.build())
+        return handleUnauthorized(originalRequest.url.encodedPath, response)
+    }
+
+    private fun handleUnauthorized(path: String, response: Response): Response {
+        if (response.code == 401 && !path.endsWith("/login")) {
+            onUnauthorized()
+        }
+        return response
     }
 }

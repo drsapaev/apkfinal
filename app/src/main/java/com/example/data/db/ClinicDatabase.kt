@@ -41,6 +41,9 @@ interface AppointmentDao {
 
     @Query("DELETE FROM appointments WHERE id = :id")
     suspend fun deleteAppointmentById(id: Int)
+
+    @Query("DELETE FROM appointments WHERE patientPhone = :phone")
+    suspend fun deleteAppointmentsByPatient(phone: String)
 }
 
 @Dao
@@ -56,6 +59,9 @@ interface MedicalRecordDao {
 
     @Query("SELECT * FROM medical_records WHERE id = :id LIMIT 1")
     suspend fun getRecordById(id: Int): MedicalRecordEntity?
+
+    @Query("DELETE FROM medical_records WHERE patientPhone = :phone")
+    suspend fun deleteRecordsByPatient(phone: String)
 }
 
 @Dao

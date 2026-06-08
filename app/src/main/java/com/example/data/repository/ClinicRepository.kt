@@ -77,6 +77,12 @@ class ClinicRepository(private val database: ClinicDatabase) {
         return saved
     }
 
+    suspend fun clearSensitiveDataForPatient(phone: String) {
+        appointmentDao.deleteAppointmentsByPatient(phone)
+        medicalRecordDao.deleteRecordsByPatient(phone)
+        addSyncLog("Cleared sensitive medical data from local cache for user upon logout.", "SYSTEM_SYNC")
+    }
+
     // Logging & Simulating Sync
     suspend fun addSyncLog(logMessage: String, direction: String) {
         syncLogDao.insertLog(

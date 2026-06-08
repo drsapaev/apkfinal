@@ -2,19 +2,31 @@ package com.example.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 /**
  * TokenManager is a thread-safe helper singleton designed to securely save, retrieve,
  * and clear user authentication tokens using standard Android SharedPreferences.
  */
 object TokenManager {
-    private const val PREF_NAME = "intellect_clinic_prefs"
+    private const val PREF_NAME = "intellect_clinic_secure_prefs"
     private const val KEY_JWT_TOKEN = "jwt_access_token"
     private const val KEY_PHONE_NUMBER = "user_phone_number"
     private const val KEY_USER_ROLE = "user_role"
 
     private fun getPrefs(context: Context): SharedPreferences {
-        return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+            
+        return EncryptedSharedPreferences.create(
+            context,
+            PREF_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
     /**

@@ -68,11 +68,10 @@ class AuthRepository(
 
                     Result.success(userDto)
                 } else {
-                    Result.failure(Exception("Ошибка профиля: ${profileResponse.code()}: ${profileResponse.errorBody()?.string()}"))
+                    Result.failure(retrofit2.HttpException(profileResponse))
                 }
             } else {
-                val errorMsg = response.errorBody()?.string() ?: "Ошибка авторизации"
-                Result.failure(Exception("Код: ${response.code()}: $errorMsg"))
+                Result.failure(retrofit2.HttpException(response))
             }
         } catch (e: Exception) {
             Log.e("AuthRepository", "Error logging in: ${e.message}", e)
@@ -115,7 +114,11 @@ class AuthRepository(
             } else {
                 // Token has expired or been revoked; reset credentials
                 TokenManager.clearAuthData(context)
-                Result.failure(Exception("Срок действия сессии истек"))
+                if (response.code() == 401) {
+                    Result.failure(Exception("Срок действия сессии истек"))
+                } else {
+                    Result.failure(retrofit2.HttpException(response))
+                }
             }
         } catch (e: Exception) {
             Log.e("AuthRepository", "Error fetching profile session: ${e.message}", e)

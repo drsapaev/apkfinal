@@ -20,11 +20,14 @@ object ApiClient {
     // A dynamic provider to fetch the bearer token on demand, preventing hard dependencies on Context
     var tokenProvider: () -> String? = { null }
 
+    // Callback to trigger when a 401 Unauthorized response is intercepted
+    var onUnauthorized: () -> Unit = {}
+
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    private val authInterceptor = AuthInterceptor { tokenProvider() }
+    private val authInterceptor = AuthInterceptor({ tokenProvider() }, { onUnauthorized() })
 
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)

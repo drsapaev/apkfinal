@@ -23,12 +23,20 @@ class ClinicWebSocketClient(
     private val context: Context,
     private val database: ClinicDatabase
 ) {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .pingInterval(30, java.util.concurrent.TimeUnit.SECONDS) // Heartbeat (Ping/Pong)
+        .build()
     private var webSocket: WebSocket? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     private var isClosedManually = false
+    private var baseBackoffTimeMs = 2000L
+    private val maxBackoffTimeMs = 60000L
+    private var reconnectAttempt = 0
 
     fun start() {
+        if (webSocket != null) {
+            stop()
+        }
         val token = TokenManager.getToken(context)
         val wsUrl = try {
             val configUrl = com.example.BuildConfig.WEBSOCKET_URL
@@ -69,6 +77,7 @@ class ClinicWebSocketClient(
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.i("WS_CLIENT", "WebSocket successfully connected.")
             loggedError = false
+            reconnectAttempt = 0 // Reset exponential backoff on successful connect
             scope.launch {
                 database.syncLogDao().insertLog(
                     com.example.data.db.SyncLogEntity(
@@ -117,8 +126,10 @@ class ClinicWebSocketClient(
     private fun reconnectIfNeeded() {
         if (!isClosedManually) {
             scope.launch {
-                delay(15000) // retry after 15 seconds instead of 5 to preserve resource constraints
-                Log.w("WS_CLIENT", "Attempting websocket reconnect...")
+                val backoff = (baseBackoffTimeMs * Math.pow(2.0, reconnectAttempt.toDouble())).toLong().coerceAtMost(maxBackoffTimeMs)
+                delay(backoff)
+                reconnectAttempt++
+                Log.w("WS_CLIENT", "Attempting websocket reconnect... retry $reconnectAttempt")
                 start()
             }
         }
