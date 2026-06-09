@@ -40,16 +40,21 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+import com.example.ui.components.SecureScreen
+import com.example.utils.TokenManager
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatientScreen(
     viewModel: PatientViewModel,
     modifier: Modifier = Modifier
 ) {
+    SecureScreen()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val appointments by viewModel.patientAppointments.collectAsStateWithLifecycle()
     val records by viewModel.patientRecords.collectAsStateWithLifecycle()
     val isFetchingRecords by viewModel.isFetchingReports.collectAsStateWithLifecycle()
+    val isBookingInProgress by viewModel.isBookingInProgress.collectAsStateWithLifecycle()
 
     var showEditProfile by remember { mutableStateOf(false) }
     var editNameInput by remember { mutableStateOf(currentUser?.fullName ?: "") }
@@ -677,23 +682,34 @@ fun PatientScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
                             onClick = {
-                                viewModel.createAppointment(
-                                    doctorName = selectedDoctor,
-                                    specialty = selectedSpecialty,
-                                    date = bookingDatesList[selectedDateIdx],
-                                    time = selectedTimeSlot,
-                                    reason = bookingReasonInput.ifBlank { "Консультация врача" }
-                                )
-                                showBookDialog = false
-                                bookingReasonInput = ""
+                                if (!isBookingInProgress) {
+                                    viewModel.createAppointment(
+                                        doctorName = selectedDoctor,
+                                        specialty = selectedSpecialty,
+                                        date = bookingDatesList[selectedDateIdx],
+                                        time = selectedTimeSlot,
+                                        reason = bookingReasonInput.ifBlank { "Консультация врача" }
+                                    )
+                                    showBookDialog = false
+                                    bookingReasonInput = ""
+                                }
                             },
+                            enabled = !isBookingInProgress,
                             colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .testTag("confirm_booking_button")
                                 .minimumInteractiveComponentSize()
                         ) {
-                            Text("Записаться", color = Color.White, fontWeight = FontWeight.Bold)
+                            if (isBookingInProgress) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Записаться", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -955,6 +971,56 @@ fun ProfileCabinetCard(
                         uncheckedTrackColor = Color(0xFFE2E8F0)
                     ),
                     modifier = Modifier.testTag("biometric_switch")
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFECEFF1))
+
+            val context = LocalContext.current
+            var secureScreenEnabled by remember { mutableStateOf(TokenManager.isScreenSecureEnabled(context)) }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = if (secureScreenEnabled) Color(0xFF00897B) else Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Защита экрана (FLAG_SECURE)",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color(0xFF2C3E50)
+                        )
+                        Text(
+                            text = "Скрытие скриншотов и превью",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+                Switch(
+                    checked = secureScreenEnabled,
+                    onCheckedChange = { isChecked ->
+                        TokenManager.setScreenSecureEnabled(context, isChecked)
+                        secureScreenEnabled = isChecked
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color(0xFF00897B),
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = Color(0xFFE2E8F0)
+                    ),
+                    modifier = Modifier.testTag("secure_screen_switch")
                 )
             }
         }

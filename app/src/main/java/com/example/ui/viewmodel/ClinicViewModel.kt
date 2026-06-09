@@ -72,23 +72,36 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         com.example.utils.FirestoreSyncManager.init(application, repository)
+
+        // 1. Centralized WebSocket ownership: start/stop socket based on Auth Session State flow
+        viewModelScope.launch {
+            _currentUser.collect { user ->
+                if (user != null) {
+                    try {
+                        wsClient.start()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                } else {
+                    try {
+                        wsClient.stop()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
+
         viewModelScope.launch {
             repository.prepopulateDatabase()
 
-            // Session restoration handler: Autologin and real-time WebSocket connection
+            // Session restoration handler: Autologin with robust cache restoration
             val savedPhone = sessionManager.getPhone()
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
                     _currentUser.value = cached
                     _currentRole.value = cached.role
-                }
-
-                // Connect to FastAPI live WebSocket stream
-                try {
-                    wsClient.start()
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
 
                 // Silently refresh current session using JWT with offline check
@@ -106,7 +119,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                         repository.addSyncLog("⚠️ Сессия устарела или недействительна: ${error.localizedMessage}. Сброс авторизации.", "SYSTEM_SYNC")
                         logOut()
                     } else {
-                        repository.addSyncLog("⏳ Сервер API оффлайн. Сохраняем локальную сессию под управлением Room DB.", "SYSTEM_SYNC")
+                        if (cached == null) {
+                            repository.addSyncLog("⚠️ Локальный профиль отсутствует и сеть недоступна. Сброс авторизации для безопасности.", "SYSTEM_SYNC")
+                            logOut()
+                        } else {
+                            repository.addSyncLog("⏳ Сервер API оффлайн. Сохраняем локальную сессию под управлением Room DB.", "SYSTEM_SYNC")
+                        }
                     }
                 }
             }
@@ -123,11 +141,24 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     _currentUser.value = cached
                     _currentRole.value = cached.role
                 } else {
-                    _currentUser.value = null
+                    // Try to restore session from server if missing in local Room SQLite cache
+                    val result = authRepository.verifyCurrentSession()
+                    result.onSuccess { userDto ->
+                        val updated = repository.getUserByPhone(userDto.phone)
+                        if (updated != null) {
+                            _currentUser.value = updated
+                            _currentRole.value = updated.role
+                        } else {
+                            _currentUser.value = null
+                        }
+                    }.onFailure {
+                        _currentUser.value = null
+                        logOut()
+                    }
                 }
             } else {
                 _currentUser.value = null
-                try { wsClient.stop() } catch(e: Exception) {}
+                _currentRole.value = "PATIENT"
             }
         }
     }
@@ -149,7 +180,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val user = _currentUser.value
             if (user != null) {
-                repository.addSyncLog("Сессия пользователя ${user.fullName} успешно завершена.", "SYSTEM_SYNC")
+                repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
                 // Clear sensitive data to prevent unauthorized access
                 if (user.role == "PATIENT") {
                     repository.clearSensitiveDataForPatient(user.phone)
@@ -220,6 +251,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 logMessage = "Demo switcher toggled screen view to: $newRole. Real-time lists updated.",
                 direction = "SYSTEM_SYNC"
             )
+        }
+    }
+
+    /**
+     * Exposes a safe logging helper for dynamic security events and penetration test simulations
+     */
+    fun logSecurityEvent(message: String, direction: String = "SYSTEM_SYNC") {
+        viewModelScope.launch {
+            repository.addSyncLog(message, direction)
         }
     }
 }

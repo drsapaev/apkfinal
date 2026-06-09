@@ -67,9 +67,8 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val user = _currentUser.value
             if (user != null) {
-                repository.addSyncLog("Сессия пользователя ${user.fullName} успешно завершена.", "SYSTEM_SYNC")
+                repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
             }
-            try { wsClient.stop() } catch (e: Exception) { e.printStackTrace() }
             authRepository.logout()
             _currentUser.value = null
             onLogoutSuccess?.invoke()
@@ -94,7 +93,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
                 if (patientUser?.telegramChatId != null) {
                     delay(400)
-                    repository.addSyncLog("⚡ TELEGRAM BOT ALERT [Chat: ${patientUser.telegramChatId}]: Уважаемый(ая) ${patientUser.fullName}, ваша запись к врачу ${updated.doctorName} на ${updated.date} в ${updated.time} успешно ПОДТВЕРЖДЕНА ✔.", "SYSTEM_SYNC")
+                    repository.addSyncLog("⚡ TELEGRAM BOT ALERT: Запись пациента успешно ПОДТВЕРЖДЕНА ✔.", "SYSTEM_SYNC")
                 }
             }
         }
@@ -120,7 +119,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                 if (patientUser?.telegramChatId != null) {
                     delay(400)
                     val reasonStr = if (cancelReason.isNotEmpty()) "Причина: $cancelReason." else "По техническим причинам."
-                    repository.addSyncLog("❌ TELEGRAM BOT ALERT [Chat: ${patientUser.telegramChatId}]: Внимание! Приём к врачу ${updated.doctorName} на ${updated.date} ОТМЕНЕН. $reasonStr", "SYSTEM_SYNC")
+                    repository.addSyncLog("❌ TELEGRAM BOT ALERT: Приём к врачу ОТМЕНЕН. $reasonStr", "SYSTEM_SYNC")
                 }
             }
         }
@@ -161,7 +160,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
             if (patientUser?.telegramChatId != null) {
                 delay(400)
-                repository.addSyncLog("📋 TELEGRAM BOT ALERT [Chat: ${patientUser.telegramChatId}]: Доктор $doctor добавил запись в вашу медицинскую карту! Диагноз: $diagnosis. Назначения: $prescription.", "SYSTEM_SYNC")
+                repository.addSyncLog("📋 TELEGRAM BOT ALERT: Доктор добавил запись в медицинскую карту.", "SYSTEM_SYNC")
             }
         }
     }

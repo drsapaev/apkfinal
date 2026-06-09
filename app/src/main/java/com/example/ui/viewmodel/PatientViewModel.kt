@@ -72,14 +72,16 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private val _isBookingInProgress = MutableStateFlow(false)
+    val isBookingInProgress: StateFlow<Boolean> = _isBookingInProgress.asStateFlow()
+
     fun logOut() {
         viewModelScope.launch {
             val user = _currentUser.value
             if (user != null) {
-                repository.addSyncLog("Сессия пользователя ${user.fullName} успешно завершена.", "SYSTEM_SYNC")
+                repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
                 repository.clearSensitiveDataForPatient(user.phone)
             }
-            try { wsClient.stop() } catch (e: Exception) { e.printStackTrace() }
             authRepository.logout()
             _currentUser.value = null
             onLogoutSuccess?.invoke()
@@ -114,7 +116,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
             val updatedUser = user.copy(telegramChatId = chatId)
             _currentUser.value = updatedUser
             repository.updateUser(updatedUser)
-            repository.addSyncLog("Linked Telegram Account with Chat ID: $chatId for Patient: ${user.fullName}", "PATIENT_TO_STAFF")
+            repository.addSyncLog("Linked Telegram Account with Chat ID.", "PATIENT_TO_STAFF")
         }
     }
 
@@ -125,7 +127,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
             val updatedUser = user.copy(telegramChatId = null)
             _currentUser.value = updatedUser
             repository.updateUser(updatedUser)
-            repository.addSyncLog("Unlinked Telegram Chat ID for user: ${user.fullName}", "PATIENT_TO_STAFF")
+            repository.addSyncLog("Unlinked Telegram Chat ID for user.", "PATIENT_TO_STAFF")
         }
     }
 
@@ -134,28 +136,34 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
         val chatId = user.telegramChatId ?: return
         viewModelScope.launch {
             delay(700)
-            repository.addSyncLog("💬 TELEGRAM TEST [Chat: $chatId]: Привет, ${user.fullName}! Это тестовое уведомление от вашего Telegram бота @IntellectClinicBot. Ваши медицинские данные успешно синхронизированы с FastAPI.", "SYSTEM_SYNC")
+            repository.addSyncLog("💬 TELEGRAM TEST: Тестовое уведомление успешно отправлено.", "SYSTEM_SYNC")
         }
     }
 
     fun createAppointment(doctorName: String, specialty: String, date: String, time: String, reason: String) {
+        if (_isBookingInProgress.value) return
         val user = _currentUser.value ?: return
         viewModelScope.launch {
-            val token = sessionManager.getToken()
-            repository.createAppointmentOnServerAndLocal(
-                token = token,
-                patientPhone = user.phone,
-                patientName = user.fullName,
-                doctorName = doctorName,
-                specialty = specialty,
-                date = date,
-                time = time,
-                reason = reason
-            )
+            _isBookingInProgress.value = true
+            try {
+                val token = sessionManager.getToken()
+                repository.createAppointmentOnServerAndLocal(
+                    token = token,
+                    patientPhone = user.phone,
+                    patientName = user.fullName,
+                    doctorName = doctorName,
+                    specialty = specialty,
+                    date = date,
+                    time = time,
+                    reason = reason
+                )
 
-            if (user.telegramChatId != null) {
-                delay(400)
-                repository.addSyncLog("⚡ TELEGRAM BOT ALERT [Chat: ${user.telegramChatId}]: Новая запись к врачу $doctorName ($specialty) на $date в $time в очереди на подтверждение.", "SYSTEM_SYNC")
+                if (user.telegramChatId != null) {
+                    delay(400)
+                    repository.addSyncLog("⚡ TELEGRAM BOT ALERT: Новая запись к врачу в очереди на подтверждение.", "SYSTEM_SYNC")
+                }
+            } finally {
+                _isBookingInProgress.value = false
             }
         }
     }
@@ -179,7 +187,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
                 if (patientUser?.telegramChatId != null) {
                     delay(400)
                     val reasonStr = if (cancelReason.isNotEmpty()) "Причина: $cancelReason." else "По техническим причинам."
-                    repository.addSyncLog("❌ TELEGRAM BOT ALERT [Chat: ${patientUser.telegramChatId}]: Внимание! Приём к врачу ${updated.doctorName} на ${updated.date} ОТМЕНЕН. $reasonStr", "SYSTEM_SYNC")
+                    repository.addSyncLog("❌ TELEGRAM BOT ALERT: Приём к врачу ОТМЕНЕН. $reasonStr", "SYSTEM_SYNC")
                 }
             }
         }

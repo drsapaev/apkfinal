@@ -77,15 +77,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
             result.onSuccess { userDto ->
                 repository.addSyncLog(
-                    logMessage = "🟢 Успешный вход через API FastAPI: ${userDto.fullName} ($username)",
+                    logMessage = "🟢 Успешный вход через API FastAPI.",
                     direction = "SYSTEM_SYNC"
                 )
-                // Establish connection over WebSocket protocols for live updates
-                try {
-                    wsClient.start()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
                 
                 // Trigger global update or navigation
                 onLoginSuccess?.invoke()
@@ -112,15 +106,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 val cached = repository.getUserByPhone(userDto.phone)
                 if (cached != null && cached.biometricEnabled) {
                     repository.addSyncLog(
-                        logMessage = "🟢 Биологическая верификация пройдена для ${cached.fullName} (${cached.role})",
+                        logMessage = "🟢 Биологическая верификация пройдена.",
                         direction = "SYSTEM_SYNC"
                     )
-                    
-                    try {
-                        wsClient.start()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
                     
                     onLoginSuccess?.invoke()
                 } else {

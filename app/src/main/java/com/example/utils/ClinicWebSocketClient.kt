@@ -76,16 +76,14 @@ class ClinicWebSocketClient(
             "ws://10.0.2.2:18000/ws"
         }
 
-        // Add bearer token to parameters for WebSocket authentication
-        val authenticatedUrl = if (!token.isNullOrBlank()) {
-            "$wsUrl?token=$token"
-        } else {
-            wsUrl
+        val requestBuilder = Request.Builder()
+            .url(wsUrl)
+            
+        if (!token.isNullOrBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer $token")
         }
-
-        val request = Request.Builder()
-            .url(authenticatedUrl)
-            .build()
+        
+        val request = requestBuilder.build()
 
         isClosedManually = false
         webSocket = client.newWebSocket(request, ClinicWSListener())
@@ -109,6 +107,10 @@ class ClinicWebSocketClient(
         private var loggedError = false
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            if (webSocket != this@ClinicWebSocketClient.webSocket) {
+                Log.w("WS_CLIENT", "Ignoring onOpen from old or mismatched WebSocket instance.")
+                return
+            }
             Log.i("WS_CLIENT", "WebSocket successfully connected.")
             loggedError = false
             reconnectAttempt = 0 // Reset exponential backoff on successful connect
@@ -123,25 +125,39 @@ class ClinicWebSocketClient(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            if (webSocket != this@ClinicWebSocketClient.webSocket) {
+                Log.w("WS_CLIENT", "Ignoring onMessage from old or mismatched WebSocket instance.")
+                return
+            }
             Log.d("WS_CLIENT", "Received message text: $text")
             handleSocketMessage(text)
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+            if (webSocket != this@ClinicWebSocketClient.webSocket) return
             Log.d("WS_CLIENT", "Received message bytes")
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            if (webSocket != this@ClinicWebSocketClient.webSocket) return
             Log.w("WS_CLIENT", "WebSocket closing: $code / $reason")
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             Log.w("WS_CLIENT", "WebSocket closed: $code / $reason")
+            if (webSocket != this@ClinicWebSocketClient.webSocket) {
+                Log.w("WS_CLIENT", "Ignoring onClosed from old or mismatched WebSocket instance.")
+                return
+            }
             reconnectIfNeeded()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             Log.e("WS_CLIENT", "WebSocket failure: ${t.message}", t)
+            if (webSocket != this@ClinicWebSocketClient.webSocket) {
+                Log.w("WS_CLIENT", "Ignoring onFailure from old or mismatched WebSocket instance.")
+                return
+            }
             if (!loggedError) {
                 loggedError = true
                 scope.launch {
@@ -162,9 +178,10 @@ class ClinicWebSocketClient(
         if (!isClosedManually && reconnectJob == null) {
             reconnectJob = scope.launch {
                 val backoff = (baseBackoffTimeMs * Math.pow(2.0, reconnectAttempt.toDouble())).toLong().coerceAtMost(maxBackoffTimeMs)
-                delay(backoff)
+                val jitter = (Math.random() * 1000).toLong()
+                delay(backoff + jitter)
                 reconnectAttempt++
-                Log.w("WS_CLIENT", "Attempting websocket reconnect... retry $reconnectAttempt")
+                Log.w("WS_CLIENT", "Attempting websocket reconnect... retry $reconnectAttempt after ${backoff + jitter}ms")
                 start(forceReconnect = true)
             }
         }

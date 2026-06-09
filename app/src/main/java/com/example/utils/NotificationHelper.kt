@@ -67,9 +67,9 @@ object NotificationHelper {
         }
 
         val statusText = when (newStatus.uppercase()) {
-            "APPROVED" -> "Уважаемый(ая) $patientName, ваша запись к врачу $doctorName на $dateTimeString успешно ПОДТВЕРЖДЕНА клиникой."
-            "CANCELLED", "REJECTED" -> "Внимание! Запись к врачу $doctorName на $dateTimeString была отменена. Пожалуйста, выберите другое время в приложении."
-            else -> "Запись к врачу $doctorName запланирована на $dateTimeString."
+            "APPROVED" -> "Ваша запись на прием была успешно ПОДТВЕРЖДЕНА клиникой."
+            "CANCELLED", "REJECTED" -> "Внимание! Ваша запись на прием была отменена. Пожалуйста, откройте приложение для просмотра подробностей."
+            else -> "У вас есть обновления по вашей записи на прием."
         }
 
         val builder = NotificationCompat.Builder(context, APPOINTMENT_CHANNEL_ID)
@@ -80,6 +80,7 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
 
         with(NotificationManagerCompat.from(context)) {
             try {
@@ -107,7 +108,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val contentText = "Доктор $doctorName заполнил вашу медицинскую карту: Диагноз '$diagnosis'. Ознакомьтесь с назначениями и скачайте отчёт в личном кабинете."
+        val contentText = "В вашей медицинской карте появилась новая запись врача. Ознакомьтесь с назначениями и скачайте отчёт в личном кабинете."
 
         val builder = NotificationCompat.Builder(context, MEDICAL_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_agenda) // Fallback list/agenda icon
@@ -117,6 +118,7 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
 
         with(NotificationManagerCompat.from(context)) {
             try {

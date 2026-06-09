@@ -112,11 +112,42 @@ class AuthRepository(
                 
                 Result.success(userDto)
             } else {
-                // Token has expired or been revoked; reset credentials
-                sessionManager.clearSession()
+                // Token has expired or been revoked
                 if (response.code() == 401) {
+                    val authResponse = apiService.refresh("Bearer $token")
+                    if (authResponse.isSuccessful && authResponse.body() != null) {
+                        val newToken = authResponse.body()!!.accessToken
+                        val profileResponse = apiService.getProfile("Bearer $newToken")
+                        if (profileResponse.isSuccessful && profileResponse.body() != null) {
+                            val userDto = profileResponse.body()!!
+                            sessionManager.saveSession(
+                                token = newToken,
+                                phone = userDto.phone,
+                                role = userDto.role
+                            )
+                            ApiClient.tokenProvider = { newToken }
+                            
+                            val existing = userDao.getUserByPhone(userDto.phone)
+                            val cachedUser = UserEntity(
+                                phone = userDto.phone,
+                                fullName = userDto.fullName,
+                                role = userDto.role,
+                                dateOfBirth = userDto.dateOfBirth ?: "1995-05-15",
+                                biometricEnabled = userDto.biometricEnabled,
+                                telegramChatId = userDto.telegramChatId
+                            )
+                            if (existing == null) {
+                                userDao.insertUser(cachedUser)
+                            } else {
+                                userDao.updateUser(cachedUser.copy(id = existing.id))
+                            }
+                            return@withContext Result.success(userDto)
+                        }
+                    }
+                    sessionManager.clearSession()
                     Result.failure(Exception("Срок действия сессии истек"))
                 } else {
+                    sessionManager.clearSession()
                     Result.failure(retrofit2.HttpException(response))
                 }
             }

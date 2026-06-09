@@ -31,12 +31,16 @@ import com.example.data.db.AppointmentEntity
 import com.example.data.db.UserEntity
 import com.example.ui.viewmodel.StaffViewModel
 
+import com.example.ui.components.SecureScreen
+import com.example.utils.TokenManager
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffScreen(
     viewModel: StaffViewModel,
     modifier: Modifier = Modifier
 ) {
+    SecureScreen()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val allAppointments by viewModel.allAppointments.collectAsStateWithLifecycle()
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()

@@ -363,7 +363,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
             addSyncLog("🛰️ GET /api/v1/users/me (Проверка аутентификации сессии)", "CLOUD_SYNC_SIMULATOR")
             val userResponse = ApiClient.service.getProfile(authHeader)
             if (userResponse.isSuccessful && userResponse.body() != null) {
-                addSyncLog("✓ Сессия подтверждена для: ${userResponse.body()!!.fullName}", "CLOUD_SYNC_SIMULATOR")
+                addSyncLog("✓ Сессия подтверждена.", "CLOUD_SYNC_SIMULATOR")
             }
 
             // Sync Active Queue Status

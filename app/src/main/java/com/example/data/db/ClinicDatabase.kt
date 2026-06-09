@@ -3,6 +3,8 @@ package com.example.data.db
 import android.content.Context
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+import com.example.utils.TokenManager
 
 @Dao
 interface UserDao {
@@ -98,11 +100,14 @@ abstract class ClinicDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): ClinicDatabase {
             return INSTANCE ?: synchronized(this) {
+                val passphrase = TokenManager.getOrCreateDatabaseKey(context)
+                val factory = SupportOpenHelperFactory(passphrase)
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     ClinicDatabase::class.java,
                     "clinic_database"
                 )
+                .openHelperFactory(factory)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

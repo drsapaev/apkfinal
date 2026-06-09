@@ -80,4 +80,35 @@ object TokenManager {
     fun isLoggedIn(context: Context): Boolean {
         return !getToken(context).isNullOrBlank()
     }
+
+    /**
+     * Retrieves or generates a secure, device-specific 32-byte key for Room database encryption.
+     * Saved encrypted inside EncryptedSharedPreferences.
+     */
+    fun getOrCreateDatabaseKey(context: Context): ByteArray {
+        val prefs = getPrefs(context)
+        val keyString = prefs.getString("db_key_sec", null)
+        if (keyString != null) {
+            return android.util.Base64.decode(keyString, android.util.Base64.DEFAULT)
+        }
+        val bytes = ByteArray(32)
+        java.security.SecureRandom().nextBytes(bytes)
+        val encoded = android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT)
+        prefs.edit().putString("db_key_sec", encoded).apply()
+        return bytes
+    }
+
+    /**
+     * Gets screen security protection state (FLAG_SECURE)
+     */
+    fun isScreenSecureEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean("screen_secure_enabled", true)
+    }
+
+    /**
+     * Sets screen security protection state (FLAG_SECURE)
+     */
+    fun setScreenSecureEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean("screen_secure_enabled", enabled).apply()
+    }
 }
