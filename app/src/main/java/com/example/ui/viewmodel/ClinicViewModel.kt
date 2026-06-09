@@ -15,7 +15,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
     private val authRepository = com.example.data.repository.AuthRepository(application, database)
-    private val wsClient = com.example.utils.ClinicWebSocketClient(application, database)
+    private val wsClient = com.example.utils.ClinicWebSocketClient.getInstance(application, database)
 
     // Global Active Session State
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
@@ -121,7 +121,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 if (cached != null) {
                     _currentUser.value = cached
                     _currentRole.value = cached.role
+                } else {
+                    _currentUser.value = null
                 }
+            } else {
+                _currentUser.value = null
+                try { wsClient.stop() } catch(e: Exception) {}
             }
         }
     }

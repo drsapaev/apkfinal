@@ -14,7 +14,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
     private val authRepository = AuthRepository(application, database)
-    private val wsClient = com.example.utils.ClinicWebSocketClient(application, database)
+    private val wsClient = com.example.utils.ClinicWebSocketClient.getInstance(application, database)
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
@@ -140,39 +140,17 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
     fun createAppointment(doctorName: String, specialty: String, date: String, time: String, reason: String) {
         val user = _currentUser.value ?: return
         viewModelScope.launch {
-            val newApp = AppointmentEntity(
+            val token = com.example.utils.TokenManager.getToken(getApplication())
+            repository.createAppointmentOnServerAndLocal(
+                token = token,
                 patientPhone = user.phone,
                 patientName = user.fullName,
                 doctorName = doctorName,
                 specialty = specialty,
                 date = date,
                 time = time,
-                status = "PENDING",
                 reason = reason
             )
-            val savedApp = repository.insertAppointment(newApp)
-            com.example.utils.FirestoreSyncManager.publishAppointment(savedApp)
-
-            try {
-                val token = com.example.utils.TokenManager.getToken(getApplication())
-                val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-                val dto = com.example.data.api.AppointmentDto(
-                    id = null, patientPhone = user.phone, patientName = user.fullName,
-                    doctorName = doctorName, specialty = specialty, date = date,
-                    time = time, status = "PENDING", reason = reason, notes = null
-                )
-                val response = com.example.data.api.ApiClient.service.createAppointment(authHeader, dto)
-                if (response.isSuccessful && response.body() != null) {
-                    val saved = response.body()!!
-                    repository.deleteAppointment(savedApp.id)
-                    repository.insertAppointment(newApp.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt()))
-                    repository.addSyncLog("🟢 API УСПЕХ [POST /api/v1/appointments]: Прием записан на сервере с ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
-                } else {
-                    repository.addSyncLog("⚠️ API Отклонено сервером: Код ${response.code()} (Работаем в автономном режиме)", "CLOUD_SYNC_SIMULATOR")
-                }
-            } catch (e: Exception) {
-                repository.addSyncLog("⏳ Сервер FastAPI offline. Запись сохранена локально в Room DB.", "CLOUD_SYNC_SIMULATOR")
-            }
 
             if (user.telegramChatId != null) {
                 delay(400)
@@ -183,36 +161,24 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     fun cancelAppointment(id: Int, cancelReason: String = "") {
         viewModelScope.launch {
-            val appointment = repository.getAppointmentById(id)
-            if (appointment != null) {
-                val updated = appointment.copy(
-                    status = "CANCELLED", notes = if (cancelReason.isNotEmpty()) "Отменено: $cancelReason" else "Отклонено."
-                )
-                repository.updateAppointment(updated)
-                com.example.utils.FirestoreSyncManager.publishAppointment(updated)
-
-                try {
-                    val token = com.example.utils.TokenManager.getToken(getApplication()) ?: ""
-                    val response = com.example.data.api.ApiClient.service.updateAppointmentStatus(
-                        token = "Bearer $token", id = id, status = "CANCELLED", notes = cancelReason.ifEmpty { "Отклонено." }
-                    )
-                    if (response.isSuccessful) {
-                        repository.addSyncLog("🟢 API [PUT /api/v1/appointments/$id/status]: Статус CANCELLED подтвержден на сервере.", "CLOUD_SYNC_SIMULATOR")
-                    }
-                } catch (e: Exception) {
-                    repository.addSyncLog("⏳ Сервер FastAPI offline. Отмена сохранена локально.", "CLOUD_SYNC_SIMULATOR")
-                }
-                
-                val patientUser = repository.getUserByPhone(appointment.patientPhone)
+            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val updated = repository.updateAppointmentStatusOnServerAndLocal(
+                token = token,
+                id = id,
+                status = "CANCELLED",
+                cancelReason = cancelReason
+            )
+            if (updated != null) {
+                val patientUser = repository.getUserByPhone(updated.patientPhone)
                 val patientName = patientUser?.fullName ?: "Пациент"
                 com.example.utils.NotificationHelper.sendAppointmentStatusNotification(
-                    getApplication(), appointment.id, appointment.doctorName, "${appointment.date} в ${appointment.time}", "CANCELLED", patientName
+                    getApplication(), updated.id, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
                 )
                 
                 if (patientUser?.telegramChatId != null) {
                     delay(400)
                     val reasonStr = if (cancelReason.isNotEmpty()) "Причина: $cancelReason." else "По техническим причинам."
-                    repository.addSyncLog("❌ TELEGRAM BOT ALERT [Chat: ${patientUser.telegramChatId}]: Внимание! Приём к врачу ${appointment.doctorName} на ${appointment.date} ОТМЕНЕН. $reasonStr", "SYSTEM_SYNC")
+                    repository.addSyncLog("❌ TELEGRAM BOT ALERT [Chat: ${patientUser.telegramChatId}]: Внимание! Приём к врачу ${updated.doctorName} на ${updated.date} ОТМЕНЕН. $reasonStr", "SYSTEM_SYNC")
                 }
             }
         }
@@ -225,47 +191,16 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
             _isFetchingReports.value = true
 
             val token = com.example.utils.TokenManager.getToken(getApplication())
-            val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-
-            com.example.data.repository.networkBoundResource(
-                query = { repository.getRecordsForPatient(user.phone) },
-                fetch = {
-                    repository.addSyncLog("🛰️ CONNECTING to API: GET /api/v1/patients/records/${user.phone}", "CLOUD_SYNC_SIMULATOR")
-                    com.example.data.api.ApiClient.service.getMedicalRecordsForPatient(authHeader, user.phone)
-                },
-                saveFetchResult = { response ->
-                    if (response.isSuccessful && response.body() != null) {
-                        val reports = response.body()!!
-                        repository.addSyncLog("✓ УСПЕШНЫЙ ЗАПРОС: Импортировано ${reports.size} записей медкарт с сервера final.", "CLOUD_SYNC_SIMULATOR")
-                        for (dto in reports) {
-                            val recordEntity = MedicalRecordEntity(
-                                id = dto.id ?: (System.currentTimeMillis() % 100000).toInt(),
-                                patientPhone = dto.patientPhone, doctorName = dto.doctorName,
-                                diagnosis = dto.diagnosis, prescription = dto.prescription,
-                                visitDate = dto.visitDate, recommendations = dto.recommendations ?: ""
-                            )
-                            val existing = repository.getMedicalRecordById(recordEntity.id)
-                            if (existing == null) {
-                                repository.insertMedicalRecord(recordEntity)
-                                com.example.utils.NotificationHelper.sendMedicalRecordNotification(
-                                    getApplication(), recordEntity.id, recordEntity.doctorName, recordEntity.diagnosis, user.fullName
-                                )
-                            }
-                        }
-                    } else {
-                        repository.addSyncLog("⚠️ Сервер вернул код ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
-                    }
-                    _isFetchingReports.value = false
-                },
-                onFetchFailed = { e ->
-                    repository.addSyncLog("⏳ Сервер временно недоступен: (${e.localizedMessage}).", "CLOUD_SYNC_SIMULATOR")
-                    _isFetchingReports.value = false
+            repository.fetchMedicalRecordsFromServer(
+                token = token,
+                phone = user.phone,
+                onNewRecordAction = { record ->
+                    com.example.utils.NotificationHelper.sendMedicalRecordNotification(
+                        getApplication(), record.id, record.doctorName, record.diagnosis, user.fullName
+                    )
                 }
-            ).collect { resource ->
-                if (resource !is com.example.data.repository.Resource.Loading) {
-                    _isFetchingReports.value = false
-                }
-            }
+            )
+            _isFetchingReports.value = false
         }
     }
 }

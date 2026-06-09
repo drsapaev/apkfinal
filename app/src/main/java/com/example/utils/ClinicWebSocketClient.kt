@@ -23,6 +23,17 @@ class ClinicWebSocketClient(
     private val context: Context,
     private val database: ClinicDatabase
 ) {
+    companion object {
+        @Volatile
+        private var instance: ClinicWebSocketClient? = null
+
+        fun getInstance(context: Context, database: ClinicDatabase): ClinicWebSocketClient {
+            return instance ?: synchronized(this) {
+                instance ?: ClinicWebSocketClient(context.applicationContext, database).also { instance = it }
+            }
+        }
+    }
+
     private val client = OkHttpClient.Builder()
         .pingInterval(30, java.util.concurrent.TimeUnit.SECONDS) // Heartbeat (Ping/Pong)
         .build()
@@ -33,7 +44,10 @@ class ClinicWebSocketClient(
     private val maxBackoffTimeMs = 60000L
     private var reconnectAttempt = 0
 
-    fun start() {
+    fun start(forceReconnect: Boolean = false) {
+        if (!forceReconnect && webSocket != null && !isClosedManually) {
+            return
+        }
         if (webSocket != null) {
             stop()
         }

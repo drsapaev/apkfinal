@@ -63,17 +63,17 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(currentUser, currentRole) {
                     if (currentUser == null) {
                         navController.navigate("auth") {
-                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            popUpTo(0) { inclusive = true }
                             launchSingleTop = true
                         }
                     } else if (currentRole == "PATIENT") {
                         navController.navigate("patient") {
-                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            popUpTo(0) { inclusive = true }
                             launchSingleTop = true
                         }
                     } else {
                         navController.navigate("staff") {
-                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            popUpTo(0) { inclusive = true }
                             launchSingleTop = true
                         }
                     }

@@ -18,7 +18,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
     private val authRepository = AuthRepository(application, database)
-    private val wsClient = com.example.utils.ClinicWebSocketClient(application, database)
+    private val wsClient = com.example.utils.ClinicWebSocketClient.getInstance(application, database)
 
     private val _phoneInput = MutableStateFlow("+7 ")
     val phoneInput: StateFlow<String> = _phoneInput.asStateFlow()
