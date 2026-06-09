@@ -25,9 +25,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.viewmodel.ClinicViewModel
 
+import com.example.ui.viewmodel.AuthViewModel
+
 @Composable
 fun AuthScreen(
-    viewModel: ClinicViewModel,
+    viewModel: AuthViewModel,
     modifier: Modifier = Modifier
 ) {
     val username by viewModel.phoneInput.collectAsStateWithLifecycle()

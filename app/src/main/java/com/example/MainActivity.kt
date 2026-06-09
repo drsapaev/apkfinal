@@ -56,6 +56,28 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme(darkTheme = useDarkTheme) {
                 val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
                 val currentRole by viewModel.currentRole.collectAsStateWithLifecycle()
+                
+                val navController = androidx.navigation.compose.rememberNavController()
+                
+                // Observe Auth State to Route Automatically
+                LaunchedEffect(currentUser, currentRole) {
+                    if (currentUser == null) {
+                        navController.navigate("auth") {
+                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else if (currentRole == "PATIENT") {
+                        navController.navigate("patient") {
+                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        navController.navigate("staff") {
+                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
@@ -66,17 +88,13 @@ class MainActivity : ComponentActivity() {
                             .padding(innerPadding)
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            // Main Screen Section (Authorized vs Guest)
+                            // Main Screen Section via NavHost
                             Box(modifier = Modifier.weight(1f)) {
-                                if (currentUser == null) {
-                                    AuthScreen(viewModel = viewModel)
-                                } else {
-                                    if (currentRole == "PATIENT") {
-                                        PatientScreen(viewModel = viewModel)
-                                    } else {
-                                        StaffScreen(viewModel = viewModel)
-                                    }
-                                }
+                                com.example.ui.navigation.ClinicNavGraph(
+                                    navController = navController,
+                                    viewModel = viewModel,
+                                    startDestination = "auth"
+                                )
                             }
 
                             // Role toggle bar (only visible if logged in, for demo/verification convenience)

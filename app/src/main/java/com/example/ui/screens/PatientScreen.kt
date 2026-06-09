@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.example.data.db.AppointmentEntity
 import com.example.data.db.MedicalRecordEntity
-import com.example.ui.viewmodel.ClinicViewModel
+import com.example.ui.viewmodel.PatientViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -43,7 +43,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatientScreen(
-    viewModel: ClinicViewModel,
+    viewModel: PatientViewModel,
     modifier: Modifier = Modifier
 ) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()

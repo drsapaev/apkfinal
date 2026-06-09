@@ -29,12 +29,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.db.AppointmentEntity
 import com.example.data.db.UserEntity
-import com.example.ui.viewmodel.ClinicViewModel
+import com.example.ui.viewmodel.StaffViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffScreen(
-    viewModel: ClinicViewModel,
+    viewModel: StaffViewModel,
     modifier: Modifier = Modifier
 ) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
