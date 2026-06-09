@@ -43,6 +43,9 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
         records.filter { it.patientPhone == phone }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val cachedQueueSnapshots: StateFlow<List<QueueSnapshotEntity>> = repository.allQueueSnapshots
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     var onLogoutSuccess: (() -> Unit)? = null
 
     init {

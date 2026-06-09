@@ -33,6 +33,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         NotificationHelper.createNotificationChannels(this)
+        
+        // Start background managers & connection callbacks
+        com.example.utils.NetworkMonitor.startMonitoring(this)
+        com.example.utils.SyncWorkScheduler.schedulePeriodicSync(this)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permissionStatus = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
             if (permissionStatus != android.content.pm.PackageManager.PERMISSION_GRANTED) {

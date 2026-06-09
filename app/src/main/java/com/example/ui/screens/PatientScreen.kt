@@ -55,6 +55,7 @@ fun PatientScreen(
     val records by viewModel.patientRecords.collectAsStateWithLifecycle()
     val isFetchingRecords by viewModel.isFetchingReports.collectAsStateWithLifecycle()
     val isBookingInProgress by viewModel.isBookingInProgress.collectAsStateWithLifecycle()
+    val cachedQueueSnapshots by viewModel.cachedQueueSnapshots.collectAsStateWithLifecycle()
 
     var showEditProfile by remember { mutableStateOf(false) }
     var editNameInput by remember { mutableStateOf(currentUser?.fullName ?: "") }
@@ -284,6 +285,10 @@ fun PatientScreen(
                             onTestClick = { viewModel.sendTestTelegramNotification() }
                         )
 
+                        CachedQueueSnapshotsCard(
+                            snapshots = cachedQueueSnapshots
+                        )
+
                         MedicalReportsSection(
                             searchQuery = medicalSearchQuery,
                             onSearchQueryChange = { medicalSearchQuery = it },
@@ -330,6 +335,10 @@ fun PatientScreen(
                         onLinkClick = { chat -> viewModel.linkTelegramChatId(chat) },
                         onUnlinkClick = { viewModel.unlinkTelegramChatId() },
                         onTestClick = { viewModel.sendTestTelegramNotification() }
+                    )
+
+                    CachedQueueSnapshotsCard(
+                        snapshots = cachedQueueSnapshots
                     )
 
                     // Tab bar for Appointments
@@ -2009,6 +2018,100 @@ fun TelegramBotCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Проверить доставку (Тестовое оповещение)", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CachedQueueSnapshotsCard(
+    snapshots: List<com.example.data.db.QueueSnapshotEntity>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = modifier.fillMaxWidth().testTag("cached_queue_card")
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.People,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Живая Очередь (Кэш)",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "${snapshots.size} чел",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            if (snapshots.isEmpty()) {
+                Text(
+                    text = "Нет данных об очереди в кэше устройства. Выполните синхронизацию.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            } else {
+                snapshots.forEach { item ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = item.position.toString(),
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = item.patientName,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Статус: ${item.status}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                    if (item != snapshots.last()) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
                     }
                 }
             }

@@ -46,6 +46,42 @@ interface AppointmentDao {
 
     @Query("DELETE FROM appointments WHERE patientPhone = :phone")
     suspend fun deleteAppointmentsByPatient(phone: String)
+
+    @Query("SELECT * FROM appointments WHERE clientRequestId = :requestId LIMIT 1")
+    suspend fun getAppointmentByClientRequestId(requestId: String): AppointmentEntity?
+}
+
+@Dao
+interface QueueSnapshotDao {
+    @Query("SELECT * FROM queue_snapshots ORDER BY position ASC")
+    fun getAllQueueSnapshotsFlow(): Flow<List<QueueSnapshotEntity>>
+
+    @Query("SELECT * FROM queue_snapshots ORDER BY position ASC")
+    suspend fun getAllQueueSnapshots(): List<QueueSnapshotEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertQueueSnapshots(snapshots: List<QueueSnapshotEntity>)
+
+    @Query("DELETE FROM queue_snapshots")
+    suspend fun clearQueueSnapshots()
+}
+
+@Dao
+interface PendingSyncDao {
+    @Query("SELECT * FROM pending_syncs ORDER BY id ASC")
+    suspend fun getAllPendingSyncs(): List<PendingSyncEntity>
+
+    @Query("SELECT * FROM pending_syncs ORDER BY id ASC")
+    fun observeAllPendingSyncs(): kotlinx.coroutines.flow.Flow<List<PendingSyncEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPendingSync(sync: PendingSyncEntity)
+
+    @Delete
+    suspend fun deletePendingSync(sync: PendingSyncEntity)
+
+    @Query("DELETE FROM pending_syncs")
+    suspend fun clearPendingSyncs()
 }
 
 @Dao
@@ -83,9 +119,11 @@ interface SyncLogDao {
         UserEntity::class,
         AppointmentEntity::class,
         MedicalRecordEntity::class,
-        SyncLogEntity::class
+        SyncLogEntity::class,
+        QueueSnapshotEntity::class,
+        PendingSyncEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class ClinicDatabase : RoomDatabase() {
@@ -93,6 +131,8 @@ abstract class ClinicDatabase : RoomDatabase() {
     abstract fun appointmentDao(): AppointmentDao
     abstract fun medicalRecordDao(): MedicalRecordDao
     abstract fun syncLogDao(): SyncLogDao
+    abstract fun queueSnapshotDao(): QueueSnapshotDao
+    abstract fun pendingSyncDao(): PendingSyncDao
 
     companion object {
         @Volatile

@@ -44,6 +44,9 @@ fun SyncConsoleView(
 ) {
     val logs by viewModel.recentLogs.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+    val allPendingSyncs by viewModel.allPendingSyncs.collectAsStateWithLifecycle()
+    val syncMetrics by viewModel.syncMetrics.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
     var isExpanded by remember { mutableStateOf(false) }
     var activeTab by remember { mutableStateOf("SYNC") } // SYNC, SECURITY
 
@@ -200,6 +203,14 @@ fun SyncConsoleView(
                             }
 
                             Spacer(modifier = Modifier.height(10.dp))
+
+                            SyncMetricsDashboard(
+                                metrics = syncMetrics,
+                                pendingCount = allPendingSyncs.size,
+                                isOnline = isOnline
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
 
                             Text(
                                 text = "Внутренний SQL реестр транзакций:",
@@ -430,6 +441,81 @@ fun SyncConsoleView(
     }
 }
 
+@Composable
+fun SyncMetricsDashboard(
+    metrics: com.example.utils.SyncMetrics,
+    pendingCount: Int,
+    isOnline: Boolean
+) {
+    val wsLabel = when (metrics.wsState) {
+        "CONNECTED" -> "АКТИВЕН 🟢"
+        "RECONNECTING" -> "ПОВТОР 🟡"
+        else -> "ОФФЛАЙН 🔴"
+    }
+    
+    val netLabel = if (isOnline) "ОНЛАЙН ✅" else "ОФФЛАЙН 🚫"
+    val netColor = if (isOnline) Color(0xFF34D399) else Color(0xFFFBBF24)
+    val wsColor = when (metrics.wsState) {
+        "CONNECTED" -> Color(0xFF34D399)
+        "RECONNECTING" -> Color(0xFFFBBF24)
+        else -> Color(0xFFF87171)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Left Column: Network & WS status
+        Card(
+            modifier = Modifier.weight(1f),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text("СВЯЗЬ & ВЕБСОКЕТ", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Сеть: ", fontSize = 11.sp, color = Color(0xFF94A3B8), fontFamily = FontFamily.Monospace)
+                    Text(netLabel, fontSize = 11.sp, color = netColor, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("WS: ", fontSize = 11.sp, color = Color(0xFF94A3B8), fontFamily = FontFamily.Monospace)
+                    Text(wsLabel, fontSize = 11.sp, color = wsColor, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                }
+            }
+        }
+
+        // Right Column: Latency & Pending writes queue count
+        Card(
+            modifier = Modifier.weight(1.5f),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text("ПОКАЗАТЕЛИ СИНХРОНИЗАЦИИ", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Успешно: ${metrics.successCount}", fontSize = 11.sp, color = Color(0xFF34D399), fontFamily = FontFamily.Monospace)
+                    Text("Ошибки: ${metrics.failureCount}", fontSize = 11.sp, color = Color(0xFFF87171), fontFamily = FontFamily.Monospace)
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Задержка: ${metrics.lastLatencyMs}мс", fontSize = 11.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
+                    Text("В очереди: $pendingCount", fontSize = 11.sp, color = if (pendingCount > 0) Color(0xFFFBBF24) else Color(0xFF94A3B8), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                }
+            }
+        }
+    }
+}
 @Composable
 fun SecurityStatusRow(
     label: String,

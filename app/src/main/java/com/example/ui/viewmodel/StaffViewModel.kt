@@ -35,6 +35,9 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     val allMedicalRecords: StateFlow<List<MedicalRecordEntity>> = repository.allMedicalRecords
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val cachedQueueSnapshots: StateFlow<List<QueueSnapshotEntity>> = repository.allQueueSnapshots
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     var onLogoutSuccess: (() -> Unit)? = null
 
     init {

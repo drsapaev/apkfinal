@@ -38,6 +38,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val recentLogs: StateFlow<List<SyncLogEntity>> = repository.recentLogs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val cachedQueueSnapshots: StateFlow<List<QueueSnapshotEntity>> = repository.allQueueSnapshots
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allPendingSyncs: StateFlow<List<com.example.data.db.PendingSyncEntity>> = repository.allPendingSyncs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val syncMetrics: StateFlow<com.example.utils.SyncMetrics> = com.example.utils.SyncMetricsManager.metrics
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.utils.SyncMetrics())
+
+    val isOnline: StateFlow<Boolean> = com.example.utils.NetworkMonitor.isOnline
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
@@ -213,29 +225,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             if (_isSyncing.value) return@launch
             _isSyncing.value = true
 
-            repository.addSyncLog("🟢 ПОДКЛЮЧЕНИЕ к серверу FastAPI 'final'...", "CLOUD_SYNC_SIMULATOR")
-            kotlinx.coroutines.delay(400)
-
             val token = sessionManager.getToken()
-            val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-
             try {
-                // 1. Fetch current profile from Server
-                repository.addSyncLog("🛰️ GET /api/v1/users/me (Проверка аутентификации сессии)", "CLOUD_SYNC_SIMULATOR")
-                val userResponse = com.example.data.api.ApiClient.service.getProfile(authHeader)
-                if (userResponse.isSuccessful && userResponse.body() != null) {
-                    repository.addSyncLog("✓ Сессия подтверждена", "CLOUD_SYNC_SIMULATOR")
-                }
-
-                // 2. Sync Active Queue Status
-                repository.addSyncLog("🛰️ GET /api/v1/queue (Запрос текущей живой очереди клиники)", "CLOUD_SYNC_SIMULATOR")
-                val queueResponse = com.example.data.api.ApiClient.service.getQueue(authHeader)
-                if (queueResponse.isSuccessful && queueResponse.body() != null) {
-                    val queueList = queueResponse.body()!!
-                    repository.addSyncLog("✓ Активная очередь: ${queueList.size} пациент(ов) в кабинетах ожидания.", "CLOUD_SYNC_SIMULATOR")
-                }
-
-                repository.addSyncLog("✅ СИНХРОНИЗАЦИЯ С СЕРВЕРОМ 'final' УСПЕШНО ЗАВЕРШЕНА!", "CLOUD_SYNC_SIMULATOR")
+                repository.syncAllAppointmentsFromServer(token)
             } catch (e: Exception) {
                 repository.addSyncLog("🔴 Сбой синхронизации с API: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
             }

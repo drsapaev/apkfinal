@@ -27,7 +27,29 @@ data class AppointmentEntity(
     val status: String, // "PENDING", "APPROVED", "COMPLETED", "CANCELLED"
     val reason: String,
     val notes: String = "", // Written by doctor/staff
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val clientRequestId: String? = null,
+    val version: Int = 1
+)
+
+@Entity(tableName = "queue_snapshots")
+data class QueueSnapshotEntity(
+    @PrimaryKey val id: Int,
+    val patientName: String,
+    val appointmentId: Int,
+    val position: Int,
+    val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "pending_syncs")
+data class PendingSyncEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val type: String, // "CREATE_APPOINTMENT", "UPDATE_APPOINTMENT_STATUS", "CREATE_MEDICAL_RECORD"
+    val payload: String, // JSON payload representing the synchronized dto
+    val clientRequestId: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val retryCount: Int = 0
 )
 
 @Entity(tableName = "medical_records")

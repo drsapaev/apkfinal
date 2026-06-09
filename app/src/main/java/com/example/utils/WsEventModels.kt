@@ -52,5 +52,5 @@ data class QueueUpdateEvent(
 
 @JsonClass(generateAdapter = true)
 data class QueueUpdateData(
-    val queue: List<Any>?
+    val queue: List<com.example.data.api.QueueDto>?
 )

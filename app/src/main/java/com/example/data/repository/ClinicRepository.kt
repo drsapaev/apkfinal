@@ -12,12 +12,16 @@ class ClinicRepository(private val database: ClinicDatabase) {
     private val appointmentDao = database.appointmentDao()
     private val medicalRecordDao = database.medicalRecordDao()
     private val syncLogDao = database.syncLogDao()
+    private val pendingSyncDao = database.pendingSyncDao()
+    private val queueSnapshotDao = database.queueSnapshotDao()
 
     // Expose flows to the ViewModel
     val allUsers: Flow<List<UserEntity>> = userDao.getAllUsersFlow()
     val allAppointments: Flow<List<AppointmentEntity>> = appointmentDao.getAllAppointmentsFlow()
     val allMedicalRecords: Flow<List<MedicalRecordEntity>> = medicalRecordDao.getAllRecordsFlow()
     val recentLogs: Flow<List<SyncLogEntity>> = syncLogDao.getRecentLogsFlow()
+    val allQueueSnapshots: Flow<List<QueueSnapshotEntity>> = queueSnapshotDao.getAllQueueSnapshotsFlow()
+    val allPendingSyncs: Flow<List<com.example.data.db.PendingSyncEntity>> = pendingSyncDao.observeAllPendingSyncs()
 
     // User Operations
     suspend fun getUserByPhone(phone: String): UserEntity? = userDao.getUserByPhone(phone)
@@ -199,6 +203,75 @@ class ClinicRepository(private val database: ClinicDatabase) {
     }
 
     // API/Web Service Operations (Encapsulated)
+    suspend fun retryUnsyncedWrites(token: String?): Boolean {
+        val list = pendingSyncDao.getAllPendingSyncs()
+        if (list.isEmpty()) return true
+
+        addSyncLog("🔄 Начинаем отправку отложенных операций (${list.size} в очереди)...", "CLOUD_SYNC_SIMULATOR")
+        val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
+        val moshi = com.squareup.moshi.Moshi.Builder().build()
+        val appointmentAdapter = moshi.adapter(com.example.data.api.AppointmentDto::class.java)
+        val medicalRecordAdapter = moshi.adapter(com.example.data.api.MedicalRecordDto::class.java)
+
+        var successCount = 0
+        for (sync in list) {
+            try {
+                when (sync.type) {
+                    "CREATE_APPOINTMENT" -> {
+                        val dto = appointmentAdapter.fromJson(sync.payload)
+                        if (dto != null) {
+                            val response = ApiClient.service.createAppointment(authHeader, dto)
+                            if (response.isSuccessful && response.body() != null) {
+                                val saved = response.body()!!
+                                val existingWithReqId = appointmentDao.getAppointmentByClientRequestId(sync.clientRequestId)
+                                if (existingWithReqId != null) {
+                                    appointmentDao.deleteAppointmentById(existingWithReqId.id)
+                                    val finalApp = existingWithReqId.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt())
+                                    appointmentDao.insertAppointment(finalApp)
+                                }
+                                pendingSyncDao.deletePendingSync(sync)
+                                successCount++
+                                addSyncLog("✓ [Отложенная запись]: Синхронизирован прием ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
+                            }
+                        }
+                    }
+                    "UPDATE_STATUS" -> {
+                        val parts = sync.payload.split("|", limit = 3)
+                        if (parts.size >= 2) {
+                            val id = parts[0].toIntOrNull()
+                            val status = parts[1]
+                            val notes = if (parts.size == 3) parts[2] else ""
+                            if (id != null) {
+                                val response = ApiClient.service.updateAppointmentStatus(authHeader, id, status, notes)
+                                if (response.isSuccessful) {
+                                    pendingSyncDao.deletePendingSync(sync)
+                                    successCount++
+                                    addSyncLog("✓ [Отложенный статус]: Обновлен статус приема #$id -> $status", "CLOUD_SYNC_SIMULATOR")
+                                }
+                            }
+                        }
+                    }
+                    "CREATE_MEDICAL_RECORD" -> {
+                        val dto = medicalRecordAdapter.fromJson(sync.payload)
+                        if (dto != null) {
+                            val response = ApiClient.service.createMedicalRecord(authHeader, dto)
+                            if (response.isSuccessful) {
+                                pendingSyncDao.deletePendingSync(sync)
+                                successCount++
+                                addSyncLog("✓ [Отложенная медкарта]: Синхронизирована медкарта пациента ${dto.patientPhone}", "CLOUD_SYNC_SIMULATOR")
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                val updatedSync = sync.copy(retryCount = sync.retryCount + 1)
+                pendingSyncDao.insertPendingSync(updatedSync)
+                addSyncLog("⚠️ Сбой отложенной отправки (${sync.type}): ${e.localizedMessage}. Будет выполнен повтор позже.", "CLOUD_SYNC_SIMULATOR")
+            }
+        }
+        return successCount == list.size
+    }
+
     suspend fun createAppointmentOnServerAndLocal(
         token: String?,
         patientPhone: String,
@@ -209,6 +282,15 @@ class ClinicRepository(private val database: ClinicDatabase) {
         time: String,
         reason: String
     ): AppointmentEntity {
+        val clientReqId = java.util.UUID.randomUUID().toString()
+
+        // 1. clientRequestId dedupe
+        val existingWithReqId = appointmentDao.getAppointmentByClientRequestId(clientReqId)
+        if (existingWithReqId != null) {
+            addSyncLog("🛡️ Deduplication Guard: Запись с clientRequestId $clientReqId уже существует. Пропускаем дубликат.", "SYSTEM_SYNC")
+            return existingWithReqId
+        }
+
         val newApp = AppointmentEntity(
             patientPhone = patientPhone,
             patientName = patientName,
@@ -217,33 +299,47 @@ class ClinicRepository(private val database: ClinicDatabase) {
             date = date,
             time = time,
             status = "PENDING",
-            reason = reason
+            reason = reason,
+            clientRequestId = clientReqId,
+            updatedAt = System.currentTimeMillis(),
+            version = 1
         )
-        // 1. Save in local Room DB for offline fallback
+        // Save locally for high offline availability
         val savedApp = insertAppointment(newApp)
         com.example.utils.FirestoreSyncManager.publishAppointment(savedApp)
 
-        // 2. Transmit to real FastAPI "final" backend
+        // Write-Ahead lock logic (Pending Sync)
+        val moshi = com.squareup.moshi.Moshi.Builder().build()
+        val appointmentAdapter = moshi.adapter(com.example.data.api.AppointmentDto::class.java)
+        val dto = AppointmentDto(
+            id = null, patientPhone = patientPhone, patientName = patientName,
+            doctorName = doctorName, specialty = specialty, date = date,
+            time = time, status = "PENDING", reason = reason, notes = null
+        )
+        val payString = appointmentAdapter.toJson(dto)
+        val syncRecord = PendingSyncEntity(
+            type = "CREATE_APPOINTMENT",
+            payload = payString,
+            clientRequestId = clientReqId
+        )
+        pendingSyncDao.insertPendingSync(syncRecord)
+
         try {
             val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-            val dto = AppointmentDto(
-                id = null, patientPhone = patientPhone, patientName = patientName,
-                doctorName = doctorName, specialty = specialty, date = date,
-                time = time, status = "PENDING", reason = reason, notes = null
-            )
             val response = ApiClient.service.createAppointment(authHeader, dto)
             if (response.isSuccessful && response.body() != null) {
                 val saved = response.body()!!
+                pendingSyncDao.deletePendingSync(syncRecord)
                 deleteAppointment(savedApp.id)
                 val finalApp = newApp.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt())
                 insertAppointment(finalApp)
                 addSyncLog("🟢 API УСПЕХ [POST /api/v1/appointments]: Прием записан на сервере с ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
                 return finalApp
             } else {
-                addSyncLog("⚠️ API Отклонено сервером: Код ${response.code()} (Работаем в автономном режиме)", "CLOUD_SYNC_SIMULATOR")
+                addSyncLog("⚠️ API Отклонено сервером: Код ${response.code()} (Работаем оффлайн, запись сохранена)", "CLOUD_SYNC_SIMULATOR")
             }
         } catch (e: Exception) {
-            addSyncLog("⏳ Сервер FastAPI offline. Запись сохранена локально в Room DB: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
+            addSyncLog("⏳ Сервер FastAPI offline. Запись сохранена локально и добавлена в очередь отложенной отправки: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
         }
         return savedApp
     }
@@ -260,9 +356,25 @@ class ClinicRepository(private val database: ClinicDatabase) {
         } else {
             "Подтверждено администратором."
         }
-        val updated = appointment.copy(status = status, notes = notesText)
+        val nextVersion = appointment.version + 1
+        val updated = appointment.copy(
+            status = status, 
+            notes = notesText, 
+            updatedAt = System.currentTimeMillis(),
+            version = nextVersion
+        )
         updateAppointment(updated)
         com.example.utils.FirestoreSyncManager.publishAppointment(updated)
+
+        // Write-Ahead lock for status change
+        val clientReqId = java.util.UUID.randomUUID().toString()
+        val payString = "$id|$status|${cancelReason.ifEmpty { "Отклонено." }}"
+        val syncRecord = PendingSyncEntity(
+            type = "UPDATE_STATUS",
+            payload = payString,
+            clientRequestId = clientReqId
+        )
+        pendingSyncDao.insertPendingSync(syncRecord)
 
         try {
             val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
@@ -270,12 +382,13 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 token = authHeader, id = id, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
             )
             if (response.isSuccessful) {
+                pendingSyncDao.deletePendingSync(syncRecord)
                 addSyncLog("🟢 API [PUT /api/v1/appointments/$id/status]: Статус $status подтвержден на сервере.", "CLOUD_SYNC_SIMULATOR")
             } else {
                 addSyncLog("⚠️ API Статус отклонен сервером: Код ${response.code()}", "CLOUD_SYNC_SIMULATOR")
             }
         } catch (e: Exception) {
-            addSyncLog("⏳ Сервер FastAPI offline. Изменения статуса сохранены локально: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
+            addSyncLog("⏳ Сервер FastAPI offline. Статус сохранен локально в очереди транзакций: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
         }
         return updated
     }
@@ -288,30 +401,41 @@ class ClinicRepository(private val database: ClinicDatabase) {
         prescription: String,
         recommendations: String
     ): MedicalRecordEntity {
+        val visitDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val newRecord = MedicalRecordEntity(
             patientPhone = patientPhone, doctorName = doctorName, diagnosis = diagnosis,
-            prescription = prescription, visitDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+            prescription = prescription, visitDate = visitDate,
             recommendations = recommendations
         )
-        // 1. Save in local SQLite
         val savedRecord = insertMedicalRecord(newRecord)
         com.example.utils.FirestoreSyncManager.publishMedicalRecord(savedRecord)
-        
-        // 2. Transmit to real FastAPI "final" server
+
+        val clientReqId = java.util.UUID.randomUUID().toString()
+        val moshi = com.squareup.moshi.Moshi.Builder().build()
+        val medicalRecordAdapter = moshi.adapter(com.example.data.api.MedicalRecordDto::class.java)
+        val dto = MedicalRecordDto(
+            id = null, patientPhone = patientPhone, doctorName = doctorName, diagnosis = diagnosis,
+            prescription = prescription, visitDate = visitDate, recommendations = recommendations
+        )
+        val payString = medicalRecordAdapter.toJson(dto)
+        val syncRecord = PendingSyncEntity(
+            type = "CREATE_MEDICAL_RECORD",
+            payload = payString,
+            clientRequestId = clientReqId
+        )
+        pendingSyncDao.insertPendingSync(syncRecord)
+
         try {
             val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-            val dto = MedicalRecordDto(
-                id = null, patientPhone = patientPhone, doctorName = doctorName, diagnosis = diagnosis,
-                prescription = prescription, visitDate = newRecord.visitDate, recommendations = recommendations
-            )
             val response = ApiClient.service.createMedicalRecord(authHeader, dto)
-            if (response.isSuccessful && response.body() != null) {
+            if (response.isSuccessful) {
+                pendingSyncDao.deletePendingSync(syncRecord)
                 addSyncLog("🟢 API [POST /api/v1/patients/records]: Запись медкарты успешно синхронизирована с сервером.", "CLOUD_SYNC_SIMULATOR")
             } else {
                 addSyncLog("⚠️ API Медкарта отклонена сервером: Код ${response.code()}", "CLOUD_SYNC_SIMULATOR")
             }
         } catch (e: Exception) {
-            addSyncLog("⏳ Сервер FastAPI offline. Медкарта сохранена локально в кэш Room: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
+            addSyncLog("⏳ Сервер FastAPI offline. Медкарта сохранена автономно, добавлена в очередь отправки: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
         }
         return savedRecord
     }
@@ -354,9 +478,17 @@ class ClinicRepository(private val database: ClinicDatabase) {
     }
 
     suspend fun syncAllAppointmentsFromServer(token: String?): Boolean {
+        val startTime = System.currentTimeMillis()
         addSyncLog("🟢 ПОДКЛЮЧЕНИЕ к серверу FastAPI 'final'...", "CLOUD_SYNC_SIMULATOR")
         kotlinx.coroutines.delay(400)
         val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
+
+        // Retry pending syncs first, ensuring no data override issues
+        try {
+            retryUnsyncedWrites(token)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         try {
             // Check Profile
@@ -372,6 +504,21 @@ class ClinicRepository(private val database: ClinicDatabase) {
             if (queueResponse.isSuccessful && queueResponse.body() != null) {
                 val queueList = queueResponse.body()!!
                 addSyncLog("✓ Активная очередь: ${queueList.size} пациент(ов) в кабинетах ожидания.", "CLOUD_SYNC_SIMULATOR")
+
+                // Cache active queue snapshot
+                queueSnapshotDao.clearQueueSnapshots()
+                val snapshotsList = queueList.map { dto ->
+                    QueueSnapshotEntity(
+                        id = dto.id,
+                        patientName = dto.patientName,
+                        appointmentId = dto.appointmentId,
+                        position = dto.position,
+                        status = dto.status,
+                        timestamp = System.currentTimeMillis()
+                    )
+                }
+                queueSnapshotDao.insertQueueSnapshots(snapshotsList)
+                addSyncLog("✓ Очередь закэширована в локальную базу данных (доступно оффлайн)", "CLOUD_SYNC_SIMULATOR")
             }
 
             // Sync Appointments
@@ -392,17 +539,27 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     if (existing == null) {
                         insertAppointment(localEntity)
                     } else {
-                        updateAppointment(localEntity)
+                        // Stale-write guard
+                        val pendingForThis = pendingSyncDao.getAllPendingSyncs().any { it.type == "UPDATE_STATUS" && it.payload.startsWith("${localEntity.id}|") }
+                        if (!pendingForThis && localEntity.updatedAt >= existing.updatedAt) {
+                            updateAppointment(localEntity)
+                        } else {
+                            addSyncLog("🛡️ Stale-write guard: Отклонен автоматический перезапись локальной записи приема #${localEntity.id} старыми данными сервера.", "SYSTEM_SYNC")
+                        }
                     }
                 }
                 addSyncLog("✅ СИНХРОНИЗАЦИЯ С СЕРВЕРОМ 'final' УСПЕШНО ЗАВЕРШЕНА!", "CLOUD_SYNC_SIMULATOR")
+                val latency = System.currentTimeMillis() - startTime
+                com.example.utils.SyncMetricsManager.recordSuccess(latency)
                 return true
             } else {
                 addSyncLog("⚠️ Сервер вернул код ${appointmentsResponse.code()}.", "CLOUD_SYNC_SIMULATOR")
+                com.example.utils.SyncMetricsManager.recordFailure()
             }
         } catch (e: Exception) {
             addSyncLog("🔴 Сбой синхронизации с API: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")
             addSyncLog("⏳ Работа в безопасном режиме сохранения в локальный кэш Room SQLite.", "CLOUD_SYNC_SIMULATOR")
+            com.example.utils.SyncMetricsManager.recordFailure()
         }
         return false
     }

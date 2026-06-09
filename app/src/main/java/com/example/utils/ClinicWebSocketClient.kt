@@ -114,6 +114,7 @@ class ClinicWebSocketClient(
             Log.i("WS_CLIENT", "WebSocket successfully connected.")
             loggedError = false
             reconnectAttempt = 0 // Reset exponential backoff on successful connect
+            com.example.utils.SyncMetricsManager.updateWsState("CONNECTED")
             scope.launch {
                 database.syncLogDao().insertLog(
                     com.example.data.db.SyncLogEntity(
@@ -149,6 +150,7 @@ class ClinicWebSocketClient(
                 Log.w("WS_CLIENT", "Ignoring onClosed from old or mismatched WebSocket instance.")
                 return
             }
+            com.example.utils.SyncMetricsManager.updateWsState("DISCONNECTED")
             reconnectIfNeeded()
         }
 
@@ -158,6 +160,7 @@ class ClinicWebSocketClient(
                 Log.w("WS_CLIENT", "Ignoring onFailure from old or mismatched WebSocket instance.")
                 return
             }
+            com.example.utils.SyncMetricsManager.updateWsState("DISCONNECTED")
             if (!loggedError) {
                 loggedError = true
                 scope.launch {
@@ -176,6 +179,7 @@ class ClinicWebSocketClient(
     @Synchronized
     private fun reconnectIfNeeded() {
         if (!isClosedManually && reconnectJob == null) {
+            com.example.utils.SyncMetricsManager.updateWsState("RECONNECTING")
             reconnectJob = scope.launch {
                 val backoff = (baseBackoffTimeMs * Math.pow(2.0, reconnectAttempt.toDouble())).toLong().coerceAtMost(maxBackoffTimeMs)
                 val jitter = (Math.random() * 1000).toLong()
@@ -216,44 +220,62 @@ class ClinicWebSocketClient(
                         val patientName = data.patientName ?: "Пациент"
                         val patientPhone = data.patientPhone ?: ""
 
-                        // 1. Sync SQLite Local DB
+                        // 1. Sync SQLite Local DB & Reconciliation Guard
                         val appDao = database.appointmentDao()
                         val existing = appDao.getAppointmentById(id)
-                        if (existing != null) {
-                            appDao.updateAppointment(existing.copy(status = status, updatedAt = System.currentTimeMillis()))
-                        } else {
-                            appDao.insertAppointment(
-                                AppointmentEntity(
-                                    id = id,
-                                    patientPhone = patientPhone,
-                                    patientName = patientName,
-                                    doctorName = doctorName,
-                                    specialty = data.specialty ?: "Терапевт",
-                                    date = date,
-                                    time = time,
-                                    status = status,
-                                    reason = data.reason ?: ""
+                        
+                        val pendingSyncDao = database.pendingSyncDao()
+                        val isPending = pendingSyncDao.getAllPendingSyncs().any { 
+                            it.type == "UPDATE_STATUS" && it.payload.startsWith("$id|") 
+                        }
+                        
+                        if (isPending) {
+                            database.syncLogDao().insertLog(
+                                com.example.data.db.SyncLogEntity(
+                                    logMessage = "🛡️ Реконсиляция: Отклонено WebSocket-обновление для приема #$id, так как есть локальные отложенные изменения.",
+                                    direction = "SYSTEM_SYNC"
                                 )
                             )
-                        }
+                        } else {
+                            if (existing != null) {
+                                if (existing.status != status) {
+                                    appDao.updateAppointment(existing.copy(status = status, updatedAt = System.currentTimeMillis()))
+                                }
+                            } else {
+                                appDao.insertAppointment(
+                                    AppointmentEntity(
+                                        id = id,
+                                        patientPhone = patientPhone,
+                                        patientName = patientName,
+                                        doctorName = doctorName,
+                                        specialty = data.specialty ?: "Терапевт",
+                                        date = date,
+                                        time = time,
+                                        status = status,
+                                        reason = data.reason ?: "",
+                                        updatedAt = System.currentTimeMillis()
+                                    )
+                                )
+                            }
 
-                        // 2. Add System Log
-                        database.syncLogDao().insertLog(
-                            com.example.data.db.SyncLogEntity(
-                                logMessage = "⚡ Реалтайм-обновление: Прием #$id теперь имеет статус [ $status ]",
-                                direction = "SYSTEM_SYNC"
+                            // 2. Add System Log
+                            database.syncLogDao().insertLog(
+                                com.example.data.db.SyncLogEntity(
+                                    logMessage = "⚡ Реалтайм-обновление: Прием #$id теперь имеет статус [ $status ]",
+                                    direction = "SYSTEM_SYNC"
+                                )
                             )
-                        )
 
-                        // 3. Dispatch Local Push Alert
-                        NotificationHelper.sendAppointmentStatusNotification(
-                            context = context,
-                            appointmentId = id,
-                            doctorName = doctorName,
-                            dateTimeString = "$date в $time",
-                            newStatus = status,
-                            patientName = patientName
-                        )
+                            // 3. Dispatch Local Push Alert
+                            NotificationHelper.sendAppointmentStatusNotification(
+                                context = context,
+                                appointmentId = id,
+                                doctorName = doctorName,
+                                dateTimeString = "$date в $time",
+                                newStatus = status,
+                                patientName = patientName
+                            )
+                        }
                     }
 
                     "NEW_MEDICAL_RECORD" -> {
@@ -310,10 +332,24 @@ class ClinicWebSocketClient(
                         val activeQueueList = event?.data?.queue ?: emptyList()
                         Log.i("WS_CLIENT", "Queue length: ${activeQueueList.size}")
 
+                        // Clear and store real-time queue snapshots inside the Room cache
+                        database.queueSnapshotDao().clearQueueSnapshots()
+                        val snapshotsList = activeQueueList.map { dto ->
+                            com.example.data.db.QueueSnapshotEntity(
+                                id = dto.id,
+                                patientName = dto.patientName,
+                                appointmentId = dto.appointmentId,
+                                position = dto.position,
+                                status = dto.status,
+                                timestamp = System.currentTimeMillis()
+                            )
+                        }
+                        database.queueSnapshotDao().insertQueueSnapshots(snapshotsList)
+
                         // Clear log and log queue positions
                         database.syncLogDao().insertLog(
                             com.example.data.db.SyncLogEntity(
-                                logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) сейчас ожидает",
+                                logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) сейчас ожидает (сохранено в кэш)",
                                 direction = "SYSTEM_SYNC"
                             )
                         )
