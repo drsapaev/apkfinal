@@ -8,6 +8,7 @@ import com.example.data.db.MedicalRecordEntity
 import com.example.data.api.ApiClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.*
@@ -38,20 +39,31 @@ class ClinicWebSocketClient(
         .pingInterval(30, java.util.concurrent.TimeUnit.SECONDS) // Heartbeat (Ping/Pong)
         .build()
     private var webSocket: WebSocket? = null
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+    @Volatile
     private var isClosedManually = false
     private var baseBackoffTimeMs = 2000L
     private val maxBackoffTimeMs = 60000L
     private var reconnectAttempt = 0
+    private var reconnectJob: kotlinx.coroutines.Job? = null
 
+    @Synchronized
     fun start(forceReconnect: Boolean = false) {
         if (!forceReconnect && webSocket != null && !isClosedManually) {
             return
         }
+        reconnectJob?.cancel()
+        reconnectJob = null
+        
         if (webSocket != null) {
-            stop()
+            try {
+                webSocket?.close(1000, "Client reconnecting")
+            } catch (e: Exception) {
+                // Ignore close errors
+            }
+            webSocket = null
         }
-        val token = TokenManager.getToken(context)
+        val token = SessionManagerImpl.getInstance(context).getToken()
         val wsUrl = try {
             val configUrl = com.example.BuildConfig.WEBSOCKET_URL
             val targetUrl = if (!configUrl.isNullOrBlank() && configUrl != "?") configUrl else "ws://10.0.2.2:18000/ws"
@@ -79,9 +91,17 @@ class ClinicWebSocketClient(
         webSocket = client.newWebSocket(request, ClinicWSListener())
     }
 
+    @Synchronized
     fun stop() {
         isClosedManually = true
-        webSocket?.close(1000, "App closed session")
+        reconnectJob?.cancel()
+        reconnectJob = null
+        scope.coroutineContext.cancelChildren()
+        try {
+            webSocket?.close(1000, "App closed session")
+        } catch (e: Exception) {
+            // Ignore close errors
+        }
         webSocket = null
     }
 
@@ -137,14 +157,15 @@ class ClinicWebSocketClient(
         }
     }
 
+    @Synchronized
     private fun reconnectIfNeeded() {
-        if (!isClosedManually) {
-            scope.launch {
+        if (!isClosedManually && reconnectJob == null) {
+            reconnectJob = scope.launch {
                 val backoff = (baseBackoffTimeMs * Math.pow(2.0, reconnectAttempt.toDouble())).toLong().coerceAtMost(maxBackoffTimeMs)
                 delay(backoff)
                 reconnectAttempt++
                 Log.w("WS_CLIENT", "Attempting websocket reconnect... retry $reconnectAttempt")
-                start()
+                start(forceReconnect = true)
             }
         }
     }
@@ -153,24 +174,30 @@ class ClinicWebSocketClient(
     private fun handleSocketMessage(json: String) {
         scope.launch {
             try {
-                // Parse the websocket payload natively using org.json
-                val parsed = org.json.JSONObject(json)
-                val eventType = parsed.optString("event")
+                val moshi = com.squareup.moshi.Moshi.Builder().build()
+                val baseAdapter = moshi.adapter(BaseWsEvent::class.java)
+                val baseEvent = baseAdapter.fromJson(json)
+                val eventType = baseEvent?.event
+                
                 if (eventType.isNullOrEmpty()) return@launch
-                val data = parsed.optJSONObject("data") ?: return@launch
 
                 Log.i("WS_CLIENT", "Broadcasting backend event: $eventType")
 
                 when (eventType) {
                     "APPOINTMENT_STATUS" -> {
-                        val id = data.optInt("id", -1)
+                        val adapter = moshi.adapter(AppointmentStatusEvent::class.java)
+                        val event = adapter.fromJson(json)
+                        val data = event?.data ?: return@launch
+                        
+                        val id = data.id ?: -1
                         if (id == -1) return@launch
-                        val status = data.optString("status", "PENDING")
-                        val doctorName = data.optString("doctor_name", "Доктор")
-                        val date = data.optString("date", "")
-                        val time = data.optString("time", "")
-                        val patientName = data.optString("patient_name", "Пациент")
-                        val patientPhone = data.optString("patient_phone", "")
+                        
+                        val status = data.status ?: "PENDING"
+                        val doctorName = data.doctorName ?: "Доктор"
+                        val date = data.date ?: ""
+                        val time = data.time ?: ""
+                        val patientName = data.patientName ?: "Пациент"
+                        val patientPhone = data.patientPhone ?: ""
 
                         // 1. Sync SQLite Local DB
                         val appDao = database.appointmentDao()
@@ -184,11 +211,11 @@ class ClinicWebSocketClient(
                                     patientPhone = patientPhone,
                                     patientName = patientName,
                                     doctorName = doctorName,
-                                    specialty = data.optString("specialty", "Терапевт"),
+                                    specialty = data.specialty ?: "Терапевт",
                                     date = date,
                                     time = time,
                                     status = status,
-                                    reason = data.optString("reason", "")
+                                    reason = data.reason ?: ""
                                 )
                             )
                         }
@@ -213,13 +240,17 @@ class ClinicWebSocketClient(
                     }
 
                     "NEW_MEDICAL_RECORD" -> {
-                        val id = data.optInt("id", 0)
-                        val patientPhone = data.optString("patient_phone", "")
-                        val doctorName = data.optString("doctor_name", "Врач")
-                        val diagnosis = data.optString("diagnosis", "")
-                        val prescription = data.optString("prescription", "")
-                        val visitDate = data.optString("visit_date", "")
-                        val recommendations = data.optString("recommendations", "")
+                        val adapter = moshi.adapter(NewMedicalRecordEvent::class.java)
+                        val event = adapter.fromJson(json)
+                        val data = event?.data ?: return@launch
+                        
+                        val id = data.id ?: 0
+                        val patientPhone = data.patientPhone ?: ""
+                        val doctorName = data.doctorName ?: "Врач"
+                        val diagnosis = data.diagnosis ?: ""
+                        val prescription = data.prescription ?: ""
+                        val visitDate = data.visitDate ?: ""
+                        val recommendations = data.recommendations ?: ""
 
                         // 1. Save locally in Room cache
                         val recordDao = database.medicalRecordDao()
@@ -257,13 +288,15 @@ class ClinicWebSocketClient(
                     }
 
                     "QUEUE_UPDATE" -> {
-                        val activeQueueList = data.optJSONArray("queue") ?: org.json.JSONArray()
-                        Log.i("WS_CLIENT", "Queue length: ${activeQueueList.length()}")
+                        val adapter = moshi.adapter(QueueUpdateEvent::class.java)
+                        val event = adapter.fromJson(json)
+                        val activeQueueList = event?.data?.queue ?: emptyList()
+                        Log.i("WS_CLIENT", "Queue length: ${activeQueueList.size}")
 
                         // Clear log and log queue positions
                         database.syncLogDao().insertLog(
                             com.example.data.db.SyncLogEntity(
-                                logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.length()} пациент(ов) сейчас ожидает",
+                                logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) сейчас ожидает",
                                 direction = "SYSTEM_SYNC"
                             )
                         )

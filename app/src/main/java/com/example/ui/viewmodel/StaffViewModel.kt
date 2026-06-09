@@ -16,6 +16,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
     private val authRepository = AuthRepository(application, database)
+    private val sessionManager = com.example.utils.SessionManagerImpl.getInstance(application)
     private val wsClient = com.example.utils.ClinicWebSocketClient.getInstance(application, database)
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
@@ -42,7 +43,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refreshSession() {
         viewModelScope.launch {
-            val savedPhone = com.example.utils.TokenManager.getPhone(getApplication())
+            val savedPhone = sessionManager.getPhone()
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -77,7 +78,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
     fun approveAppointment(id: Int) {
         viewModelScope.launch {
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -101,7 +102,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
     fun cancelAppointment(id: Int, cancelReason: String = "") {
         viewModelScope.launch {
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -140,7 +141,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val activeUser = _currentUser.value
             val doctor = activeUser?.fullName ?: "Дежурный Врач"
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
 
             val saved = repository.createMedicalRecordOnServerAndLocal(
                 token = token,
@@ -167,7 +168,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     
     fun triggerCloudSynchronization() {
         viewModelScope.launch {
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
             repository.syncAllAppointmentsFromServer(token)
         }
     }

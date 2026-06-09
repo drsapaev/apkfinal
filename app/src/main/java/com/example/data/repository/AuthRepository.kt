@@ -7,7 +7,7 @@ import com.example.data.db.UserEntity
 import com.example.data.api.ApiClient
 import com.example.data.api.LoginRequest
 import com.example.data.api.UserDto
-import com.example.utils.TokenManager
+import com.example.utils.SessionManagerImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -20,6 +20,7 @@ class AuthRepository(
     private val database: ClinicDatabase
 ) {
     private val apiService = ApiClient.service
+    private val sessionManager = SessionManagerImpl.getInstance(context)
     private val userDao = database.userDao()
 
     /**
@@ -39,8 +40,7 @@ class AuthRepository(
                     val userDto = profileResponse.body()!!
                     
                     // 1. Secure token on disk in SharedPreferences
-                    TokenManager.saveAuthData(
-                        context = context,
+                    sessionManager.saveSession(
                         token = authResponse.accessToken,
                         phone = userDto.phone,
                         role = userDto.role
@@ -85,7 +85,7 @@ class AuthRepository(
      */
     suspend fun verifyCurrentSession(): Result<UserDto> = withContext(Dispatchers.IO) {
         try {
-            val token = TokenManager.getToken(context)
+            val token = sessionManager.getToken()
             if (token.isNullOrBlank()) {
                 return@withContext Result.failure(Exception("Сессия отсутствует"))
             }
@@ -113,7 +113,7 @@ class AuthRepository(
                 Result.success(userDto)
             } else {
                 // Token has expired or been revoked; reset credentials
-                TokenManager.clearAuthData(context)
+                sessionManager.clearSession()
                 if (response.code() == 401) {
                     Result.failure(Exception("Срок действия сессии истек"))
                 } else {
@@ -131,11 +131,11 @@ class AuthRepository(
      */
     suspend fun linkTelegram(telegramId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val token = TokenManager.getToken(context) ?: return@withContext Result.failure(Exception("Не авторизован"))
+            val token = sessionManager.getToken() ?: return@withContext Result.failure(Exception("Не авторизован"))
             val response = apiService.linkTelegram("Bearer $token", telegramId)
             if (response.isSuccessful) {
                 // Update local DB cache as well
-                TokenManager.getPhone(context)?.let { phone ->
+                sessionManager.getPhone()?.let { phone ->
                     userDao.getUserByPhone(phone)?.let { user ->
                         userDao.updateUser(user.copy(telegramChatId = telegramId))
                     }
@@ -153,7 +153,7 @@ class AuthRepository(
      * Terminate the local application authentication state cleanly.
      */
     fun logout() {
-        TokenManager.clearAuthData(context)
+        sessionManager.clearSession()
         ApiClient.tokenProvider = { null }
     }
 }

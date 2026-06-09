@@ -14,6 +14,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
     private val authRepository = AuthRepository(application, database)
+    private val sessionManager = com.example.utils.SessionManagerImpl.getInstance(application)
     private val wsClient = com.example.utils.ClinicWebSocketClient.getInstance(application, database)
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
@@ -50,7 +51,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     private fun refreshSession() {
         viewModelScope.launch {
-            val savedPhone = com.example.utils.TokenManager.getPhone(getApplication())
+            val savedPhone = sessionManager.getPhone()
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -140,7 +141,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
     fun createAppointment(doctorName: String, specialty: String, date: String, time: String, reason: String) {
         val user = _currentUser.value ?: return
         viewModelScope.launch {
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
             repository.createAppointmentOnServerAndLocal(
                 token = token,
                 patientPhone = user.phone,
@@ -161,7 +162,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     fun cancelAppointment(id: Int, cancelReason: String = "") {
         viewModelScope.launch {
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -190,7 +191,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
             if (_isFetchingReports.value) return@launch
             _isFetchingReports.value = true
 
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
             repository.fetchMedicalRecordsFromServer(
                 token = token,
                 phone = user.phone,

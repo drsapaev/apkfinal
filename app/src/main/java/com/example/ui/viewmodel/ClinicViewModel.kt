@@ -15,6 +15,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
     private val authRepository = com.example.data.repository.AuthRepository(application, database)
+    private val sessionManager = com.example.utils.SessionManagerImpl.getInstance(application)
     private val wsClient = com.example.utils.ClinicWebSocketClient.getInstance(application, database)
 
     // Global Active Session State
@@ -59,7 +60,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     init {
         // Wire up the Retrofit token interceptor to read dynamically from security preferences
         com.example.data.api.ApiClient.tokenProvider = {
-            com.example.utils.TokenManager.getToken(application)
+            sessionManager.getToken()
         }
         com.example.data.api.ApiClient.onUnauthorized = {
             viewModelScope.launch {
@@ -75,7 +76,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             repository.prepopulateDatabase()
 
             // Session restoration handler: Autologin and real-time WebSocket connection
-            val savedPhone = com.example.utils.TokenManager.getPhone(application)
+            val savedPhone = sessionManager.getPhone()
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -115,7 +116,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // Session Refresh requested by secondary ViewModels
     fun refreshSession() {
         viewModelScope.launch {
-            val savedPhone = com.example.utils.TokenManager.getPhone(getApplication())
+            val savedPhone = sessionManager.getPhone()
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -184,7 +185,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             repository.addSyncLog("🟢 ПОДКЛЮЧЕНИЕ к серверу FastAPI 'final'...", "CLOUD_SYNC_SIMULATOR")
             kotlinx.coroutines.delay(400)
 
-            val token = com.example.utils.TokenManager.getToken(getApplication())
+            val token = sessionManager.getToken()
             val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
 
             try {
