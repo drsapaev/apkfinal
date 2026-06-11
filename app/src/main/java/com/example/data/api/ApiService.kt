@@ -19,49 +19,39 @@ interface ApiService {
     ): Response<AuthResponse>
 
     @POST("api/v1/authentication/refresh")
-    suspend fun refresh(
-        @Header("Authorization") token: String
-    ): Response<AuthResponse>
+    suspend fun refresh(): Response<AuthResponse>
 
     @POST("api/v1/authentication/logout")
-    suspend fun logout(
-        @Header("Authorization") token: String
-    ): Response<Unit>
+    suspend fun logout(): Response<Unit>
 
     @GET("api/v1/users/me")
-    suspend fun getProfile(
-        @Header("Authorization") token: String
-    ): Response<UserDto>
+    suspend fun getProfile(): Response<UserDto>
 
     @POST("api/v1/users/telegram/link")
     suspend fun linkTelegram(
-        @Header("Authorization") token: String,
         @Query("chat_id") chatId: String
     ): Response<Unit>
 
     @POST("api/v1/users/telegram/unlink")
-    suspend fun unlinkTelegram(
-        @Header("Authorization") token: String
-    ): Response<Unit>
+    suspend fun unlinkTelegram(): Response<Unit>
 
 
     // --- Appointments ---
 
     @GET("api/v1/appointments")
     suspend fun getAppointments(
-        @Header("Authorization") token: String,
-        @Query("phone") phone: String? = null
+        @Query("phone") phone: String? = null,
+        @Query("since") since: Long? = null,
+        @Query("clinic_id") clinicId: String? = null
     ): Response<List<AppointmentDto>>
 
     @POST("api/v1/appointments")
     suspend fun createAppointment(
-        @Header("Authorization") token: String,
         @Body appointment: AppointmentDto
     ): Response<AppointmentDto>
 
     @PUT("api/v1/appointments/{id}/status")
     suspend fun updateAppointmentStatus(
-        @Header("Authorization") token: String,
         @Path("id") id: Int,
         @Query("status") status: String,
         @Query("notes") notes: String? = null
@@ -72,18 +62,17 @@ interface ApiService {
 
     @GET("api/v1/patients/records/all")
     suspend fun getAllMedicalRecords(
-        @Header("Authorization") token: String
+        @Query("since") since: Long? = null,
+        @Query("clinic_id") clinicId: String? = null
     ): Response<List<MedicalRecordDto>>
 
     @GET("api/v1/patients/records/{phone}")
     suspend fun getMedicalRecordsForPatient(
-        @Header("Authorization") token: String,
         @Path("phone") phone: String
     ): Response<List<MedicalRecordDto>>
 
     @POST("api/v1/patients/records")
     suspend fun createMedicalRecord(
-        @Header("Authorization") token: String,
         @Body record: MedicalRecordDto
     ): Response<MedicalRecordDto>
 
@@ -91,13 +80,10 @@ interface ApiService {
     // --- Queues (Active Waiting Rooms) ---
 
     @GET("api/v1/queue")
-    suspend fun getQueue(
-        @Header("Authorization") token: String
-    ): Response<List<QueueDto>>
+    suspend fun getQueue(): Response<List<QueueDto>>
 
     @POST("api/v1/queue/register")
     suspend fun registerInQueue(
-        @Header("Authorization") token: String,
         @Query("appointment_id") appointmentId: Int
     ): Response<QueueDto>
 }
@@ -125,7 +111,8 @@ data class UserDto(
     @Json(name = "role") val role: String, // "PATIENT" or "STAFF"
     @Json(name = "date_of_birth") val dateOfBirth: String?,
     @Json(name = "biometric_enabled") val biometricEnabled: Boolean,
-    @Json(name = "telegram_chat_id") val telegramChatId: String?
+    @Json(name = "telegram_chat_id") val telegramChatId: String?,
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
 )
 
 @JsonClass(generateAdapter = true)
@@ -139,7 +126,8 @@ data class AppointmentDto(
     @Json(name = "time") val time: String,
     @Json(name = "status") val status: String, // "PENDING", "APPROVED", "COMPLETED", "CANCELLED"
     @Json(name = "reason") val reason: String,
-    @Json(name = "notes") val notes: String?
+    @Json(name = "notes") val notes: String?,
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
 )
 
 @JsonClass(generateAdapter = true)
@@ -150,7 +138,8 @@ data class MedicalRecordDto(
     @Json(name = "diagnosis") val diagnosis: String,
     @Json(name = "prescription") val prescription: String,
     @Json(name = "visit_date") val visitDate: String,
-    @Json(name = "recommendations") val recommendations: String?
+    @Json(name = "recommendations") val recommendations: String?,
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
 )
 
 @JsonClass(generateAdapter = true)
@@ -159,5 +148,6 @@ data class QueueDto(
     @Json(name = "patient_name") val patientName: String,
     @Json(name = "appointment_id") val appointmentId: Int,
     @Json(name = "position") val position: Int,
-    @Json(name = "status") val status: String // "WAITING", "IN_PROGRESS", "COMPLETED"
+    @Json(name = "status") val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
 )

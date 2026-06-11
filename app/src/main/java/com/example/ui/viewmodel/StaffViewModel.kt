@@ -17,7 +17,6 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ClinicRepository(database)
     private val authRepository = AuthRepository(application, database)
     private val sessionManager = com.example.utils.SessionManagerImpl.getInstance(application)
-    private val wsClient = com.example.utils.ClinicWebSocketClient.getInstance(application, database)
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
@@ -171,6 +170,9 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     val cachedQueueSnapshots: StateFlow<List<QueueSnapshotEntity>> = repository.allQueueSnapshots
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allPendingSyncs: StateFlow<List<PendingSyncEntity>> = repository.allPendingSyncs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     var onLogoutSuccess: (() -> Unit)? = null
 
     init {
@@ -264,8 +266,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
                 if (patientUser?.telegramChatId != null) {
                     delay(400)
-                    val reasonStr = if (cancelReason.isNotEmpty()) "Причина: $cancelReason." else "По техническим причинам."
-                    repository.addSyncLog("❌ TELEGRAM BOT ALERT: Приём к врачу ОТМЕНЕН. $reasonStr", "SYSTEM_SYNC")
+                    repository.addSyncLog("❌ TELEGRAM BOT ALERT: Приём к врачу ОТМЕНЕН (детали скрыты).", "SYSTEM_SYNC")
                 }
             }
         }
@@ -386,7 +387,6 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
             val token = sessionManager.getToken()
             try {
                 val response = com.example.data.api.ApiClient.service.registerInQueue(
-                    token = "Bearer $token",
                     appointmentId = appointmentId
                 )
                 if (response.isSuccessful && response.body() != null) {

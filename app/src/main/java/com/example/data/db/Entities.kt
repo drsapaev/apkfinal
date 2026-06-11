@@ -9,6 +9,8 @@ data class UserEntity(
     val phone: String, // Unique phone number (e.g. +79998887766)
     val fullName: String,
     val role: String, // "PATIENT" or "STAFF"
+    val jobTitle: String = "", // "DOCTOR", "REGISTRAR", etc.
+    val clinicId: String = "clinic_base",
     val dateOfBirth: String = "1995-05-15",
     val biometricEnabled: Boolean = false,
     val telegramChatId: String? = null,
@@ -26,6 +28,7 @@ data class AppointmentEntity(
     val time: String, // e.g. "14:00"
     val status: String, // "PENDING", "APPROVED", "COMPLETED", "CANCELLED"
     val reason: String,
+    val clinicId: String = "clinic_base",
     val notes: String = "", // Written by doctor/staff
     val updatedAt: Long = System.currentTimeMillis(),
     val clientRequestId: String? = null,
@@ -38,6 +41,7 @@ data class QueueSnapshotEntity(
     val patientName: String,
     val appointmentId: Int,
     val position: Int,
+    val clinicId: String = "clinic_base",
     val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
     val timestamp: Long = System.currentTimeMillis()
 )
@@ -48,6 +52,7 @@ data class PendingSyncEntity(
     val type: String, // "CREATE_APPOINTMENT", "UPDATE_APPOINTMENT_STATUS", "CREATE_MEDICAL_RECORD"
     val payload: String, // JSON payload representing the synchronized dto
     val clientRequestId: String,
+    val clinicId: String = "clinic_base",
     val timestamp: Long = System.currentTimeMillis(),
     val retryCount: Int = 0
 )
@@ -60,6 +65,7 @@ data class MedicalRecordEntity(
     val diagnosis: String,
     val prescription: String,
     val visitDate: String, // "2026-06-06"
+    val clinicId: String = "clinic_base",
     val recommendations: String = "",
     val timestamp: Long = System.currentTimeMillis()
 )
@@ -68,6 +74,7 @@ data class MedicalRecordEntity(
 data class SyncLogEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val logMessage: String,
+    val clinicId: String = "clinic_base",
     val direction: String, // "PATIENT_TO_STAFF", "STAFF_TO_PATIENT", "CLOUD_SYNC_SIMULATOR"
     val timestamp: Long = System.currentTimeMillis()
 )

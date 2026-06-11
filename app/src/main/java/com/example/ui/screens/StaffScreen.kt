@@ -1,6 +1,9 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +48,7 @@ fun StaffScreen(
     SecureScreen()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val allAppointments by viewModel.allAppointments.collectAsStateWithLifecycle()
+    val allPendingSyncs by viewModel.allPendingSyncs.collectAsStateWithLifecycle()
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
     val allRecords by viewModel.allMedicalRecords.collectAsStateWithLifecycle()
 
@@ -141,6 +145,10 @@ fun StaffScreen(
     val pendingAppts = allAppointments.filter { it.status == "PENDING" }
     val approvedAppts = allAppointments.filter { it.status == "APPROVED" }
 
+    LaunchedEffect(Unit) {
+        com.example.utils.AnalyticsManager.trackScreen("StaffScreen")
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -226,17 +234,20 @@ fun StaffScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         modifier = modifier
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
+        Box(
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
         ) {
-            // Analytics Micro-cards today dashboard
-            item {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = 840.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
+            ) {
+                // Analytics Micro-cards today dashboard
+                item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -589,15 +600,26 @@ fun StaffScreen(
 
                     // DOCTOR FILTER CHIPS
                     Text("Фильтр по врачу:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                    val doctorsList = listOf(
-                        "Все врачи",
-                        "Д-р Сапаев (Стоматолог-терапевт)",
-                        "Д-р Иванов (Кардиолог)",
-                        "Д-р Петров (Невролог)",
-                        "Д-р Сидорова (Педиатр)",
-                        "Д-р Смирнова (Офтальмолог)",
-                        "Д-р Кузнецов (Терапевт)"
-                    )
+                    
+                    val allDoctorsInSystem = remember(allAppointments) {
+                        allAppointments.map { it.doctorName }.distinct().filter { it.isNotBlank() }
+                    }
+                    val isCurrentUserDoctor = currentUser?.fullName?.startsWith("Dr.") == true || currentUser?.jobTitle == "DOCTOR"
+                    
+                    LaunchedEffect(isCurrentUserDoctor, currentUser) {
+                        if (isCurrentUserDoctor && currentUser != null) {
+                            selectedDoctorFilter = currentUser!!.fullName
+                        }
+                    }
+
+                    val doctorsList = buildList {
+                        add("Все врачи")
+                        if (isCurrentUserDoctor && currentUser != null) {
+                            if (!contains(currentUser!!.fullName)) add(currentUser!!.fullName)
+                        }
+                        addAll(allDoctorsInSystem.filter { it != currentUser?.fullName })
+                    }.distinct()
+
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -701,8 +723,13 @@ fun StaffScreen(
                 }
             } else {
                 items(displayAppointments, key = { it.id }) { appt ->
+                    val isPendingSync = allPendingSyncs.any {
+                        it.clientRequestId == appt.clientRequestId ||
+                        (it.type == "UPDATE_STATUS" && it.payload.startsWith("${appt.id}|"))
+                    }
                     StaffAppointmentCardItem(
                         appt = appt,
+                        isPendingSync = isPendingSync,
                         onApprove = { viewModel.approveAppointment(appt.id) },
                         onCancelClick = {
                             targetAppointmentIdToCancel = appt.id
@@ -755,7 +782,14 @@ fun StaffScreen(
                 }
             }
 
-            if (patientRoleUsers.isEmpty()) {
+            val displayPatients = patientRoleUsers.filter {
+                if (searchQuery.isNotBlank()) {
+                    it.fullName.contains(searchQuery, ignoreCase = true) ||
+                    it.phone.contains(searchQuery)
+                } else true
+            }
+
+            if (displayPatients.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier
@@ -766,14 +800,14 @@ fun StaffScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Пациенты в базе данных не найдены.",
+                            text = "Пациенты не найдены.",
                             color = Color.Gray,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
             } else {
-                items(patientRoleUsers, key = { it.id }) { patient ->
+                items(displayPatients, key = { it.id }) { patient ->
                     val patientRecords = allRecords.filter { it.patientPhone == patient.phone }
                     StaffPatientCardItem(
                         patient = patient,
@@ -789,6 +823,7 @@ fun StaffScreen(
                     )
                 }
             }
+        }
         }
     }
 
@@ -1747,6 +1782,7 @@ fun AnalyticsCard(
 @Composable
 fun StaffAppointmentCardItem(
     appt: AppointmentEntity,
+    isPendingSync: Boolean = false,
     onApprove: () -> Unit,
     onCancelClick: () -> Unit,
     onAddNotesClick: () -> Unit,
@@ -1798,17 +1834,61 @@ fun StaffAppointmentCardItem(
                     )
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = statusColor.copy(alpha = 0.12f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = statusTextRu,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        color = statusColor,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = statusColor.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = statusTextRu,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = statusColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    if (isPendingSync) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFFB300).copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                val infiniteTransition = rememberInfiniteTransition(label = "SyncRotate")
+                                val rotation by infiniteTransition.animateFloat(
+                                    initialValue = 0f,
+                                    targetValue = 360f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(1200, easing = LinearEasing),
+                                        repeatMode = RepeatMode.Restart
+                                    ),
+                                    label = "rotation"
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = "Syncing",
+                                    tint = Color(0xFFFF8F00),
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .graphicsLayer { rotationZ = rotation }
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Ожидает...",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFFF8F00)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

@@ -9,12 +9,20 @@ data class SyncMetrics(
     val successCount: Int = 0,
     val failureCount: Int = 0,
     val lastLatencyMs: Long = 0,
-    val wsState: String = "DISCONNECTED"
+    val wsState: String = "DISCONNECTED",
+    val currentClinicId: String = "clinic_base"
 )
 
 object SyncMetricsManager {
     private val _metrics = MutableStateFlow(SyncMetrics())
     val metrics: StateFlow<SyncMetrics> = _metrics.asStateFlow()
+
+    fun updateClinicId(clinicId: String) {
+        val current = _metrics.value
+        _metrics.value = current.copy(
+            currentClinicId = clinicId
+        )
+    }
 
     fun recordSuccess(latencyMs: Long) {
         val current = _metrics.value

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.db.SyncLogEntity
+import com.example.data.db.PendingSyncEntity
 import com.example.ui.viewmodel.ClinicViewModel
 import com.example.utils.TokenManager
 import java.text.SimpleDateFormat
@@ -208,6 +209,14 @@ fun SyncConsoleView(
                                 metrics = syncMetrics,
                                 pendingCount = allPendingSyncs.size,
                                 isOnline = isOnline
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            PendingSyncQueueList(
+                                pendingSyncs = allPendingSyncs,
+                                onDismissSync = { sync -> viewModel.dismissPendingSync(sync) },
+                                onRetrySync = { viewModel.triggerCloudSynchronization() }
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -549,5 +558,183 @@ fun SecurityStatusRow(
             color = statusColor,
             fontFamily = FontFamily.Monospace
         )
+    }
+}
+
+@Composable
+fun PendingSyncQueueList(
+    pendingSyncs: List<PendingSyncEntity>,
+    onDismissSync: (PendingSyncEntity) -> Unit,
+    onRetrySync: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+        border = BorderStroke(1.dp, Color(0xFF334155))
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "ОЧЕРЕДЬ ОТЛОЖЕННЫХ ТРАНЗАКЦИЙ (${pendingSyncs.size})",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF94A3B8),
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 0.5.sp
+                )
+                if (pendingSyncs.isNotEmpty()) {
+                    Text(
+                        text = "повторить все",
+                        fontSize = 10.sp,
+                        color = Color(0xFF38BDF8),
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier
+                            .clickable { onRetrySync() }
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(6.dp))
+
+            if (pendingSyncs.isEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFF064E3B).copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Color(0xFF047857).copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "✓ Все локальные изменения успешно синхронизированы с сервером.",
+                            fontSize = 10.sp,
+                            color = Color(0xFF34D399),
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 160.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(pendingSyncs, key = { it.id }) { sync ->
+                        val badgeColor = when (sync.type) {
+                            "CREATE_APPOINTMENT" -> Color(0xFFFBBF24) // Gold
+                            "UPDATE_STATUS" -> Color(0xFF60A5FA) // Blue
+                            "CREATE_MEDICAL_RECORD" -> Color(0xFF2DD4BF) // Teal
+                            else -> Color(0xFF94A3B8)
+                        }
+                        
+                        val labelRu = when (sync.type) {
+                            "CREATE_APPOINTMENT" -> "Новый приём"
+                            "UPDATE_STATUS" -> "Статус приёма"
+                            "CREATE_MEDICAL_RECORD" -> "Новая медкарта"
+                            else -> sync.type
+                        }
+
+                        val previewText = remember(sync.payload) {
+                            try {
+                                if (sync.payload.contains("{")) {
+                                    val matchDoctor = "\"doctor_name\":\"([^\"]+)\"".toRegex().find(sync.payload)
+                                    val doc = matchDoctor?.groupValues?.get(1)
+                                    val matchPatient = "\"patient_name\":\"([^\"]+)\"".toRegex().find(sync.payload)
+                                    val pat = matchPatient?.groupValues?.get(1)
+                                    if (doc != null && pat != null) {
+                                        "Пациент: $pat -> Врач: $doc"
+                                    } else if (doc != null) {
+                                        "Врач: $doc"
+                                    } else if (pat != null) {
+                                        "Пациент: $pat"
+                                    } else {
+                                        "Загрузка payload..."
+                                    }
+                                } else {
+                                    val parts = sync.payload.split("|")
+                                    if (parts.size >= 2) {
+                                        "Приём #${parts[0]} -> ${parts[1]}"
+                                    } else {
+                                        sync.payload
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                "Детали транзакции"
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF1E293B), RoundedCornerShape(6.dp))
+                                .border(1.dp, Color(0xFF334155), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = badgeColor.copy(alpha = 0.2f),
+                                        border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.4f))
+                                    ) {
+                                        Text(
+                                            text = labelRu,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = badgeColor,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Попыток: ${sync.retryCount}",
+                                        fontSize = 9.sp,
+                                        color = if (sync.retryCount > 0) Color(0xFFF87171) else Color(0xFF64748B),
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = previewText,
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFCBD5E1),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = "clientReqId: ${sync.clientRequestId.take(8)}...",
+                                    fontSize = 8.sp,
+                                    color = Color(0xFF475569),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                            
+                            IconButton(
+                                onClick = { onDismissSync(sync) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteSweep,
+                                    contentDescription = "Dismiss Sync Item",
+                                    tint = Color(0xFFEF4444).copy(alpha = 0.7f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

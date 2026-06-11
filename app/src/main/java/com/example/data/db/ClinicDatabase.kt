@@ -123,7 +123,7 @@ interface SyncLogDao {
         QueueSnapshotEntity::class,
         PendingSyncEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class ClinicDatabase : RoomDatabase() {
@@ -140,6 +140,12 @@ abstract class ClinicDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): ClinicDatabase {
             return INSTANCE ?: synchronized(this) {
+                try {
+                    System.loadLibrary("sqlcipher")
+                } catch (e: Exception) {
+                    android.util.Log.e("ClinicDatabase", "Failed to load sqlcipher library", e)
+                }
+                
                 val passphrase = TokenManager.getOrCreateDatabaseKey(context)
                 val factory = SupportOpenHelperFactory(passphrase)
                 val instance = Room.databaseBuilder(

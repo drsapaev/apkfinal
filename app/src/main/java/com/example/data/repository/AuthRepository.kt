@@ -33,21 +33,26 @@ class AuthRepository(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 
-                // Fetch user data via profile using token
-                val profileResponse = apiService.getProfile("Bearer ${authResponse.accessToken}")
+                // 1. Save token on disk temporarily so the interceptor applies it automatically
+                sessionManager.saveSession(
+                    token = authResponse.accessToken,
+                    phone = "",
+                    role = ""
+                )
+                ApiClient.tokenProvider = { authResponse.accessToken }
+
+                // Fetch user data via profile using token (intercepted!)
+                val profileResponse = apiService.getProfile()
                 
                 if (profileResponse.isSuccessful && profileResponse.body() != null) {
                     val userDto = profileResponse.body()!!
                     
-                    // 1. Secure token on disk in SharedPreferences
+                    // 2. Secure token on disk in SharedPreferences with correct details
                     sessionManager.saveSession(
                         token = authResponse.accessToken,
                         phone = userDto.phone,
                         role = userDto.role
                     )
-
-                    // 2. Clear token cache inside ApiClient to point to the new session
-                    ApiClient.tokenProvider = { authResponse.accessToken }
 
                     // 3. Cache the logged-in User profile information in SQLite using the UserEntity Room table
                     val cachedUser = UserEntity(
@@ -90,7 +95,7 @@ class AuthRepository(
                 return@withContext Result.failure(Exception("Сессия отсутствует"))
             }
             
-            val response = apiService.getProfile("Bearer $token")
+            val response = apiService.getProfile()
             if (response.isSuccessful && response.body() != null) {
                 val userDto = response.body()!!
                 
@@ -114,10 +119,17 @@ class AuthRepository(
             } else {
                 // Token has expired or been revoked
                 if (response.code() == 401) {
-                    val authResponse = apiService.refresh("Bearer $token")
+                    val authResponse = apiService.refresh()
                     if (authResponse.isSuccessful && authResponse.body() != null) {
                         val newToken = authResponse.body()!!.accessToken
-                        val profileResponse = apiService.getProfile("Bearer $newToken")
+                        sessionManager.saveSession(
+                            token = newToken,
+                            phone = "",
+                            role = ""
+                        )
+                        ApiClient.tokenProvider = { newToken }
+                        
+                        val profileResponse = apiService.getProfile()
                         if (profileResponse.isSuccessful && profileResponse.body() != null) {
                             val userDto = profileResponse.body()!!
                             sessionManager.saveSession(
@@ -125,7 +137,6 @@ class AuthRepository(
                                 phone = userDto.phone,
                                 role = userDto.role
                             )
-                            ApiClient.tokenProvider = { newToken }
                             
                             val existing = userDao.getUserByPhone(userDto.phone)
                             val cachedUser = UserEntity(
@@ -163,7 +174,7 @@ class AuthRepository(
     suspend fun linkTelegram(telegramId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val token = sessionManager.getToken() ?: return@withContext Result.failure(Exception("Не авторизован"))
-            val response = apiService.linkTelegram("Bearer $token", telegramId)
+            val response = apiService.linkTelegram(telegramId)
             if (response.isSuccessful) {
                 // Update local DB cache as well
                 sessionManager.getPhone()?.let { phone ->

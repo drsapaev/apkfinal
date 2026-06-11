@@ -219,6 +219,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun dismissPendingSync(sync: PendingSyncEntity) {
+        viewModelScope.launch {
+            repository.dismissPendingSync(sync)
+        }
+    }
+
     // Real Cloud Synchronization with API endpoints from `https://github.com/drsapaev/final` including full SQLite pull/push
     fun triggerCloudSynchronization() {
         viewModelScope.launch {

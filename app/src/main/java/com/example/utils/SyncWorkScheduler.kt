@@ -1,6 +1,7 @@
 package com.example.utils
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -19,6 +20,11 @@ object SyncWorkScheduler {
 
         val syncRequest = PeriodicWorkRequest.Builder(SyncWorker::class.java, 15, TimeUnit.MINUTES)
             .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                10,
+                TimeUnit.SECONDS
+            )
             .build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -35,6 +41,11 @@ object SyncWorkScheduler {
 
         val syncRequest = OneTimeWorkRequest.Builder(SyncWorker::class.java)
             .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                10,
+                TimeUnit.SECONDS
+            )
             .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(

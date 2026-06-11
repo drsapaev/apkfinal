@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -52,6 +54,7 @@ fun PatientScreen(
     SecureScreen()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val appointments by viewModel.patientAppointments.collectAsStateWithLifecycle()
+    val allPendingSyncs by viewModel.allPendingSyncs.collectAsStateWithLifecycle()
     val records by viewModel.patientRecords.collectAsStateWithLifecycle()
     val isFetchingRecords by viewModel.isFetchingReports.collectAsStateWithLifecycle()
     val isBookingInProgress by viewModel.isBookingInProgress.collectAsStateWithLifecycle()
@@ -118,6 +121,10 @@ fun PatientScreen(
                         it.recommendations.contains(medicalSearchQuery, ignoreCase = true)
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        com.example.utils.AnalyticsManager.trackScreen("PatientScreen")
     }
 
     Scaffold(
@@ -257,6 +264,7 @@ fun PatientScreen(
 
                         AppointmentsSessionList(
                             appointments = filteredAppointments,
+                            pendingSyncs = allPendingSyncs,
                             onCancelClick = { id -> viewModel.cancelAppointment(id, "Отменено пациентом в кабинете") }
                         )
                     }
@@ -349,6 +357,7 @@ fun PatientScreen(
 
                     AppointmentsSessionList(
                         appointments = filteredAppointments,
+                        pendingSyncs = allPendingSyncs,
                         onCancelClick = { id -> viewModel.cancelAppointment(id, "Отменено пациентом в кабинете") }
                     )
 
@@ -1082,6 +1091,7 @@ fun AppointmentSegmentTabs(
 @Composable
 fun AppointmentsSessionList(
     appointments: List<AppointmentEntity>,
+    pendingSyncs: List<com.example.data.db.PendingSyncEntity>,
     onCancelClick: (Int) -> Unit
 ) {
     if (appointments.isEmpty()) {
@@ -1123,7 +1133,15 @@ fun AppointmentsSessionList(
     } else {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             appointments.forEach { appt ->
-                AppointmentCardItem(appointment = appt, onCancelClick = onCancelClick)
+                val isPendingSync = pendingSyncs.any {
+                    it.clientRequestId == appt.clientRequestId ||
+                    (it.type == "UPDATE_STATUS" && it.payload.startsWith("${appt.id}|"))
+                }
+                AppointmentCardItem(
+                    appointment = appt,
+                    isPendingSync = isPendingSync,
+                    onCancelClick = onCancelClick
+                )
             }
         }
     }
@@ -1133,6 +1151,7 @@ fun AppointmentsSessionList(
 @Composable
 fun AppointmentCardItem(
     appointment: AppointmentEntity,
+    isPendingSync: Boolean = false,
     onCancelClick: (Int) -> Unit
 ) {
     val statusColor = when (appointment.status) {
@@ -1199,29 +1218,73 @@ fun AppointmentCardItem(
                         )
                     }
 
-                    // Badge layout
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = statusColor.copy(alpha = 0.1f),
-                        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        // Badge layout
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = statusColor.copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
                         ) {
-                            Icon(
-                                imageVector = statusIcon,
-                                contentDescription = null,
-                                tint = statusColor,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = statusText,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                color = statusColor
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = statusIcon,
+                                    contentDescription = null,
+                                    tint = statusColor,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = statusText,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    color = statusColor
+                                )
+                            }
+                        }
+
+                        if (isPendingSync) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFFFB300).copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.4f))
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    val infiniteTransition = rememberInfiniteTransition(label = "SyncRotate")
+                                    val rotation by infiniteTransition.animateFloat(
+                                        initialValue = 0f,
+                                        targetValue = 360f,
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(1200, easing = LinearEasing),
+                                            repeatMode = RepeatMode.Restart
+                                        ),
+                                        label = "rotation"
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Sync,
+                                        contentDescription = "Syncing",
+                                        tint = Color(0xFFFF8F00),
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .graphicsLayer { rotationZ = rotation }
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Ожидает...",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        color = Color(0xFFFF8F00)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

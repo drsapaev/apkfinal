@@ -50,6 +50,10 @@ fun AuthScreen(
         colors = listOf(Color(0xFFF2F9F9), Color(0xFFE5F3F2))
     )
 
+    LaunchedEffect(Unit) {
+        com.example.utils.AnalyticsManager.trackScreen("AuthScreen")
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()

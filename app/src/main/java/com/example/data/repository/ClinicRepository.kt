@@ -203,6 +203,11 @@ class ClinicRepository(private val database: ClinicDatabase) {
     }
 
     // API/Web Service Operations (Encapsulated)
+    suspend fun dismissPendingSync(sync: PendingSyncEntity) {
+        pendingSyncDao.deletePendingSync(sync)
+        addSyncLog("🗑️ Отменена отложенная транзакция: ${sync.type} (${sync.clientRequestId})", "SYSTEM_SYNC")
+    }
+
     suspend fun retryUnsyncedWrites(token: String?): Boolean {
         val list = pendingSyncDao.getAllPendingSyncs()
         if (list.isEmpty()) return true
@@ -220,7 +225,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     "CREATE_APPOINTMENT" -> {
                         val dto = appointmentAdapter.fromJson(sync.payload)
                         if (dto != null) {
-                            val response = ApiClient.service.createAppointment(authHeader, dto)
+                            val response = ApiClient.service.createAppointment(dto)
                             if (response.isSuccessful && response.body() != null) {
                                 val saved = response.body()!!
                                 val existingWithReqId = appointmentDao.getAppointmentByClientRequestId(sync.clientRequestId)
@@ -242,7 +247,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                             val status = parts[1]
                             val notes = if (parts.size == 3) parts[2] else ""
                             if (id != null) {
-                                val response = ApiClient.service.updateAppointmentStatus(authHeader, id, status, notes)
+                                val response = ApiClient.service.updateAppointmentStatus(id, status, notes)
                                 if (response.isSuccessful) {
                                     pendingSyncDao.deletePendingSync(sync)
                                     successCount++
@@ -254,7 +259,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     "CREATE_MEDICAL_RECORD" -> {
                         val dto = medicalRecordAdapter.fromJson(sync.payload)
                         if (dto != null) {
-                            val response = ApiClient.service.createMedicalRecord(authHeader, dto)
+                            val response = ApiClient.service.createMedicalRecord(dto)
                             if (response.isSuccessful) {
                                 pendingSyncDao.deletePendingSync(sync)
                                 successCount++
@@ -325,8 +330,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
         pendingSyncDao.insertPendingSync(syncRecord)
 
         try {
-            val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-            val response = ApiClient.service.createAppointment(authHeader, dto)
+            val response = ApiClient.service.createAppointment(dto)
             if (response.isSuccessful && response.body() != null) {
                 val saved = response.body()!!
                 pendingSyncDao.deletePendingSync(syncRecord)
@@ -377,9 +381,8 @@ class ClinicRepository(private val database: ClinicDatabase) {
         pendingSyncDao.insertPendingSync(syncRecord)
 
         try {
-            val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
             val response = ApiClient.service.updateAppointmentStatus(
-                token = authHeader, id = id, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
+                id = id, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
             )
             if (response.isSuccessful) {
                 pendingSyncDao.deletePendingSync(syncRecord)
@@ -426,8 +429,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
         pendingSyncDao.insertPendingSync(syncRecord)
 
         try {
-            val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
-            val response = ApiClient.service.createMedicalRecord(authHeader, dto)
+            val response = ApiClient.service.createMedicalRecord(dto)
             if (response.isSuccessful) {
                 pendingSyncDao.deletePendingSync(syncRecord)
                 addSyncLog("🟢 API [POST /api/v1/patients/records]: Запись медкарты успешно синхронизирована с сервером.", "CLOUD_SYNC_SIMULATOR")
@@ -445,10 +447,9 @@ class ClinicRepository(private val database: ClinicDatabase) {
         phone: String,
         onNewRecordAction: (MedicalRecordEntity) -> Unit = {}
     ): List<MedicalRecordEntity> {
-        val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
         addSyncLog("🛰️ CONNECTING to API: GET /api/v1/patients/records/$phone", "CLOUD_SYNC_SIMULATOR")
         try {
-            val response = ApiClient.service.getMedicalRecordsForPatient(authHeader, phone)
+            val response = ApiClient.service.getMedicalRecordsForPatient(phone)
             if (response.isSuccessful && response.body() != null) {
                 val reports = response.body()!!
                 addSyncLog("✓ УСПЕШНЫЙ ЗАПРОС: Импортировано ${reports.size} записей медкарт с сервера final.", "CLOUD_SYNC_SIMULATOR")
@@ -481,7 +482,6 @@ class ClinicRepository(private val database: ClinicDatabase) {
         val startTime = System.currentTimeMillis()
         addSyncLog("🟢 ПОДКЛЮЧЕНИЕ к серверу FastAPI 'final'...", "CLOUD_SYNC_SIMULATOR")
         kotlinx.coroutines.delay(400)
-        val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
 
         // Retry pending syncs first, ensuring no data override issues
         try {
@@ -493,14 +493,14 @@ class ClinicRepository(private val database: ClinicDatabase) {
         try {
             // Check Profile
             addSyncLog("🛰️ GET /api/v1/users/me (Проверка аутентификации сессии)", "CLOUD_SYNC_SIMULATOR")
-            val userResponse = ApiClient.service.getProfile(authHeader)
+            val userResponse = ApiClient.service.getProfile()
             if (userResponse.isSuccessful && userResponse.body() != null) {
                 addSyncLog("✓ Сессия подтверждена.", "CLOUD_SYNC_SIMULATOR")
             }
 
             // Sync Active Queue Status
             addSyncLog("🛰️ GET /api/v1/queue (Запрос текущей живой очереди клиники)", "CLOUD_SYNC_SIMULATOR")
-            val queueResponse = ApiClient.service.getQueue(authHeader)
+            val queueResponse = ApiClient.service.getQueue()
             if (queueResponse.isSuccessful && queueResponse.body() != null) {
                 val queueList = queueResponse.body()!!
                 addSyncLog("✓ Активная очередь: ${queueList.size} пациент(ов) в кабинетах ожидания.", "CLOUD_SYNC_SIMULATOR")
@@ -521,9 +521,16 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 addSyncLog("✓ Очередь закэширована в локальную базу данных (доступно оффлайн)", "CLOUD_SYNC_SIMULATOR")
             }
 
-            // Sync Appointments
-            addSyncLog("🛰️ GET /api/v1/appointments (Синхронизация записей на прием)", "CLOUD_SYNC_SIMULATOR")
-            val appointmentsResponse = ApiClient.service.getAppointments(authHeader)
+            // Sync Appointments using Delta Sync (if applicable)
+            val lastSync = com.example.utils.SyncMetricsManager.metrics.value.lastSyncTime
+            val sinceParam = if (lastSync > 0) lastSync else null
+            
+            val clinicId = userResponse.body()?.clinicId ?: "clinic_base"
+            
+            com.example.utils.SyncMetricsManager.updateClinicId(clinicId)
+
+            addSyncLog("🛰️ GET /api/v1/appointments (Синхронизация записей на прием) [Delta: ${sinceParam != null}]", "CLOUD_SYNC_SIMULATOR")
+            val appointmentsResponse = ApiClient.service.getAppointments(since = sinceParam, clinicId = clinicId)
             if (appointmentsResponse.isSuccessful && appointmentsResponse.body() != null) {
                 val serverList = appointmentsResponse.body()!!
                 addSyncLog("✓ Успешно получено ${serverList.size} записей с сервера.", "CLOUD_SYNC_SIMULATOR")
