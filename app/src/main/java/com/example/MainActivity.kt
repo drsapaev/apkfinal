@@ -1,7 +1,7 @@
 package com.example
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
@@ -24,7 +24,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.example.ui.viewmodel.ClinicViewModel
 import com.example.utils.NotificationHelper
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ -> }

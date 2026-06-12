@@ -24,12 +24,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.viewmodel.AuthViewModel
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 
 @Composable
 fun AuthScreen(
     viewModel: AuthViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val username by viewModel.phoneInput.collectAsStateWithLifecycle()
     val password by viewModel.otpInput.collectAsStateWithLifecycle()
     val isOtpSent by viewModel.isOtpSent.collectAsStateWithLifecycle()
@@ -372,72 +378,44 @@ fun AuthScreen(
         )
     }
 
-    // Simulated Biometric Hardware Verification Prompt Dialog
-    if (showVerificationDialog) {
-        Dialog(onDismissRequest = { showVerificationDialog = false }) {
-            Card(
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF283593)), // Deep luxury biometric blue
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = "Scanner",
-                        tint = Color(0xFF40C4FF),
-                        modifier = Modifier.size(72.dp)
-                    )
+    // Biometric Hardware Verification Prompt
+    LaunchedEffect(showVerificationDialog) {
+        if (showVerificationDialog) {
+            val fragmentActivity = context as? FragmentActivity
+            if (fragmentActivity != null) {
+                val executor = ContextCompat.getMainExecutor(fragmentActivity)
+                val biometricPrompt = BiometricPrompt(
+                    fragmentActivity,
+                    executor,
+                    object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                            super.onAuthenticationError(errorCode, errString)
+                            Toast.makeText(context, "Ошибка: $errString", Toast.LENGTH_SHORT).show()
+                            showVerificationDialog = false
+                        }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Биометрическая верификация",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Поднесите палец к сканеру отпечатков пальцев на экране для подписи сессии",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.LightGray,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = {
+                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            super.onAuthenticationSucceeded(result)
                             showVerificationDialog = false
                             viewModel.loginWithBiometrics(selectedBioUserPhone)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Подтвердить отпечаток",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.Black
-                        )
-                    }
+                        }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        override fun onAuthenticationFailed() {
+                            super.onAuthenticationFailed()
+                            Toast.makeText(context, "Отпечаток не распознан", Toast.LENGTH_SHORT).show()
+                        }
+                    })
 
-                    TextButton(
-                        onClick = { showVerificationDialog = false },
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
-                    ) {
-                        Text("Отмена")
-                    }
-                }
+                val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                    .setTitle("Вход по биометрии")
+                    .setSubtitle("Приложите палец для подтверждения входа")
+                    .setNegativeButtonText("Отмена")
+                    .build()
+
+                biometricPrompt.authenticate(promptInfo)
+            } else {
+                Toast.makeText(context, "Ошибка: требуется FragmentActivity", Toast.LENGTH_SHORT).show()
+                showVerificationDialog = false
             }
         }
     }
