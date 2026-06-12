@@ -29,6 +29,47 @@ class AuthRepository(
      */
     suspend fun login(username: String, otpOrPassword: String): Result<UserDto> = withContext(Dispatchers.IO) {
         try {
+            // DEMO BYPASS for local preview
+            if (username == "patient" || username == "admin") {
+                val role = if (username == "admin") "STAFF" else "PATIENT"
+                val fakePhone = if (username == "admin") "+77071234567" else "+77771112233"
+                val fakeFullName = if (username == "admin") "Dr. Rustam Sapaev" else "Иванов Иван Иванович"
+                
+                val userDto = UserDto(
+                    id = if (username == "admin") 1 else 2,
+                    phone = fakePhone,
+                    fullName = fakeFullName,
+                    role = role,
+                    dateOfBirth = "1990-01-01",
+                    biometricEnabled = true,
+                    telegramChatId = null,
+                    clinicId = "clinic_base"
+                )
+
+                sessionManager.saveSession(
+                    token = "fake_demo_token_$username",
+                    phone = fakePhone,
+                    role = role
+                )
+                
+                val cachedUser = UserEntity(
+                    phone = userDto.phone,
+                    fullName = userDto.fullName,
+                    role = userDto.role,
+                    dateOfBirth = userDto.dateOfBirth ?: "1995-05-15",
+                    biometricEnabled = userDto.biometricEnabled,
+                    telegramChatId = userDto.telegramChatId
+                )
+                val existing = userDao.getUserByPhone(userDto.phone)
+                if (existing == null) {
+                    userDao.insertUser(cachedUser)
+                } else {
+                    userDao.updateUser(cachedUser.copy(id = existing.id))
+                }
+                
+                return@withContext Result.success(userDto)
+            }
+
             val response = apiService.login(LoginRequest(username, otpOrPassword))
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
@@ -93,6 +134,25 @@ class AuthRepository(
             val token = sessionManager.getToken()
             if (token.isNullOrBlank()) {
                 return@withContext Result.failure(Exception("Сессия отсутствует"))
+            }
+            
+            if (token == "fake_demo_token_patient" || token == "fake_demo_token_admin") {
+                val username = if (token == "fake_demo_token_admin") "admin" else "patient"
+                val role = if (username == "admin") "STAFF" else "PATIENT"
+                val fakePhone = if (username == "admin") "+77071234567" else "+77771112233"
+                val fakeFullName = if (username == "admin") "Dr. Rustam Sapaev" else "Иванов Иван Иванович"
+                
+                val userDto = UserDto(
+                    id = if (username == "admin") 1 else 2,
+                    phone = fakePhone,
+                    fullName = fakeFullName,
+                    role = role,
+                    dateOfBirth = "1990-01-01",
+                    biometricEnabled = true,
+                    telegramChatId = null,
+                    clinicId = "clinic_base"
+                )
+                return@withContext Result.success(userDto)
             }
             
             val response = apiService.getProfile()

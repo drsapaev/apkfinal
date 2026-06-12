@@ -107,7 +107,7 @@ object TokenManager {
      * Gets screen security protection state (FLAG_SECURE)
      */
     fun isScreenSecureEnabled(context: Context): Boolean {
-        return getPrefs(context).getBoolean("screen_secure_enabled", true)
+        return false // Disable secure screen by default to prevent black screen on streaming emulator
     }
 
     /**
