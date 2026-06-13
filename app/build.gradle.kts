@@ -125,3 +125,10 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
 }
+
+tasks.register<Copy>("exportApk") {
+  dependsOn("assembleDebug")
+  from(layout.buildDirectory.dir("outputs/apk/debug"))
+  include("*.apk")
+  into(project.rootDir.resolve("release_apk"))
+}
