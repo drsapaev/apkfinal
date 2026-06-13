@@ -24,10 +24,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.example.ui.viewmodel.ClinicViewModel
 import com.example.utils.NotificationHelper
 
+import androidx.core.app.ActivityCompat
+
 class MainActivity : FragmentActivity() {
-    private val requestNotificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,7 +40,7 @@ class MainActivity : FragmentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permissionStatus = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
             if (permissionStatus != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
             }
         }
 
