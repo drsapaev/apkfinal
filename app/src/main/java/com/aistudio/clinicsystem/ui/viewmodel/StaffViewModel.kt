@@ -386,9 +386,8 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
             val token = sessionManager.getToken()
             try {
-                val response = com.aistudio.clinicsystem.data.api.ApiClient.service.registerInQueue(
-                    appointmentId = appointmentId
-                )
+                // M2: use repository.registerInQueue instead of direct ApiClient.service access
+                val response = repository.registerInQueue(appointmentId = appointmentId)
                 if (response.isSuccessful && response.body() != null) {
                     repository.addSyncLog("🎟️ Пациент успешно добавлен в живую очередь ожидания.", "SYSTEM_SYNC")
                 } else {
