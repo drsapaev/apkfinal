@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.aistudio.clinicsystem"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.clinicsystem.hvyqt"
+    applicationId = "com.aistudio.clinicsystem"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -43,9 +43,20 @@ android {
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
+      // E2.7: production backend URL. Override via gradle property for staging.
+      buildConfigField("String", "BASE_URL", "\"https://api.clinic.example.com/\"")
+      buildConfigField("String", "BACKEND_URL", "\"https://api.clinic.example.com/\"")
+      buildConfigField("String", "WEBSOCKET_URL", "\"wss://api.clinic.example.com/ws\"")
     }
     debug {
       signingConfig = signingConfigs.getByName("debugConfig")
+      // E2.7: debug backend URL — Android emulator maps 10.0.2.2 to host's 127.0.0.1.
+      buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:18000/\"")
+      buildConfigField("String", "BACKEND_URL", "\"http://10.0.2.2:18000/\"")
+      buildConfigField("String", "WEBSOCKET_URL", "\"ws://10.0.2.2:18000/ws\"")
+      // E2.6: debug source set provides permissive network_security_config.xml
+      // (cleartext permitted for 10.0.2.2/localhost). Release uses the strict
+      // version in src/main/res/xml/.
     }
   }
   compileOptions {
@@ -111,6 +122,8 @@ dependencies {
   testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.mockk)
+  testImplementation(libs.mockwebserver)
   testImplementation(libs.robolectric)
   testImplementation(libs.roborazzi)
   testImplementation(libs.roborazzi.compose)
