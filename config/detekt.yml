@@ -47,6 +47,7 @@ style:
     maxLineLength: 160
     excludePackageStatements: true
     excludeImportStatements: true
+    excludes: ['**/test/**', '**/androidTest/**']
   UseDataClass:
     active: true
   UtilityClassWithPublicConstructor:
@@ -66,6 +67,9 @@ exceptions:
     active: false
   TooGenericExceptionCaught:
     active: false
+  TooGenericExceptionThrown:
+    active: true
+    excludes: ['**/test/**', '**/androidTest/**']
 
 potential-bugs:
   active: true
