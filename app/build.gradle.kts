@@ -10,6 +10,14 @@ android {
   namespace = "com.aistudio.clinicsystem"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
+  // M1/E4.1: Room schema export directory. KSP will write a JSON schema
+  // per database version to app/schemas/. These files MUST be committed
+  // to git — they are the baseline for MigrationTestHelper (E4.4).
+  ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+  }
+
   defaultConfig {
     applicationId = "com.aistudio.clinicsystem"
     minSdk = 24
@@ -46,14 +54,16 @@ android {
       // E2.7: production backend URL. Override via gradle property for staging.
       buildConfigField("String", "BASE_URL", "\"https://api.clinic.example.com/\"")
       buildConfigField("String", "BACKEND_URL", "\"https://api.clinic.example.com/\"")
-      buildConfigField("String", "WEBSOCKET_URL", "\"wss://api.clinic.example.com/ws\"")
+      // E3.6: backend exposes /ws/queue for real-time queue updates (not bare /ws)
+      buildConfigField("String", "WEBSOCKET_URL", "\"wss://api.clinic.example.com/ws/queue\"")
     }
     debug {
       signingConfig = signingConfigs.getByName("debugConfig")
       // E2.7: debug backend URL — Android emulator maps 10.0.2.2 to host's 127.0.0.1.
       buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:18000/\"")
       buildConfigField("String", "BACKEND_URL", "\"http://10.0.2.2:18000/\"")
-      buildConfigField("String", "WEBSOCKET_URL", "\"ws://10.0.2.2:18000/ws\"")
+      // E3.6: backend exposes /ws/queue for real-time queue updates (not bare /ws)
+      buildConfigField("String", "WEBSOCKET_URL", "\"ws://10.0.2.2:18000/ws/queue\"")
       // E2.6: debug source set provides permissive network_security_config.xml
       // (cleartext permitted for 10.0.2.2/localhost). Release uses the strict
       // version in src/main/res/xml/.
@@ -67,7 +77,28 @@ android {
     compose = true
     buildConfig = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+    }
+  }
+}
+
+// M1/E4.4: configure test JVM with conservative memory limits to avoid
+// container OOM kills during Robolectric tests. The forked test JVM needs
+// enough heap for Robolectric's Android framework simulation but must stay
+// within the container's 8GB cgroup limit.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+  // Robolectric + mockk need heap for the simulated Android framework
+  maxHeapSize = "1g"
+  jvmArgs("-XX:MaxMetaspaceSize=384m")
+  // Redirect temp files to a roomier filesystem (root /tmp is small)
+  systemProperty("java.io.tmpdir", "/home/z/.robolectric-tmp")
+  // Enable HTTP for test resources (Robolectric downloads Android jars on first run)
+  systemProperty("robolectric.offline", "false")
+  systemProperty("robolectric.dataDir", "/home/z/.robolectric-dataDir")
+  // Enable headless mode for AWT (Robolectric may trigger it)
+  systemProperty("java.awt.headless", "true")
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
@@ -120,6 +151,7 @@ dependencies {
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
+  testImplementation(libs.androidx.room.testing)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.mockk)

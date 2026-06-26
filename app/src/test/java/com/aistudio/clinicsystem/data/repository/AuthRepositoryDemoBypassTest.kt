@@ -3,6 +3,7 @@ package com.aistudio.clinicsystem.data.repository
 import androidx.test.core.app.ApplicationProvider
 import com.aistudio.clinicsystem.data.api.ApiClient
 import com.aistudio.clinicsystem.data.api.ApiService
+import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
 import io.mockk.every
@@ -70,11 +71,12 @@ class AuthRepositoryDemoBypassTest {
             .client(OkHttpClient.Builder().build())
             .addConverterFactory(MoshiConverterFactory.create())
             .build()
-            .create(ApiService::class.java)
+            .create(MobileApiService::class.java)
 
-        // Mock the ApiClient singleton so its `service` property returns our mock
+        // M1: mock mobileService so AuthRepository (which uses mobileService
+        // for login) hits our MockWebServer instead of the real backend.
         mockkObject(ApiClient)
-        every { ApiClient.service } returns mockApiService
+        every { ApiClient.mobileService } returns mockApiService
 
         // Reset the SessionManagerImpl singleton to a fresh state so the test
         // does not reuse state from previous tests. Under Robolectric the

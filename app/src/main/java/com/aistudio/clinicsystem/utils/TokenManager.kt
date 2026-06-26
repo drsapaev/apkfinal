@@ -32,6 +32,7 @@ import androidx.security.crypto.MasterKey
 object TokenManager {
     private const val PREF_NAME = "intellect_clinic_secure_prefs"
     private const val KEY_JWT_TOKEN = "jwt_access_token"
+    private const val KEY_REFRESH_TOKEN = "jwt_refresh_token"
     private const val KEY_PHONE_NUMBER = "user_phone_number"
     private const val KEY_USER_ROLE = "user_role"
     private const val TAG = "TokenManager"
@@ -90,6 +91,28 @@ object TokenManager {
     }
 
     /**
+     * M1/E3.2: store both access and refresh tokens (used after login and
+     * after a successful refresh). Phone/role are preserved if already set.
+     * No-op if encrypted storage is unavailable.
+     */
+    fun saveTokens(context: Context, accessToken: String, refreshToken: String) {
+        val prefs = getPrefs(context) ?: return
+        prefs.edit().apply {
+            putString(KEY_JWT_TOKEN, accessToken)
+            putString(KEY_REFRESH_TOKEN, refreshToken)
+            apply()
+        }
+    }
+
+    /**
+     * M1/E3.2: retrieve the refresh token. Returns null if not present OR
+     * if encrypted storage is unavailable.
+     */
+    fun getRefreshToken(context: Context): String? {
+        return getPrefs(context)?.getString(KEY_REFRESH_TOKEN, null)
+    }
+
+    /**
      * Retrieves the stored access token. Returns null if not present OR
      * if encrypted storage is unavailable.
      */
@@ -114,12 +137,14 @@ object TokenManager {
 
     /**
      * Clears all credential records when a user performs a manual Logout.
+     * M1/E3.2: also clears the refresh token.
      * No-op if encrypted storage is unavailable.
      */
     fun clearAuthData(context: Context) {
         val prefs = getPrefs(context) ?: return
         prefs.edit().apply {
             remove(KEY_JWT_TOKEN)
+            remove(KEY_REFRESH_TOKEN)
             remove(KEY_PHONE_NUMBER)
             remove(KEY_USER_ROLE)
             apply()

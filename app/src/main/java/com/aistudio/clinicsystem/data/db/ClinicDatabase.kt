@@ -124,7 +124,11 @@ interface SyncLogDao {
         PendingSyncEntity::class
     ],
     version = 4,
-    exportSchema = false
+    // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
+    // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/4.json
+    // on every build. This file must be committed to git — it is the
+    // baseline used by MigrationTestHelper in E4.4 to write migration tests.
+    exportSchema = true
 )
 abstract class ClinicDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -162,10 +166,17 @@ abstract class ClinicDatabase : RoomDatabase() {
                     "clinic_database"
                 )
                 .openHelperFactory(factory)
-                // TODO E4.2 (M1): replace with proper Room migrations.
-                // For M0 we keep fallbackToDestructiveMigration() — fixing it
-                // requires schema export which is a separate task.
-                .fallbackToDestructiveMigration()
+                // M1/E4.2: fallbackToDestructiveMigration() was removed.
+                // Future schema changes MUST be accompanied by an explicit
+                // Migration object (see Migrations.kt). If a migration is
+                // missing, Room will throw IllegalStateException on upgrade
+                // rather than silently wiping user data.
+                //
+                // We DO allow destructive fallback on DOWNGRADE — that's
+                // safe (e.g. user installed a beta build then rolled back).
+                .fallbackToDestructiveMigrationOnDowngrade()
+                // M1/E4.3: register known migrations (currently just 4→5 template).
+                .addMigrations(*Migrations.ALL)
                 .build()
                 INSTANCE = instance
                 instance

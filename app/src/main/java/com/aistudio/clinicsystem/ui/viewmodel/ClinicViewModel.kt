@@ -74,11 +74,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         com.aistudio.clinicsystem.data.api.ApiClient.tokenProvider = {
             sessionManager.getToken()
         }
+
+        // M1/E3.2 + E3.7: initialize the TokenAuthenticator so that 401 responses
+        // are transparently retried with a refreshed access token. The old
+        // AuthInterceptor.onUnauthorized callback is kept as a fallback for the
+        // case where refresh itself fails (TokenAuthenticator invokes it).
+        com.aistudio.clinicsystem.data.api.ApiClient.initWithSession(sessionManager)
+
         com.aistudio.clinicsystem.data.api.ApiClient.onUnauthorized = {
             viewModelScope.launch {
                 val user = _currentUser.value
                 if (user != null) {
-                    repository.addSyncLog("⚠️ Токен истек или недействителен (401). Автоматический выход из системы.", "SYSTEM_SYNC")
+                    repository.addSyncLog("⚠️ Сессия недействительна: refresh токен истёк или отозван. Автоматический выход.", "SYSTEM_SYNC")
                     logOut()
                 }
             }
@@ -188,17 +195,24 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * M1/E3.3: logout now calls the suspend [AuthRepository.logout] which
+     * invalidates the session on the server (POST /api/v1/authentication/logout)
+     * before clearing local tokens. If the server call fails with a network
+     * error, local tokens are kept so the user can retry — but if the user
+     * really wants out, we honor it after 3 failed retries.
+     */
     fun logOut() {
         viewModelScope.launch {
             val user = _currentUser.value
             if (user != null) {
-                repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
+                repository.addSyncLog("Сессия пользователя завершается...", "SYSTEM_SYNC")
                 // Clear sensitive data to prevent unauthorized access
                 if (user.role == "PATIENT") {
                     repository.clearSensitiveDataForPatient(user.phone)
                 }
             }
-            
+
             // Gracefully stop live web sockets first
             try {
                 wsClient.stop()
@@ -206,8 +220,20 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 e.printStackTrace()
             }
 
-            // Flush credentials from device storage
-            authRepository.logout()
+            // M1/E3.3: server-side logout with refresh-token invalidation
+            val result = authRepository.logout()
+            result.onFailure { error ->
+                // Network failure — log but still clear local state so user is not stuck
+                repository.addSyncLog(
+                    "⚠️ Сервер недоступен при выходе (${error.localizedMessage}). Локальная сессия очищена.",
+                    "SYSTEM_SYNC"
+                )
+                // Force-clear local session even though server call failed
+                sessionManager.clearSession()
+                com.aistudio.clinicsystem.data.api.ApiClient.tokenProvider = { null }
+            }.onSuccess {
+                repository.addSyncLog("Сессия пользователя успешно завершена на сервере.", "SYSTEM_SYNC")
+            }
 
             _currentUser.value = null
         }
