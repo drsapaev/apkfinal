@@ -7,6 +7,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * M2 repository cleanup: ClinicRepository now uses MobileApiService for
+ * patient-facing operations (book appointment, get profile, get lab results)
+ * and keeps ApiService for staff-facing operations (get all appointments,
+ * get queue, update appointment status, create medical record).
+ *
+ * TODO (Hilt): when DI is introduced, both services should be constructor
+ * parameters instead of read from ApiClient singleton.
+ */
 class ClinicRepository(private val database: ClinicDatabase) {
     private val userDao = database.userDao()
     private val appointmentDao = database.appointmentDao()
@@ -14,6 +23,11 @@ class ClinicRepository(private val database: ClinicDatabase) {
     private val syncLogDao = database.syncLogDao()
     private val pendingSyncDao = database.pendingSyncDao()
     private val queueSnapshotDao = database.queueSnapshotDao()
+
+    // M2: MobileApiService for patient-facing /mobile/* endpoints
+    private val mobileApiService: MobileApiService = ApiClient.mobileService
+    // Legacy ApiService for staff-facing endpoints (not yet in /mobile/*)
+    private val legacyApiService: ApiService = ApiClient.service
 
     // Expose flows to the ViewModel
     val allUsers: Flow<List<UserEntity>> = userDao.getAllUsersFlow()
@@ -244,7 +258,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     "CREATE_APPOINTMENT" -> {
                         val dto = appointmentAdapter.fromJson(sync.payload)
                         if (dto != null) {
-                            val response = ApiClient.service.createAppointment(dto)
+                            val response = legacyApiService.createAppointment(dto)
                             if (response.isSuccessful && response.body() != null) {
                                 val saved = response.body()!!
                                 val existingWithReqId = appointmentDao.getAppointmentByClientRequestId(sync.clientRequestId)
@@ -266,7 +280,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                             val status = parts[1]
                             val notes = if (parts.size == 3) parts[2] else ""
                             if (id != null) {
-                                val response = ApiClient.service.updateAppointmentStatus(id, status, notes)
+                                val response = legacyApiService.updateAppointmentStatus(id, status, notes)
                                 if (response.isSuccessful) {
                                     pendingSyncDao.deletePendingSync(sync)
                                     successCount++
@@ -278,7 +292,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     "CREATE_MEDICAL_RECORD" -> {
                         val dto = medicalRecordAdapter.fromJson(sync.payload)
                         if (dto != null) {
-                            val response = ApiClient.service.createMedicalRecord(dto)
+                            val response = legacyApiService.createMedicalRecord(dto)
                             if (response.isSuccessful) {
                                 pendingSyncDao.deletePendingSync(sync)
                                 successCount++
@@ -349,7 +363,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
         pendingSyncDao.insertPendingSync(syncRecord)
 
         try {
-            val response = ApiClient.service.createAppointment(dto)
+            val response = legacyApiService.createAppointment(dto)
             if (response.isSuccessful && response.body() != null) {
                 val saved = response.body()!!
                 pendingSyncDao.deletePendingSync(syncRecord)
@@ -400,7 +414,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
         pendingSyncDao.insertPendingSync(syncRecord)
 
         try {
-            val response = ApiClient.service.updateAppointmentStatus(
+            val response = legacyApiService.updateAppointmentStatus(
                 id = id, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
             )
             if (response.isSuccessful) {
@@ -448,7 +462,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
         pendingSyncDao.insertPendingSync(syncRecord)
 
         try {
-            val response = ApiClient.service.createMedicalRecord(dto)
+            val response = legacyApiService.createMedicalRecord(dto)
             if (response.isSuccessful) {
                 pendingSyncDao.deletePendingSync(syncRecord)
                 addSyncLog("🟢 API [POST /api/v1/patients/records]: Запись медкарты успешно синхронизирована с сервером.", "CLOUD_SYNC_SIMULATOR")
@@ -468,7 +482,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
     ): List<MedicalRecordEntity> {
         addSyncLog("🛰️ CONNECTING to API: GET /api/v1/patients/records/$phone", "CLOUD_SYNC_SIMULATOR")
         try {
-            val response = ApiClient.service.getMedicalRecordsForPatient(phone)
+            val response = legacyApiService.getMedicalRecordsForPatient(phone)
             if (response.isSuccessful && response.body() != null) {
                 val reports = response.body()!!
                 addSyncLog("✓ УСПЕШНЫЙ ЗАПРОС: Импортировано ${reports.size} записей медкарт с сервера final.", "CLOUD_SYNC_SIMULATOR")
@@ -510,16 +524,16 @@ class ClinicRepository(private val database: ClinicDatabase) {
         }
 
         try {
-            // Check Profile
-            addSyncLog("🛰️ GET /api/v1/users/me (Проверка аутентификации сессии)", "CLOUD_SYNC_SIMULATOR")
-            val userResponse = ApiClient.service.getProfile()
+            // M2: migrated profile check to MobileApiService (canonical /authentication/profile)
+            addSyncLog("🛰️ GET /api/v1/authentication/profile (Проверка аутентификации сессии)", "CLOUD_SYNC_SIMULATOR")
+            val userResponse = mobileApiService.getProfile()
             if (userResponse.isSuccessful && userResponse.body() != null) {
                 addSyncLog("✓ Сессия подтверждена.", "CLOUD_SYNC_SIMULATOR")
             }
 
             // Sync Active Queue Status
             addSyncLog("🛰️ GET /api/v1/queue (Запрос текущей живой очереди клиники)", "CLOUD_SYNC_SIMULATOR")
-            val queueResponse = ApiClient.service.getQueue()
+            val queueResponse = legacyApiService.getQueue()
             if (queueResponse.isSuccessful && queueResponse.body() != null) {
                 val queueList = queueResponse.body()!!
                 addSyncLog("✓ Активная очередь: ${queueList.size} пациент(ов) в кабинетах ожидания.", "CLOUD_SYNC_SIMULATOR")
@@ -549,7 +563,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
             com.aistudio.clinicsystem.utils.SyncMetricsManager.updateClinicId(clinicId)
 
             addSyncLog("🛰️ GET /api/v1/appointments (Синхронизация записей на прием) [Delta: ${sinceParam != null}]", "CLOUD_SYNC_SIMULATOR")
-            val appointmentsResponse = ApiClient.service.getAppointments(since = sinceParam, clinicId = clinicId)
+            val appointmentsResponse = legacyApiService.getAppointments(since = sinceParam, clinicId = clinicId)
             if (appointmentsResponse.isSuccessful && appointmentsResponse.body() != null) {
                 val serverList = appointmentsResponse.body()!!
                 addSyncLog("✓ Успешно получено ${serverList.size} записей с сервера.", "CLOUD_SYNC_SIMULATOR")
@@ -588,5 +602,121 @@ class ClinicRepository(private val database: ClinicDatabase) {
             com.aistudio.clinicsystem.utils.SyncMetricsManager.recordFailure()
         }
         return false
+    }
+
+    /**
+     * M2: registers a patient in the live queue via POST /api/v1/queue/register.
+     * Staff-facing operation — uses legacy ApiService (not in the mobile API contract).
+     */
+    suspend fun registerInQueue(appointmentId: Int): retrofit2.Response<QueueDto> {
+        return legacyApiService.registerInQueue(appointmentId = appointmentId)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // M2/E5.3: NetworkBoundResource usage
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * M2/E5.3: Observes appointments with offline-first sync using
+     * [networkBoundResource].
+     *
+     * Flow:
+     *   1. Emit cached appointments from Room immediately (Loading state)
+     *   2. Fetch from backend via MobileApiService.getUpcomingAppointments()
+     *   3. Save results to Room (Single Source of Truth)
+     *   4. Emit updated Room data (Success state)
+     *   5. On network failure, emit Error with cached data still available
+     *
+     * ViewModels collect this Flow and render UI based on Resource state.
+     */
+    fun observeAppointmentsWithSync(
+        patientPhone: String
+    ): Flow<Resource<List<AppointmentEntity>>> {
+        return networkBoundResource(
+            query = {
+                appointmentDao.getAppointmentsByPatientFlow(patientPhone)
+            },
+            fetch = {
+                // Network call — returns DTOs from /mobile/appointments/upcoming
+                mobileApiService.getUpcomingAppointments()
+            },
+            saveFetchResult = { response ->
+                // Save network results to Room (SSOT)
+                if (response.isSuccessful && response.body() != null) {
+                    val serverList = response.body()!!
+                    for (dto in serverList) {
+                        val entity = AppointmentEntity(
+                            id = dto.id,
+                            patientPhone = patientPhone,
+                            patientName = "",
+                            doctorName = dto.doctorName ?: "",
+                            specialty = dto.specialty ?: "",
+                            date = dto.date,
+                            time = dto.time,
+                            status = dto.status,
+                            reason = dto.reason ?: "",
+                            notes = dto.notes ?: "",
+                            clinicId = dto.clinicId
+                        )
+                        appointmentDao.insertAppointment(entity)
+                    }
+                    addSyncLog("✓ NBR: Synced ${serverList.size} appointments from server", "SYSTEM_SYNC")
+                }
+            },
+            shouldFetch = { cachedData ->
+                // Fetch from network only if cache is empty or we haven't synced recently
+                cachedData.isEmpty() ||
+                    com.aistudio.clinicsystem.utils.SyncMetricsManager.metrics.value.lastSyncTime <
+                        (System.currentTimeMillis() - 5 * 60 * 1000) // 5 min staleness
+            },
+            onFetchFailed = { throwable ->
+                addSyncLog("⚠️ NBR: Appointment fetch failed: ${throwable.message}", "SYSTEM_SYNC")
+            }
+        )
+    }
+
+    /**
+     * M2/E5.3: Observes medical records with offline-first sync.
+     *
+     * Same pattern as [observeAppointmentsWithSync] but for medical records.
+     */
+    fun observeMedicalRecordsWithSync(
+        patientPhone: String
+    ): Flow<Resource<List<MedicalRecordEntity>>> {
+        return networkBoundResource(
+            query = {
+                medicalRecordDao.getRecordsByPatientFlow(patientPhone)
+            },
+            fetch = {
+                mobileApiService.getLabResults()
+            },
+            saveFetchResult = { response ->
+                if (response.isSuccessful && response.body() != null) {
+                    val serverList = response.body()!!
+                    for (dto in serverList) {
+                        val entity = MedicalRecordEntity(
+                            id = dto.id,
+                            patientPhone = patientPhone,
+                            doctorName = dto.doctorName ?: "",
+                            diagnosis = dto.testName,
+                            prescription = "",
+                            visitDate = dto.performedAt ?: "",
+                            recommendations = dto.referenceRange ?: ""
+                        )
+                        val existing = getMedicalRecordById(entity.id)
+                        if (existing == null) {
+                            insertMedicalRecord(entity)
+                        }
+                    }
+                    addSyncLog("✓ NBR: Synced ${serverList.size} medical records from server", "SYSTEM_SYNC")
+                }
+            },
+            shouldFetch = { cachedData ->
+                cachedData.isEmpty()
+            },
+            onFetchFailed = { throwable ->
+                addSyncLog("⚠️ NBR: Medical records fetch failed: ${throwable.message}", "SYSTEM_SYNC")
+            }
+        )
     }
 }
