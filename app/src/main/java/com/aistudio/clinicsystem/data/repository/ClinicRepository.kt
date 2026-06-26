@@ -611,4 +611,112 @@ class ClinicRepository(private val database: ClinicDatabase) {
     suspend fun registerInQueue(appointmentId: Int): retrofit2.Response<QueueDto> {
         return legacyApiService.registerInQueue(appointmentId = appointmentId)
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // M2/E5.3: NetworkBoundResource usage
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * M2/E5.3: Observes appointments with offline-first sync using
+     * [networkBoundResource].
+     *
+     * Flow:
+     *   1. Emit cached appointments from Room immediately (Loading state)
+     *   2. Fetch from backend via MobileApiService.getUpcomingAppointments()
+     *   3. Save results to Room (Single Source of Truth)
+     *   4. Emit updated Room data (Success state)
+     *   5. On network failure, emit Error with cached data still available
+     *
+     * ViewModels collect this Flow and render UI based on Resource state.
+     */
+    fun observeAppointmentsWithSync(
+        patientPhone: String
+    ): Flow<Resource<List<AppointmentEntity>>> {
+        return networkBoundResource(
+            query = {
+                appointmentDao.getAppointmentsByPatientFlow(patientPhone)
+            },
+            fetch = {
+                // Network call — returns DTOs from /mobile/appointments/upcoming
+                mobileApiService.getUpcomingAppointments()
+            },
+            saveFetchResult = { response ->
+                // Save network results to Room (SSOT)
+                if (response.isSuccessful && response.body() != null) {
+                    val serverList = response.body()!!
+                    for (dto in serverList) {
+                        val entity = AppointmentEntity(
+                            id = dto.id,
+                            patientPhone = patientPhone,
+                            patientName = "",
+                            doctorName = dto.doctorName ?: "",
+                            specialty = dto.specialty ?: "",
+                            date = dto.date,
+                            time = dto.time,
+                            status = dto.status,
+                            reason = dto.reason ?: "",
+                            notes = dto.notes ?: "",
+                            clinicId = dto.clinicId
+                        )
+                        appointmentDao.insertAppointment(entity)
+                    }
+                    addSyncLog("✓ NBR: Synced ${serverList.size} appointments from server", "SYSTEM_SYNC")
+                }
+            },
+            shouldFetch = { cachedData ->
+                // Fetch from network only if cache is empty or we haven't synced recently
+                cachedData.isEmpty() ||
+                    com.aistudio.clinicsystem.utils.SyncMetricsManager.metrics.value.lastSyncTime <
+                        (System.currentTimeMillis() - 5 * 60 * 1000) // 5 min staleness
+            },
+            onFetchFailed = { throwable ->
+                addSyncLog("⚠️ NBR: Appointment fetch failed: ${throwable.message}", "SYSTEM_SYNC")
+            }
+        )
+    }
+
+    /**
+     * M2/E5.3: Observes medical records with offline-first sync.
+     *
+     * Same pattern as [observeAppointmentsWithSync] but for medical records.
+     */
+    fun observeMedicalRecordsWithSync(
+        patientPhone: String
+    ): Flow<Resource<List<MedicalRecordEntity>>> {
+        return networkBoundResource(
+            query = {
+                medicalRecordDao.getRecordsByPatientFlow(patientPhone)
+            },
+            fetch = {
+                mobileApiService.getLabResults()
+            },
+            saveFetchResult = { response ->
+                if (response.isSuccessful && response.body() != null) {
+                    val serverList = response.body()!!
+                    for (dto in serverList) {
+                        val entity = MedicalRecordEntity(
+                            id = dto.id,
+                            patientPhone = patientPhone,
+                            doctorName = dto.doctorName ?: "",
+                            diagnosis = dto.testName,
+                            prescription = "",
+                            visitDate = dto.performedAt ?: "",
+                            recommendations = dto.referenceRange ?: ""
+                        )
+                        val existing = getMedicalRecordById(entity.id)
+                        if (existing == null) {
+                            insertMedicalRecord(entity)
+                        }
+                    }
+                    addSyncLog("✓ NBR: Synced ${serverList.size} medical records from server", "SYSTEM_SYNC")
+                }
+            },
+            shouldFetch = { cachedData ->
+                cachedData.isEmpty()
+            },
+            onFetchFailed = { throwable ->
+                addSyncLog("⚠️ NBR: Medical records fetch failed: ${throwable.message}", "SYSTEM_SYNC")
+            }
+        )
+    }
 }
