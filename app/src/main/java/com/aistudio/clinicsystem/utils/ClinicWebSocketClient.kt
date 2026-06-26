@@ -102,14 +102,29 @@ class ClinicWebSocketClient(
                 Log.w("WS_CLIENT", "Ignoring onOpen from old or mismatched WebSocket instance.")
                 return
             }
-            Log.i("WS_CLIENT", "WebSocket successfully connected.")
+            Log.i("WS_CLIENT", "WebSocket successfully connected to ${response.request.url}")
             loggedError = false
             reconnectAttempt = 0 // Reset exponential backoff on successful connect
             com.aistudio.clinicsystem.utils.SyncMetricsManager.updateWsState("CONNECTED")
+
+            // M1/E3.6: send subscribe handshake so the backend starts pushing
+            // queue updates for this user. The backend's /ws/queue endpoint
+            // expects a JSON message of the form:
+            //   {"type": "subscribe", "channel": "my_queue"}
+            // to begin streaming updates. Without this handshake, the socket
+            // is open but no messages will arrive.
+            val subscribeMsg = """{"type":"subscribe","channel":"my_queue"}"""
+            try {
+                webSocket.send(subscribeMsg)
+                Log.d("WS_CLIENT", "Sent subscribe handshake: $subscribeMsg")
+            } catch (e: Exception) {
+                Log.w("WS_CLIENT", "Failed to send subscribe handshake: ${e.message}")
+            }
+
             scope.launch {
                 database.syncLogDao().insertLog(
                     com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                        logMessage = "🟢 Вебсокет подключен к серверу final API",
+                        logMessage = "🟢 Вебсокет подключен к /ws/queue, отправлен handshake subscribe",
                         direction = "SYSTEM_SYNC"
                     )
                 )

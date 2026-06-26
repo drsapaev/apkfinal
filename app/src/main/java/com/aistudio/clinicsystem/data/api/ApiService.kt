@@ -89,13 +89,20 @@ interface ApiService {
 }
 
 // --- Moshi-Annotated DTOs (Data Transfer Objects) mapping matching JSON payloads ---
+//
+// M1/E3.1: LoginRequest and AuthResponse were moved to MobileApiService.kt
+// (the new LoginRequest supports device_fingerprint + remember_me, and the
+// new LoginResponse supports requires_2fa + pending_2fa_token + refresh_token).
+// The old AuthService.login() returned AuthResponse which had only access_token.
+// Use MobileApiService.login() + LoginResponse for all new auth code.
+//
+// AuthResponse is kept here ONLY because the legacy ApiService.login() method
+// below still references it. Do NOT use it in new code — use LoginResponse.
+// The DTOs below (UserDto, AppointmentDto, MedicalRecordDto, QueueDto) are
+// still used by ClinicRepository for the legacy sync flow. They will be
+// migrated to MobileApiService DTOs in M2.
 
-@JsonClass(generateAdapter = true)
-data class LoginRequest(
-    @Json(name = "username") val username: String,
-    @Json(name = "password") val password: String
-)
-
+@Deprecated("Use LoginResponse from MobileApiService.kt instead. Kept only for legacy ApiService.login().")
 @JsonClass(generateAdapter = true)
 data class AuthResponse(
     @Json(name = "access_token") val accessToken: String,
