@@ -105,9 +105,13 @@ class MainActivity : FragmentActivity() {
                             // Role switching without re-authentication is a security ship-blocker.
                             // Real role-based routing is driven by the JWT claims + ClinicViewModel.currentUser.
 
-                            // Database and FastAPI HTTP synchronizer console (sticky at bottom)
-                            // E5.6 (later milestone) will gate this behind BuildConfig.DEBUG.
-                            SyncConsoleView(viewModel = viewModel)
+                            // E5.6: SyncConsoleView is now gated behind BuildConfig.DEBUG.
+                            // Release builds do NOT show the debug sync console — it exposes
+                            // internal sync logs, pending queue state, and security flags
+                            // that should not be visible in production.
+                            if (BuildConfig.DEBUG) {
+                                SyncConsoleView(viewModel = viewModel)
+                            }
                         }
                     }
                 }
