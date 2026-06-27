@@ -250,7 +250,7 @@ abstract class ClinicDatabase : RoomDatabase() {
                 try {
                     System.loadLibrary("sqlcipher")
                 } catch (e: Exception) {
-                    android.util.Log.e("ClinicDatabase", "Failed to load sqlcipher library", e)
+                    timber.log.Timber.e(e, "Failed to load sqlcipher library")
                 }
 
                 // E1.6: if encrypted storage is unavailable, getOrCreateDatabaseKey
@@ -269,16 +269,28 @@ abstract class ClinicDatabase : RoomDatabase() {
                     "clinic_database"
                 )
                 .openHelperFactory(factory)
+                // Stage 4.2 (PERF-9 fix): enable WAL (Write-Ahead Logging).
+                // Without WAL, SQLite uses rollback journaling — readers block
+                // writers and vice versa. With WAL, reads and writes can proceed
+                // concurrently on different connections, which prevents UI
+                // jank when SyncWorker writes in the background while the UI
+                // is reading appointments.
+                //
+                // SQLCipher 4.5.4 supports WAL; verify with
+                // `adb shell sqlite3 /data/data/.../databases/clinic_database
+                //   "PRAGMA journal_mode;"` after first open — should print "wal".
+                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 // M1/E4.2: fallbackToDestructiveMigration() was removed.
                 // Future schema changes MUST be accompanied by an explicit
                 // Migration object (see Migrations.kt). If a migration is
                 // missing, Room will throw IllegalStateException on upgrade
                 // rather than silently wiping user data.
                 //
-                // We DO allow destructive fallback on DOWNGRADE — that's
-                // safe (e.g. user installed a beta build then rolled back).
-                .fallbackToDestructiveMigrationOnDowngrade()
-                // M1/E4.3: register known migrations (currently just 4→5 template).
+                // Stage 3.1: also removed fallbackToDestructiveMigrationOnDowngrade
+                // — for a medical app, even downgrade data loss is unacceptable.
+                // On downgrade, Room will throw IllegalStateException; the user
+                // must re-install the correct version.
+                // M1/E4.3: register known migrations.
                 .addMigrations(*Migrations.ALL)
                 .build()
                 INSTANCE = instance

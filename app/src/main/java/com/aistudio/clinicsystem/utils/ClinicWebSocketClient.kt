@@ -1,8 +1,8 @@
 package com.aistudio.clinicsystem.utils
 
 import android.content.Context
-import android.util.Log
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
+import timber.log.Timber
 import com.aistudio.clinicsystem.data.db.AppointmentEntity
 import com.aistudio.clinicsystem.data.db.MedicalRecordEntity
 import com.aistudio.clinicsystem.data.api.ApiClient
@@ -102,10 +102,10 @@ class ClinicWebSocketClient(
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
             if (webSocket != this@ClinicWebSocketClient.webSocket) {
-                Log.w("WS_CLIENT", "Ignoring onOpen from old or mismatched WebSocket instance.")
+                Timber.w("Ignoring onOpen from old or mismatched WebSocket instance.")
                 return
             }
-            Log.i("WS_CLIENT", "WebSocket successfully connected to ${response.request.url}")
+            Timber.i("WebSocket successfully connected to ${response.request.url}")
             loggedError = false
             reconnectAttempt = 0 // Reset exponential backoff on successful connect
             com.aistudio.clinicsystem.utils.SyncMetricsManager.updateWsState("CONNECTED")
@@ -119,9 +119,9 @@ class ClinicWebSocketClient(
             val subscribeMsg = """{"type":"subscribe","channel":"my_queue"}"""
             try {
                 webSocket.send(subscribeMsg)
-                Log.d("WS_CLIENT", "Sent subscribe handshake: $subscribeMsg")
+                Timber.d("Sent subscribe handshake: $subscribeMsg")
             } catch (e: Exception) {
-                Log.w("WS_CLIENT", "Failed to send subscribe handshake: ${e.message}")
+                Timber.w("Failed to send subscribe handshake: ${e.message}")
             }
 
             scope.launch {
@@ -136,27 +136,27 @@ class ClinicWebSocketClient(
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             if (webSocket != this@ClinicWebSocketClient.webSocket) {
-                Log.w("WS_CLIENT", "Ignoring onMessage from old or mismatched WebSocket instance.")
+                Timber.w("Ignoring onMessage from old or mismatched WebSocket instance.")
                 return
             }
-            Log.d("WS_CLIENT", "Received message text: $text")
+            Timber.d("Received message text: $text")
             handleSocketMessage(text)
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
             if (webSocket != this@ClinicWebSocketClient.webSocket) return
-            Log.d("WS_CLIENT", "Received message bytes")
+            Timber.d("Received message bytes")
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
             if (webSocket != this@ClinicWebSocketClient.webSocket) return
-            Log.w("WS_CLIENT", "WebSocket closing: $code / $reason")
+            Timber.w("WebSocket closing: $code / $reason")
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            Log.w("WS_CLIENT", "WebSocket closed: $code / $reason")
+            Timber.w("WebSocket closed: $code / $reason")
             if (webSocket != this@ClinicWebSocketClient.webSocket) {
-                Log.w("WS_CLIENT", "Ignoring onClosed from old or mismatched WebSocket instance.")
+                Timber.w("Ignoring onClosed from old or mismatched WebSocket instance.")
                 return
             }
             com.aistudio.clinicsystem.utils.SyncMetricsManager.updateWsState("DISCONNECTED")
@@ -164,9 +164,9 @@ class ClinicWebSocketClient(
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            Log.e("WS_CLIENT", "WebSocket failure: ${t.message}", t)
+            Timber.e(t, "WebSocket failure: ${t.message}")
             if (webSocket != this@ClinicWebSocketClient.webSocket) {
-                Log.w("WS_CLIENT", "Ignoring onFailure from old or mismatched WebSocket instance.")
+                Timber.w("Ignoring onFailure from old or mismatched WebSocket instance.")
                 return
             }
             com.aistudio.clinicsystem.utils.SyncMetricsManager.updateWsState("DISCONNECTED")
@@ -194,7 +194,7 @@ class ClinicWebSocketClient(
                 val jitter = (Math.random() * 1000).toLong()
                 delay(backoff + jitter)
                 reconnectAttempt++
-                Log.w("WS_CLIENT", "Attempting websocket reconnect... retry $reconnectAttempt after ${backoff + jitter}ms")
+                Timber.w("Attempting websocket reconnect... retry $reconnectAttempt after ${backoff + jitter}ms")
                 start(forceReconnect = true)
             }
         }
@@ -211,7 +211,7 @@ class ClinicWebSocketClient(
                 
                 if (eventType.isNullOrEmpty()) return@launch
 
-                Log.i("WS_CLIENT", "Broadcasting backend event: $eventType")
+                Timber.i("Broadcasting backend event: $eventType")
 
                 when (eventType) {
                     "APPOINTMENT_STATUS" -> {
@@ -341,7 +341,7 @@ class ClinicWebSocketClient(
                         val adapter = moshi.adapter(QueueUpdateEvent::class.java)
                         val event = adapter.fromJson(json)
                         val activeQueueList = event?.data?.queue ?: emptyList()
-                        Log.i("WS_CLIENT", "Queue length: ${activeQueueList.size}")
+                        Timber.i("Queue length: ${activeQueueList.size}")
 
                         // Clear and store real-time queue snapshots inside the Room cache
                         database.queueSnapshotDao().clearQueueSnapshots()
@@ -367,7 +367,7 @@ class ClinicWebSocketClient(
                     }
                 }
             } catch (e: Exception) {
-                Log.e("WS_CLIENT", "Failed processing event payload: ${e.message}", e)
+                Timber.e(e, "Failed processing event payload: ${e.message}")
             }
         }
     }

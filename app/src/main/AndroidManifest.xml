@@ -17,6 +17,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication"
         android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- Stage 4.5 (C-8 fix): Privacy Policy URL — used by Play Console
+             Data Safety form and in-app Settings → Privacy screen.
+             The actual URL MUST be set via gradle property `clinic.privacyPolicyUrl`
+             at release build time (CI secret). -->
+        <meta-data
+            android:name="com.aistudio.clinicsystem.PRIVACY_POLICY_URL"
+            android:value="${privacyPolicyUrl}" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

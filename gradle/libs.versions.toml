@@ -27,6 +27,12 @@ hilt = "2.51.1"
 hiltNavigationCompose = "1.2.0"
 hiltWork = "1.2.0"
 hiltCompiler = "1.2.0"
+
+# Stage 4.1: Timber — logger with BuildConfig.DEBUG gating
+timber = "5.0.1"
+
+# Stage 4.6: Play Integrity API
+playIntegrity = "1.4.0"
 navigationCompose = "2.9.0"
 roomRuntime = "2.7.0"
 roomKtx = "2.7.0"
@@ -133,6 +139,12 @@ hilt-compiler-androidx = { group = "androidx.hilt", name = "hilt-compiler", vers
 
 # Stage 2.9: ProcessLifecycleOwner for WebSocket lifecycle
 lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleRuntimeKtx" }
+
+# Stage 4.1: Timber logger
+timber-lib = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+
+# Stage 4.6: Play Integrity API
+play-integrity = { group = "com.google.android.play", name = "integrity", version.ref = "playIntegrity" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

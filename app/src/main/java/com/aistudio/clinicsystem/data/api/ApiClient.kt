@@ -73,13 +73,29 @@ class ApiClient @javax.inject.Inject constructor(
             .addInterceptor(idempotencyInterceptor)
             .authenticator(tokenAuthenticator)
             .apply {
-                // Stage 4.1 will gate this with Timber; for now use BuildConfig.DEBUG.
+                // Stage 4.3 (H-3 build fix): Certificate Pinning.
+                // No-op in debug builds (no pins configured); active in
+                // release builds where `clinic.certPin1` is set via CI secret.
+                CertificatePinningConfig.buildPinner()?.let { pinner ->
+                    certificatePinner(pinner)
+                }
+
+                // Stage 4.1 (NET-16 fix): HTTP logging in DEBUG only.
+                // Authorization + Cookie headers are redacted (never logged).
+                // In release builds, no HTTP logging interceptor is attached
+                // at all — PHI in request/response bodies never reaches Logcat.
                 if (com.aistudio.clinicsystem.BuildConfig.DEBUG) {
                     val loggingInterceptor = HttpLoggingInterceptor().apply {
-                        // Stage 4.1 will redact Authorization; for now BODY in debug only.
                         level = HttpLoggingInterceptor.Level.BODY
                         redactHeader("Authorization")
                         redactHeader("Cookie")
+                        redactHeader("Set-Cookie")
+                        redactHeader("Idempotency-Key")
+                    }
+                    // Route OkHttp logs through Timber so the ReleaseTree
+                    // redaction also applies (defense in depth).
+                    loggingInterceptor.logger = HttpLoggingInterceptor.Logger { msg ->
+                        timber.log.Timber.d("HTTP: $msg")
                     }
                     addInterceptor(loggingInterceptor)
                 }

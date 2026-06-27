@@ -359,6 +359,31 @@ private fun AuthScreenContent(
             val fragmentActivity = context as? FragmentActivity
             if (fragmentActivity != null) {
                 val executor = ContextCompat.getMainExecutor(fragmentActivity)
+
+                // Stage 4.4 (C-7 final fix): use TWO-ARG authenticate() with
+                // a CryptoObject. The previous one-arg form was security
+                // theater — biometric "success" simply unlocked use of an
+                // already-stored JWT. Now biometric success unlocks the
+                // Cipher that decrypts the refresh token.
+                //
+                // The CryptoObject is created from a keystore key with
+                // setUserAuthenticationRequired(true) — without biometric,
+                // the Cipher cannot be used.
+                val cryptoObject = com.aistudio.clinicsystem.utils.BiometricCryptoHelper
+                    .createDecryptionCryptoObjectForLogin(context)
+
+                if (cryptoObject == null) {
+                    // No biometric key enrolled, OR key was invalidated by
+                    // new fingerprint enrollment. Fall back to password login.
+                    Toast.makeText(
+                        context,
+                        "Биометрический ключ недоступен. Войдите по паролю.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    showVerificationDialog = false
+                    return@LaunchedEffect
+                }
+
                 val biometricPrompt = BiometricPrompt(
                     fragmentActivity,
                     executor,
@@ -372,7 +397,11 @@ private fun AuthScreenContent(
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                             super.onAuthenticationSucceeded(result)
                             showVerificationDialog = false
-                            viewModel.loginWithBiometrics(selectedBioUserPhone)
+                            // Stage 4.4: the CryptoObject's Cipher is now
+                            // unlocked. The ViewModel will use it to decrypt
+                            // the stored refresh token.
+                            val cipher = result.cryptoObject?.cipher
+                            viewModel.loginWithBiometrics(selectedBioUserPhone, cipher)
                         }
 
                         override fun onAuthenticationFailed() {
@@ -384,10 +413,14 @@ private fun AuthScreenContent(
                 val promptInfo = BiometricPrompt.PromptInfo.Builder()
                     .setTitle("Вход по биометрии")
                     .setSubtitle("Приложите палец для подтверждения входа")
+                    // Stage 4.4: BIOMETRIC_STRONG only — Class 3 biometrics
+                    // required to unlock the keystore key.
+                    .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
                     .setNegativeButtonText("Отмена")
                     .build()
 
-                biometricPrompt.authenticate(promptInfo)
+                // Stage 4.4: two-arg authenticate with CryptoObject.
+                biometricPrompt.authenticate(promptInfo, cryptoObject)
             } else {
                 Toast.makeText(context, "Ошибка: требуется FragmentActivity", Toast.LENGTH_SHORT).show()
                 showVerificationDialog = false

@@ -65,6 +65,11 @@ class ClinicSystemApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
 
+        // Stage 4.1 (C-4 final): plant Timber trees BEFORE anything else
+        // logs. Debug → DebugTree (full logging); Release → ReleaseTree
+        // (WARN/ERROR only, PHI redacted).
+        com.aistudio.clinicsystem.utils.initTimber()
+
         // 1. Restore session — async verify cached tokens against backend.
         sessionRepository.restoreSession(authRepository)
 

@@ -36,6 +36,16 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Stage 4.5 (C-8 fix): Privacy Policy URL placeholder.
+        // Substituted into AndroidManifest via ${privacyPolicyUrl}.
+        // Default is a placeholder; release builds MUST override via
+        // `clinic.privacyPolicyUrl` gradle property (CI secret).
+        val privacyUrl = (project.findProperty("clinic.privacyUrl") as? String)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "https://clinic.tld/privacy"
+        manifestPlaceholders["privacyPolicyUrl"] = privacyUrl
     }
 
     signingConfigs {
@@ -118,6 +128,22 @@ android {
             buildConfigField("String", "BASE_URL", "\"$prodBaseUrl\"")
             buildConfigField("String", "BACKEND_URL", "\"$prodBaseUrl\"")
             buildConfigField("String", "WEBSOCKET_URL", "\"$prodWsUrl\"")
+
+            // Stage 4.3 (H-3 build fix): Certificate Pinning.
+            // Pins are SHA-256 hashes of the server's public key.
+            // Read from gradle properties `clinic.certPin1` (current key)
+            // and `clinic.certPin2` (backup for next rotation).
+            // If unset, NO pins are configured (development mode — debug
+            // builds against 10.0.2.2 don't need pinning). Release builds
+            // MUST set the pins via CI secrets.
+            val certPin1 = (project.findProperty("clinic.certPin1") as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() } ?: "UNSET"
+            val certPin2 = (project.findProperty("clinic.certPin2") as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() } ?: "UNSET"
+            buildConfigField("String", "CERT_PIN_PRIMARY", "\"$certPin1\"")
+            buildConfigField("String", "CERT_PIN_BACKUP", "\"$certPin2\"")
         }
         debug {
             // Stage 1.5: no custom signingConfig — AGP auto-creates a debug
@@ -230,8 +256,13 @@ dependencies {
     implementation(libs.okhttp)
     // implementation(libs.play.services.location)
     implementation(libs.retrofit)
-    implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
-    implementation("net.zetetic:sqlcipher-android:4.5.4")
+    // Stage 4.9 (M-4 build fix): upgraded to stable versions with 16KB
+    // page-size alignment support (required for Android 15+ devices with
+    // 16KB kernels — Play Store requirement for new apps targeting SDK 36).
+    //   - security-crypto 1.1.0 stable (was 1.1.0-alpha06)
+    //   - sqlcipher-android 4.6.0 (was 4.5.4 — added 16KB alignment)
+    implementation("androidx.security:security-crypto-ktx:1.1.0")
+    implementation("net.zetetic:sqlcipher-android:4.6.0")
 
     // Stage 2.1: Hilt DI
     implementation(libs.hilt.android)
@@ -241,6 +272,15 @@ dependencies {
     // Stage 2.5: Hilt Work — inject SyncWorker dependencies
     implementation(libs.hilt.work)
     "ksp"(libs.hilt.compiler.androidx)
+
+    // Stage 4.1: Timber — logger with BuildConfig.DEBUG gating.
+    // Release builds plant a ReleaseTree that drops DEBUG/INFO logs and
+    // strips PHI from WARN/ERROR logs (C-4 final fix).
+    implementation(libs.timber.lib)
+
+    // Stage 4.6: Play Integrity API — attest device integrity at login
+    // and on sensitive operations (create medical record).
+    implementation(libs.play.integrity)
 
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.core)

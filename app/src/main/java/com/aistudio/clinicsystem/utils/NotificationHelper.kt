@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.aistudio.clinicsystem.MainActivity
+import com.aistudio.clinicsystem.R
 
 object NotificationHelper {
     private const val APPOINTMENT_CHANNEL_ID = "clinic_appointment_channel"
@@ -73,14 +74,27 @@ object NotificationHelper {
         }
 
         val builder = NotificationCompat.Builder(context, APPOINTMENT_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Fallback standard system drawable icon
+            // Stage 4.7 (UI-34 fix): branded monochrome icon instead of
+            // android.R.drawable.ic_dialog_info (generic system bubble).
+            .setSmallIcon(R.drawable.ic_notification_appointment)
             .setContentTitle(title)
             .setContentText(statusText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(statusText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            // Stage 4.7: VISIBILITY_PRIVATE — on lock screen, only the
+            // public version ("Новое уведомление от клиники") is shown,
+            // NOT the patient name or appointment details.
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(
+                NotificationCompat.Builder(context, APPOINTMENT_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification_appointment)
+                    .setContentTitle("Новое уведомление от клиники")
+                    .setContentText("Откройте приложение для просмотра")
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .build()
+            )
 
         with(NotificationManagerCompat.from(context)) {
             try {
@@ -111,14 +125,26 @@ object NotificationHelper {
         val contentText = "В вашей медицинской карте появилась новая запись врача. Ознакомьтесь с назначениями и скачайте отчёт в личном кабинете."
 
         val builder = NotificationCompat.Builder(context, MEDICAL_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_agenda) // Fallback list/agenda icon
+            // Stage 4.7 (UI-34 fix): branded clipboard icon instead of
+            // android.R.drawable.ic_menu_agenda (generic system list icon).
+            .setSmallIcon(R.drawable.ic_notification_medical)
             .setContentTitle("Новая запись в медкарте! 📋")
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            // Stage 4.7: VISIBILITY_PRIVATE — on lock screen, only the
+            // public version is shown, NOT the diagnosis or prescription.
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(
+                NotificationCompat.Builder(context, MEDICAL_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification_medical)
+                    .setContentTitle("Новое уведомление от клиники")
+                    .setContentText("Откройте приложение для просмотра")
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .build()
+            )
 
         with(NotificationManagerCompat.from(context)) {
             try {
