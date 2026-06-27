@@ -114,7 +114,7 @@ class MigrationTest {
         kotlinx.coroutines.runBlocking {
             db.appointmentDao().insertAppointment(
                 AppointmentEntity(
-                    id = 1,
+                    id = "1",
                     patientPhone = "+77771112233",
                     patientName = "Ivan",
                     doctorName = "Dr. Smith",
@@ -139,7 +139,7 @@ class MigrationTest {
             .build()
 
         kotlinx.coroutines.runBlocking {
-            val apt = dbReopened.appointmentDao().getAppointmentById(1)
+            val apt = dbReopened.appointmentDao().getAppointmentById("1")
             assertNotNull("Appointment must survive DB close/reopen", apt)
             assertEquals("PENDING", apt?.status)
         }

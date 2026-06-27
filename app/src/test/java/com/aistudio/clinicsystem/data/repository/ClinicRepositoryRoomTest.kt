@@ -56,7 +56,7 @@ class ClinicRepositoryRoomTest {
     @Test
     fun `insertAppointment saves to Room`() = runBlocking {
         val appointment = AppointmentEntity(
-            id = 1, patientPhone = "+77771112233", patientName = "Test",
+            id = "1", patientPhone = "+77771112233", patientName = "Test",
             doctorName = "Dr. Smith", specialty = "Cardiology",
             date = "2026-07-01", time = "10:00", status = "PENDING",
             reason = "Checkup"
@@ -64,7 +64,7 @@ class ClinicRepositoryRoomTest {
 
         repository.insertAppointment(appointment)
 
-        val saved = repository.getAppointmentById(1)
+        val saved = repository.getAppointmentById("1")
         assertEquals("Dr. Smith", saved?.doctorName)
         assertEquals("PENDING", saved?.status)
     }
@@ -73,17 +73,17 @@ class ClinicRepositoryRoomTest {
     fun `getAppointmentsForPatient returns only patient appointments`() = runBlocking {
         // Insert appointments for 2 different patients
         repository.insertAppointment(AppointmentEntity(
-            id = 1, patientPhone = "+77771112233", patientName = "Patient A",
+            id = "1", patientPhone = "+77771112233", patientName = "Patient A",
             doctorName = "Dr. X", specialty = "S", date = "2026-07-01", time = "10:00",
             status = "PENDING", reason = "R"
         ))
         repository.insertAppointment(AppointmentEntity(
-            id = 2, patientPhone = "+77002223344", patientName = "Patient B",
+            id = "2", patientPhone = "+77002223344", patientName = "Patient B",
             doctorName = "Dr. Y", specialty = "S", date = "2026-07-02", time = "11:00",
             status = "PENDING", reason = "R"
         ))
         repository.insertAppointment(AppointmentEntity(
-            id = 3, patientPhone = "+77771112233", patientName = "Patient A",
+            id = "3", patientPhone = "+77771112233", patientName = "Patient A",
             doctorName = "Dr. Z", specialty = "S", date = "2026-07-03", time = "12:00",
             status = "APPROVED", reason = "R"
         ))
@@ -92,14 +92,14 @@ class ClinicRepositoryRoomTest {
         assertEquals("Should return 2 appointments for Patient A", 2, patientAAppointments.size)
         assertTrue(
             "Should contain IDs 1 and 3",
-            patientAAppointments.map { it.id }.containsAll(listOf(1, 3))
+            patientAAppointments.map { it.id }.containsAll(listOf("1", "3"))
         )
     }
 
     @Test
     fun `updateAppointment changes status`() = runBlocking {
         val appointment = AppointmentEntity(
-            id = 1, patientPhone = "+77771112233", patientName = "Test",
+            id = "1", patientPhone = "+77771112233", patientName = "Test",
             doctorName = "Dr.", specialty = "S", date = "2026-07-01", time = "10:00",
             status = "PENDING", reason = "R"
         )
@@ -108,7 +108,7 @@ class ClinicRepositoryRoomTest {
         val updated = appointment.copy(status = "APPROVED", notes = "Confirmed")
         repository.updateAppointment(updated)
 
-        val saved = repository.getAppointmentById(1)
+        val saved = repository.getAppointmentById("1")
         assertEquals("APPROVED", saved?.status)
         assertEquals("Confirmed", saved?.notes)
     }
@@ -116,27 +116,27 @@ class ClinicRepositoryRoomTest {
     @Test
     fun `deleteAppointment removes from Room`() = runBlocking {
         val appointment = AppointmentEntity(
-            id = 1, patientPhone = "+77771112233", patientName = "Test",
+            id = "1", patientPhone = "+77771112233", patientName = "Test",
             doctorName = "Dr.", specialty = "S", date = "2026-07-01", time = "10:00",
             status = "PENDING", reason = "R"
         )
         repository.insertAppointment(appointment)
 
-        repository.deleteAppointment(1)
+        repository.deleteAppointment("1")
 
-        val saved = repository.getAppointmentById(1)
+        val saved = repository.getAppointmentById("1")
         assertTrue("Appointment should be deleted", saved == null)
     }
 
     @Test
     fun `allAppointments flow emits all appointments`() = runBlocking {
         repository.insertAppointment(AppointmentEntity(
-            id = 1, patientPhone = "+77771112233", patientName = "A",
+            id = "1", patientPhone = "+77771112233", patientName = "A",
             doctorName = "Dr1", specialty = "S", date = "2026-07-01", time = "10:00",
             status = "PENDING", reason = "R"
         ))
         repository.insertAppointment(AppointmentEntity(
-            id = 2, patientPhone = "+77002223344", patientName = "B",
+            id = "2", patientPhone = "+77002223344", patientName = "B",
             doctorName = "Dr2", specialty = "S", date = "2026-07-02", time = "11:00",
             status = "APPROVED", reason = "R"
         ))
@@ -172,12 +172,12 @@ class ClinicRepositoryRoomTest {
     fun `clearSensitiveDataForPatient removes appointments and records`() = runBlocking {
         val phone = "+77771112233"
         repository.insertAppointment(AppointmentEntity(
-            id = 1, patientPhone = phone, patientName = "Test",
+            id = "1", patientPhone = phone, patientName = "Test",
             doctorName = "Dr.", specialty = "S", date = "2026-07-01", time = "10:00",
             status = "PENDING", reason = "R"
         ))
         repository.insertMedicalRecord(com.aistudio.clinicsystem.data.db.MedicalRecordEntity(
-            id = 1, patientPhone = phone, doctorName = "Dr.",
+            id = "1", patientPhone = phone, doctorName = "Dr.",
             diagnosis = "Flu", prescription = "Rest", visitDate = "2026-06-01"
         ))
 

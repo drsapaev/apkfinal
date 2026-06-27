@@ -23,7 +23,7 @@ class Verify2FAUseCaseTest {
     private lateinit var useCase: Verify2FAUseCase
 
     private val testUser = User(
-        id = 1, phone = "+77771112233", fullName = "Test User", role = UserRole.PATIENT
+        id = "1", phone = "+77771112233", fullName = "Test User", role = UserRole.PATIENT
     )
 
     @Before

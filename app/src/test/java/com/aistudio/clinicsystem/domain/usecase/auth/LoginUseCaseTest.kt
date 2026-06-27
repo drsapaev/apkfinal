@@ -24,7 +24,7 @@ class LoginUseCaseTest {
     private lateinit var useCase: LoginUseCase
 
     private val testUser = User(
-        id = 1,
+        id = "1",
         phone = "+77771112233",
         fullName = "Test User",
         role = UserRole.PATIENT

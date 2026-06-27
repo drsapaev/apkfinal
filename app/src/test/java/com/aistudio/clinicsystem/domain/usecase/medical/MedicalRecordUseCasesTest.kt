@@ -21,7 +21,7 @@ class MedicalRecordUseCasesTest {
 
     private val testRecords = listOf(
         MedicalRecord(
-            id = 1, patientPhone = "+77771112233", doctorName = "Dr. Smith",
+            id = "1", patientPhone = "+77771112233", doctorName = "Dr. Smith",
             diagnosis = "Flu", prescription = "Rest", visitDate = "2026-06-01"
         )
     )
