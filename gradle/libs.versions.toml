@@ -154,6 +154,7 @@ roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
-jacoco = { id = "org.jacoco", version.ref = "jacoco" }
+# Stage 0.3: Jacoco is a Gradle CORE plugin (no version, no artifact) — use `jacoco` directly.
+# jacoco = { id = "org.jacoco", version.ref = "jacoco" }  ← WRONG, removed
 # Stage 2.1: Hilt Gradle plugin — applied at top-level (false) + app module (true)
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

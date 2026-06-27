@@ -6,7 +6,8 @@ plugins {
     alias(libs.plugins.secrets)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
-    alias(libs.plugins.jacoco)
+    // Stage 0.3: Jacoco is a Gradle CORE plugin — applied directly, no alias.
+    jacoco
     // Stage 2.1: Hilt DI — replaces manual singleton wiring with @Inject / @Singleton.
     // Uses KSP processor (no kapt — faster, compatible with Kotlin 2.1.x).
     alias(libs.plugins.hilt)
