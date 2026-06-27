@@ -1,0 +1,97 @@
+# Detekt configuration for ClinicSystemMobile.
+# Starts with relaxed rules — existing violations are captured in the
+# baseline file (config/detekt-baseline.xml). New code must not add
+# new violations; CI will fail on new issues.
+
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+complexity:
+  active: true
+  LongMethod:
+    active: true
+    threshold: 120
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 8
+  ComplexCondition:
+    active: true
+    threshold: 5
+  ComplexMethod:
+    active: true
+    threshold: 20
+  TooManyFunctions:
+    active: false
+  LargeClass:
+    active: true
+    threshold: 250
+
+style:
+  active: true
+  WildcardImport:
+    active: false
+  ReturnCount:
+    active: false
+  MagicNumber:
+    active: false
+  ForbiddenComment:
+    active: true
+    values: ['STOPSHIP', 'TODO']
+  MaxLineLength:
+    active: true
+    maxLineLength: 160
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludes: ['**/test/**', '**/androidTest/**']
+  UseDataClass:
+    active: true
+  UtilityClassWithPublicConstructor:
+    active: true
+
+empty-blocks:
+  active: true
+  EmptyFunctionBlock:
+    active: true
+    ignoreOverridden: true
+  EmptyClassBlock:
+    active: true
+
+exceptions:
+  active: true
+  SwallowedException:
+    active: false
+  TooGenericExceptionCaught:
+    active: false
+  TooGenericExceptionThrown:
+    active: true
+    excludes: ['**/test/**', '**/androidTest/**']
+
+potential-bugs:
+  active: true
+  UnsafeCallOnNullableType:
+    active: true
+  EqualsAlwaysReturnsTrueOrFalse:
+    active: true
+
+performance:
+  active: true
+  ForEachOnRange:
+    active: true
+  SpreadOperator:
+    active: true
+  UnnecessaryTemporaryInstantiation:
+    active: true
+
+naming:
+  active: true
+  ClassNaming:
+    active: true
+    classPattern: '[A-Z][a-zA-Z0-9]*'
+  PackageNaming:
+    active: true
+    packagePattern: '[a-z]+(\.[a-z][a-z0-9]*)*'

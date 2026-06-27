@@ -656,7 +656,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                             status = dto.status,
                             reason = dto.reason ?: "",
                             notes = dto.notes ?: "",
-                            clinicId = dto.clinicId
+                            clinicId = dto.clinicId ?: "clinic_base"
                         )
                         appointmentDao.insertAppointment(entity)
                     }
