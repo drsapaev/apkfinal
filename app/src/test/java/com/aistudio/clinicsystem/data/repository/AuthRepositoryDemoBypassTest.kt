@@ -45,7 +45,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
  * ever touching the network — both assertions will fail.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], manifest = Config.NONE)
+@Config(sdk = [34], manifest = Config.NONE)
 class AuthRepositoryDemoBypassTest {
 
     private lateinit var mockWebServer: MockWebServer

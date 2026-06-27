@@ -38,7 +38,7 @@ import java.lang.reflect.Method
  *   - Use in-memory Room under Robolectric
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], manifest = Config.NONE)
+@Config(sdk = [34], manifest = Config.NONE)
 class ClinicWebSocketClientTest {
 
     private lateinit var context: Context

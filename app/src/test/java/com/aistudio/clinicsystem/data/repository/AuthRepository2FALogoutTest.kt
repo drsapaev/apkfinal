@@ -40,7 +40,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
  *  - SessionManager singleton is reset before each test.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], manifest = Config.NONE)
+@Config(sdk = [34], manifest = Config.NONE)
 class AuthRepository2FALogoutTest {
 
     private lateinit var mockWebServer: MockWebServer

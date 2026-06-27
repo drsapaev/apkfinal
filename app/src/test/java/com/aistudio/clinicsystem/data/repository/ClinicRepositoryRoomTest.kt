@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
  * clean service injection.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], manifest = Config.NONE)
+@Config(sdk = [34], manifest = Config.NONE)
 class ClinicRepositoryRoomTest {
 
     private lateinit var database: ClinicDatabase

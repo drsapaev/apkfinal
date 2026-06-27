@@ -94,11 +94,11 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // Robolectric + mockk need heap for the simulated Android framework
     maxHeapSize = "1g"
     jvmArgs("-XX:MaxMetaspaceSize=384m")
-    // Redirect temp files to a roomier filesystem (root /tmp is small)
-    systemProperty("java.io.tmpdir", "/home/z/.robolectric-tmp")
+    // Redirect temp files to /tmp/robolectric-tmp (created in CI workflow
+    // and locally before running tests)
+    systemProperty("java.io.tmpdir", "/tmp/robolectric-tmp")
     // Enable HTTP for test resources (Robolectric downloads Android jars on first run)
     systemProperty("robolectric.offline", "false")
-    systemProperty("robolectric.dataDir", "/home/z/.robolectric-dataDir")
     // Enable headless mode for AWT (Robolectric may trigger it)
     systemProperty("java.awt.headless", "true")
 }
