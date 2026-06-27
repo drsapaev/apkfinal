@@ -1,292 +1,248 @@
-# 🏥 Clinic Management System - Android App
+# 🏥 Clinic Management System — Android App
 
-Mobile client for the [Clinic Management System](https://github.com/drsapaev/final) built with **Kotlin** and **Jetpack Compose**.
+![CI](https://github.com/drsapaev/apkfinal/actions/workflows/android.yml/badge.svg)
+
+Mobile client for the [Clinic Management System](https://github.com/drsapaev/final) backend.
+Built with **Kotlin** and **Jetpack Compose**.
 
 ## 📱 Features
 
-- ✅ **Patient Management** - View and manage patient appointments
-- ✅ **Online Queue System** - Real-time queue updates with WebSocket
-- ✅ **Appointment Booking** - Schedule, reschedule, and cancel appointments
-- ✅ **Authentication** - Secure JWT-based login with multiple user roles
-- ✅ **Lab Results** - View test results and medical records
-- ✅ **Notifications** - Real-time push notifications for queue updates
-- ✅ **Doctor Schedule** - Browse doctor availability and specialties
-- ✅ **Role-Based Access** - Support for Patient, Doctor, Registrar, Admin roles
+- **JWT Authentication** with 2FA (TOTP) support, token refresh, and server-side logout
+- **Patient Dashboard** — appointments, medical records, queue position
+- **Staff Dashboard** — appointment approval, queue management, medical record creation
+- **Real-time WebSocket** — queue updates, appointment status changes, new medical records
+- **Offline-first** — write-ahead outbox pattern with exponential backoff and dead letter queue
+- **Biometric Login** — fingerprint/Face ID support
+- **Telegram Integration** — link account for notifications
+- **3 Languages** — 🇷🇺 Russian (default), 🇬🇧 English, 🇺🇿 Uzbek
+- **Dark/Light/System Theme**
 
 ## 🏗️ Architecture
 
 ### Tech Stack
 
-- **Language**: Kotlin
-- **UI Framework**: Jetpack Compose
-- **Architecture**: MVVM + Repository Pattern
-- **Networking**: Retrofit + OkHttp
-- **Serialization**: Moshi
-- **Database**: Room
-- **Dependency Injection**: Hilt (prepared, will add later)
-- **Real-time**: OkHttp WebSocket
-- **Coroutines**: Kotlin Coroutines + Flow
+| Component | Technology |
+|---|---|
+| Language | Kotlin 2.2.10 |
+| UI | Jetpack Compose (BOM 2025.04.00), Material 3 |
+| Architecture | Clean Architecture (data / domain / ui) |
+| Networking | Retrofit 2.12 + OkHttp 4.12 + Moshi 1.15 |
+| Database | Room 2.7 + SQLCipher 4.5.4 (encrypted) |
+| Real-time | OkHttp WebSocket via RealtimeManager |
+| Background | WorkManager 2.9 (SyncWorker) |
+| Security | EncryptedSharedPreferences, FLAG_SECURE, HTTPS-only |
+| Testing | JUnit 4, Robolectric 4.14, mockk, MockWebServer |
+| Static Analysis | ktlint 12.1, detekt 1.23 |
+| CI | GitHub Actions |
+
+### Key Architectural Decisions
+
+- **SessionRepository** — Single Source of Truth for auth state (StateFlow\<SessionState\>)
+- **RealtimeManager** — Unified WebSocket management (SharedFlow\<RealtimeEvent\>)
+- **Outbox Pattern** — UUID primary keys, PENDING→PROCESSING→COMPLETED/FAILED→DEAD_LETTER state machine, exponential backoff with jitter
+- **NetworkBoundResource** — Offline-first sync (cache → network → cache)
+- **UUID IDs** — All entities use UUID local PKs + optional `serverId` (Int) for backend compatibility
+- **TokenAuthenticator** — Auto-refresh on 401 with Mutex for concurrent request coalescing
 
 ### Project Structure
 
 ```
-app/
-├── src/main/kotlin/com/aistudio/clinicsystem/
-│   ├── data/
-│   │   ├── api/                 # API client and services
-│   │   ├── db/                  # Room database
-│   │   ├── repository/          # Repository implementations
-│   │   └── model/               # Data models
-│   ├── domain/
-│   │   ├── repository/          # Repository interfaces
-│   │   └── model/               # Domain models
-│   ├── ui/
-│   │   ├── screens/             # Compose screens
-│   │   ├── navigation/          # Navigation setup
-│   │   ├── components/          # Reusable Compose components
-│   │   ├── viewmodel/           # ViewModels
-│   │   └── theme/               # Material Design 3 theme
-│   ├── auth/                    # Authentication logic
-│   ├── utils/                   # Utilities and extensions
-│   └── MainActivity.kt
-└── build.gradle.kts
+app/src/main/java/com/aistudio/clinicsystem/
+├── data/
+│   ├── api/                  # MobileApiService, ApiService, TokenAuthenticator
+│   ├── db/                   # ClinicDatabase, DAOs, Entities, Migrations
+│   ├── outbox/               # OutboxStatus, OutboxRetryPolicy, UUID generator
+│   ├── realtime/             # RealtimeManager, RealtimeEvent
+│   ├── repository/           # AuthRepository, ClinicRepository, NetworkBoundResource
+│   ├── session/              # SessionRepository (SSOT)
+│   └── model/                # UserRole enum
+├── domain/
+│   ├── model/                # Pure Kotlin domain models
+│   ├── repository/           # Repository interfaces
+│   ├── usecase/              # 11 UseCases (auth, appointment, queue, medical, sync)
+│   └── mapper/               # Entity↔Domain mappers
+├── ui/
+│   ├── screens/
+│   │   ├── patient/          # 9 decomposed composables
+│   │   ├── staff/            # 3 decomposed composables
+│   │   ├── AuthScreen.kt
+│   │   ├── PatientScreen.kt  # thin shell (733 LOC)
+│   │   └── StaffScreen.kt    # thin shell (1746 LOC)
+│   ├── components/           # SecureScreen (FLAG_SECURE)
+│   ├── navigation/           # ClinicNavGraph
+│   ├── viewmodel/            # ClinicViewModel, AuthViewModel, PatientViewModel, StaffViewModel
+│   └── theme/                # Material 3 theme
+├── utils/                    # TokenManager, SessionManager, SyncWorker, WebSocketClient, etc.
+└── MainActivity.kt
 ```
 
 ## 🚀 Setup & Installation
 
 ### Prerequisites
 
-- Android Studio 2024.1+
-- Android SDK 24+ (API level)
-- Android Gradle Plugin 8.0+
-- Kotlin 2.0+
+- Android Studio (latest)
+- JDK 17+ (for Gradle)
+- Android SDK 36 (compileSdk)
 
-### 1. Clone and Setup
+### 1. Clone
 
 ```bash
 git clone https://github.com/drsapaev/apkfinal.git
 cd apkfinal
 ```
 
-### 2. Configure Backend URL
+### 2. Configure SDK path
 
-Create `.env` file from template:
+Create `local.properties`:
 
-```bash
-cp .env.example .env
+```properties
+sdk.dir=/path/to/Android/Sdk
 ```
 
-Edit `.env` and set your backend URL:
+### 3. Configure backend URL
 
-```env
-BACKEND_URL=http://192.168.1.100:18000  # Change to your backend IP/URL
-WEBSOCKET_URL=ws://192.168.1.100:18000/ws
-```
-
-**For local development (emulator):**
-```env
-BACKEND_URL=http://10.0.2.2:18000
-WEBSOCKET_URL=ws://10.0.2.2:18000/ws
-```
-
-**For production:**
-```env
-BACKEND_URL=https://api.clinic.example.com
-WEBSOCKET_URL=wss://api.clinic.example.com/ws
-```
-
-### 3. Open in Android Studio
-
-1. Open Android Studio
-2. Select **File → Open**
-3. Choose this project directory
-4. Wait for Gradle sync to complete
-
-### 4. Run on Emulator or Device
-
-```bash
-# Run on emulator (must be running)
-./gradlew installDebug
-
-# Or use Android Studio: Run → Run 'app'
-```
-
-## 🔐 API Integration
-
-### Authentication
-
-The app uses **JWT Bearer Token** authentication.
-
-#### Login Flow
+Backend URL is set per build type in `app/build.gradle.kts`:
 
 ```kotlin
-// 1. User enters username/password
-val loginRequest = LoginRequest(username = "admin", password = "password")
+// Debug (emulator → host's localhost)
+buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:18000/\"")
+buildConfigField("String", "WEBSOCKET_URL", "\"ws://10.0.2.2:18000/ws/queue\"")
 
-// 2. API returns access token
-val response = apiService.login(loginRequest)
-// Response: {
-//   "access_token": "eyJhbGc...",
-//   "token_type": "bearer",
-//   "expires_in": 43200
-// }
-
-// 3. Token is stored in secure SharedPreferences
-tokenManager.saveToken(response.accessToken, response.tokenType)
-
-// 4. Token is automatically added to all requests
-// Authorization: Bearer <access_token>
+// Release (override before release build)
+buildConfigField("String", "BASE_URL", "\"https://api.clinic.example.com/\"")
+buildConfigField("String", "WEBSOCKET_URL", "\"wss://api.clinic.example.com/ws/queue\"")
 ```
 
-### Base API Endpoints
+### 4. Build
 
-**Base URL**: `http://localhost:18000/api/v1`
-
-#### Authentication
-- `POST /authentication/login` - Login and get token
-- `POST /authentication/refresh` - Refresh access token
-- `POST /authentication/logout` - Logout
-
-#### Users
-- `GET /users/me` - Get current user info
-- `GET /users/users` - List all users (Admin only)
-
-#### Patients
-- `GET /patients/` - List patients with pagination
-- `GET /patients/{id}` - Get patient details
-- `POST /patients/` - Create new patient
-
-#### Appointments
-- `GET /patient/appointments` - Get current patient's appointments
-- `POST /patient/appointments/{id}/cancel` - Cancel appointment
-- `POST /patient/appointments/{id}/reschedule` - Reschedule appointment
-- `GET /patient/appointments/{id}/available-slots` - Get available slots
-- `GET /patient/results` - Get lab results
-
-#### Queue
-- `GET /queue/` - Get all queues
-- `POST /queue/join` - Join online queue
-- `POST /queue/{id}/call` - Call next patient (Doctor/Registrar)
-- `POST /queue/{id}/complete` - Complete queue item
-
-#### Departments & Services
-- `GET /departments/` - List all departments
-- `GET /services/` - List all services
-- `GET /services/department/{dept_id}` - Get department services
-
-#### Doctors
-- `GET /doctors/` - List all doctors
-- `GET /doctors/{id}/schedule` - Get doctor's schedule
-- `GET /doctors/{id}/queue` - Get doctor's current queue
-
-### WebSocket Real-time Updates
-
-Connect to WebSocket for real-time updates:
-
-```
-ws://192.168.1.100:18000/ws
-
-Headers:
-Authorization: Bearer <access_token>
+```bash
+./gradlew assembleDebug    # Debug APK
+./gradlew bundleRelease    # Release AAB (needs keystore env vars)
 ```
 
-**Message Types**:
-- Queue position updates
-- Appointment reminders
-- Doctor availability changes
-- System notifications
+### 5. Run
+
+```bash
+./gradlew installDebug     # Install on emulator/device
+```
+
+## 🔐 Security
+
+- **SQLCipher** — local database encrypted with AES-256, passphrase from EncryptedSharedPreferences
+- **EncryptedSharedPreferences** — JWT tokens stored encrypted, fail-closed (no plaintext fallback)
+- **FLAG_SECURE** — screenshots/screen recording blocked on all PHI screens
+- **Network Security Config** — release builds: HTTPS only, no cleartext
+- **HttpLoggingInterceptor** — disabled in release builds
+- **2FA tokens** — sent in request body, not query string
+- **allowBackup=false** — no cloud backup of app data
 
 ## 🧪 Testing
 
-### Run Unit Tests
+### Unit Tests (92 tests)
 
 ```bash
-./gradlew test
+./gradlew testDebugUnitTest
 ```
 
-### Run Instrumented Tests (on emulator/device)
+Test coverage:
+- 35 UseCase tests (auth, appointment, medical, sync)
+- 10 NetworkBoundResource tests (offline-first sync pattern)
+- 8 ClinicRepository Room tests (CRUD, patient-scoped queries)
+- 13 WebSocket tests (event handling, reconciliation guard, error resilience)
+- 14 AuthViewModel tests (login flow, 2FA, state management)
+- 6 SyncWorker tests (background sync, retry, error handling)
+- 4 Room migration tests
+- 2 Example tests
+
+### Static Analysis
 
 ```bash
-./gradlew connectedAndroidTest
+./gradlew ktlintCheck    # Code style
+./gradlew detekt         # Code smell detection
 ```
-
-### Run Screenshot Tests
-
-```bash
-./gradlew recordRoborazzi  # Record baseline
-./gradlew verifyRoborazzi   # Verify against baseline
-```
-
-## 📚 Documentation
-
-- [API Reference](../../docs/API_REFERENCE.md) - Complete API endpoints
-- [Authentication Guide](../../docs/AUTHENTICATION_SYSTEM_FINAL_GUIDE.md) - Auth system details
-- [Role System](../../docs/ROLES_AND_ROUTING.md) - User roles and permissions
-- [Queue System](../../docs/QUEUE_SYSTEM_ARCHITECTURE.md) - Queue architecture
 
 ## 🔄 CI/CD
 
-### GitHub Actions
+GitHub Actions pipeline runs on every push/PR to `main`:
 
-The app includes automated CI/CD:
+1. ktlint check
+2. detekt
+3. Unit tests (92 tests)
+4. Assemble debug APK
+5. Upload APK + test reports as artifacts
 
-- ✅ Code quality checks (Lint)
-- ✅ Unit tests
-- ✅ Build APK in debug and release modes
-- ✅ Screenshot tests
+**Status**: [![CI](https://github.com/drsapaev/apkfinal/actions/workflows/android.yml/badge.svg)](https://github.com/drsapaev/apkfinal/actions)
 
-**Status**: [Actions](https://github.com/drsapaev/apkfinal/actions)
+## 📊 API Integration
 
-## 🐛 Debugging
+### Authentication
 
-### Enable Debug Logging
-
-Edit `.env`:
-```env
-DEBUG_MODE=true
-LOG_LEVEL=DEBUG
+```
+POST /api/v1/authentication/login     — Login (username + password, returns access + refresh tokens)
+POST /api/v1/authentication/refresh   — Refresh access token
+POST /api/v1/authentication/logout    — Server-side session invalidation
+POST /api/v1/2fa/verify               — 2FA TOTP verification
+POST /api/v1/2fa/recovery/request     — 2FA recovery code request
+POST /api/v1/2fa/recovery/verify      — 2FA recovery code verification
+GET  /api/v1/authentication/profile   — Current user profile
 ```
 
-Then rebuild the app.
+### Mobile API (/api/v1/mobile/*)
 
-### Check Network Requests
-
-The app includes OkHttp logging interceptor. Check Logcat:
-
-```bash
-adb logcat | grep -i "clinicsystem\|okhttp"
+```
+GET  /mobile/patients/me              — Patient profile
+GET  /mobile/appointments/upcoming    — Upcoming appointments
+POST /mobile/appointments/book        — Book appointment
+POST /mobile/appointments/cancel      — Cancel appointment
+GET  /mobile/lab/results              — Lab results
+GET  /mobile/queues/status            — Queue status
+GET  /mobile/notifications            — Notifications
 ```
 
-### Clear App Data
+### WebSocket
+
+```
+ws://host:18000/ws/queue
+Authorization: Bearer <access_token>
+
+Events: APPOINTMENT_STATUS, NEW_MEDICAL_RECORD, QUEUE_UPDATE
+```
+
+## 🌍 Localization
+
+| Locale | Language |
+|---|---|
+| `values/` | 🇷🇺 Русский (default) |
+| `values-en/` | 🇬🇧 English |
+| `values-uz/` | 🇺🇿 O'zbekcha |
+
+## 📦 Release
+
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for version history.
+
+### Build Release AAB
 
 ```bash
-adb shell pm clear com.aistudio.clinicsystem.hvyqt
+# Generate keystore (one-time)
+keytool -genkeypair -v -keystore clinic-release.keystore \
+  -alias clinic -keyalg RSA -keysize 4096 -validity 10000
+
+# Set env vars
+export KEYSTORE_PATH=/path/to/clinic-release.keystore
+export STORE_PASSWORD=your_store_password
+export KEY_PASSWORD=your_key_password
+
+# Build
+./gradlew bundleRelease
 ```
 
 ## 🤝 Contributing
 
 1. Create a feature branch (`git checkout -b feature/amazing-feature`)
-2. Commit changes (`git commit -m 'Add amazing feature'`)
-3. Push to branch (`git push origin feature/amazing-feature`)
+2. Ensure `./gradlew ktlintCheck detekt testDebugUnitTest` passes
+3. Commit changes following conventional commits
 4. Open a Pull Request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support & Issues
-
-- 📝 [Report a Bug](https://github.com/drsapaev/apkfinal/issues/new?template=bug_report.md)
-- 💡 [Request a Feature](https://github.com/drsapaev/apkfinal/issues/new?template=feature_request.md)
-- 💬 [Discussions](https://github.com/drsapaev/apkfinal/discussions)
 
 ## 👥 Related Projects
 
-- [**Clinic Management System (Backend)**](https://github.com/drsapaev/final) - Main backend/frontend
-- [**API Reference**](https://github.com/drsapaev/final/docs/API_REFERENCE.md) - API documentation
-
----
-
-**Clinic Management System - Mobile Client** 🚀✨
+- [**Clinic Management System (Backend)**](https://github.com/drsapaev/final) — FastAPI backend
