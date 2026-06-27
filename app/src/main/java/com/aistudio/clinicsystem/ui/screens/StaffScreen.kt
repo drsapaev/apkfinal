@@ -107,11 +107,11 @@ private fun StaffScreenContent(
     var recommendationsInput by remember(draftRecommendationsVal) { mutableStateOf(draftRecommendationsVal) }
 
     var showCancelReasonDialog by remember { mutableStateOf(false) }
-    var targetAppointmentIdToCancel by remember { mutableStateOf(-1) }
+    var targetAppointmentIdToCancel by remember { mutableStateOf("") }
     var cancelReasonInput by remember { mutableStateOf("") }
 
     var showNotesDialog by remember { mutableStateOf(false) }
-    var targetAppointmentIdForNotes by remember { mutableStateOf(-1) }
+    var targetAppointmentIdForNotes by remember { mutableStateOf("") }
     var notesInput by remember { mutableStateOf("") }
 
     var filterTodayOnly by remember { mutableStateOf(false) }
@@ -147,7 +147,7 @@ private fun StaffScreenContent(
 
     // Edit Appointment Dialog state
     var showEditAppointmentDialog by remember { mutableStateOf(false) }
-    var editAppointmentId by remember { mutableStateOf(-1) }
+    var editAppointmentId by remember { mutableStateOf("") }
     var editPatientPhone by remember { mutableStateOf("") }
     var editPatientName by remember { mutableStateOf("") }
     var editDoctorSelected by remember { mutableStateOf("") }

@@ -39,10 +39,14 @@ interface AppointmentDao {
     suspend fun updateAppointment(appointment: AppointmentEntity)
 
     @Query("SELECT * FROM appointments WHERE id = :id LIMIT 1")
-    suspend fun getAppointmentById(id: Int): AppointmentEntity?
+    suspend fun getAppointmentById(id: String): AppointmentEntity?
+
+    // M3B.4: lookup by server-assigned ID (used by WebSocket events)
+    @Query("SELECT * FROM appointments WHERE serverId = :serverId LIMIT 1")
+    suspend fun getAppointmentByServerId(serverId: Int): AppointmentEntity?
 
     @Query("DELETE FROM appointments WHERE id = :id")
-    suspend fun deleteAppointmentById(id: Int)
+    suspend fun deleteAppointmentById(id: String)
 
     @Query("DELETE FROM appointments WHERE patientPhone = :phone")
     suspend fun deleteAppointmentsByPatient(phone: String)
@@ -128,7 +132,7 @@ interface MedicalRecordDao {
     suspend fun insertRecord(record: MedicalRecordEntity): Long
 
     @Query("SELECT * FROM medical_records WHERE id = :id LIMIT 1")
-    suspend fun getRecordById(id: Int): MedicalRecordEntity?
+    suspend fun getRecordById(id: String): MedicalRecordEntity?
 
     @Query("DELETE FROM medical_records WHERE patientPhone = :phone")
     suspend fun deleteRecordsByPatient(phone: String)
@@ -155,7 +159,7 @@ interface SyncLogDao {
         QueueSnapshotEntity::class,
         PendingSyncEntity::class
     ],
-    version = 5,
+    version = 6,
     // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
     // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/4.json
     // on every build. This file must be committed to git — it is the

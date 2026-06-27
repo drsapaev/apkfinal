@@ -3,7 +3,7 @@ package com.aistudio.clinicsystem.domain.model
 import com.aistudio.clinicsystem.data.model.UserRole
 
 data class User(
-    val id: Int,
+    val id: String,
     val phone: String,
     val fullName: String,
     val role: UserRole,
@@ -14,7 +14,7 @@ data class User(
 )
 
 data class Appointment(
-    val id: Int,
+    val id: String,
     val patientPhone: String,
     val patientName: String,
     val doctorName: String,
@@ -47,7 +47,7 @@ enum class AppointmentStatus {
 }
 
 data class MedicalRecord(
-    val id: Int,
+    val id: String,
     val patientPhone: String,
     val doctorName: String,
     val diagnosis: String,

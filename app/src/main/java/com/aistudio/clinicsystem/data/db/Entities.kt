@@ -19,7 +19,8 @@ data class UserEntity(
 
 @Entity(tableName = "appointments")
 data class AppointmentEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    val serverId: Int? = null, // M3B.4: backend-assigned ID, null until synced
     val patientPhone: String,
     val patientName: String,
     val doctorName: String,
@@ -64,7 +65,8 @@ data class PendingSyncEntity(
 
 @Entity(tableName = "medical_records")
 data class MedicalRecordEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    val serverId: Int? = null, // M3B.4: backend-assigned ID, null until synced
     val patientPhone: String,
     val doctorName: String,
     val diagnosis: String,

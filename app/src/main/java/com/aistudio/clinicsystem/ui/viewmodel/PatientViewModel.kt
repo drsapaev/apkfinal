@@ -184,7 +184,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun cancelAppointment(id: Int, cancelReason: String = "") {
+    fun cancelAppointment(id: String, cancelReason: String = "") {
         viewModelScope.launch {
             val token = sessionRepository.accessToken
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
@@ -197,7 +197,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
                 val patientUser = repository.getUserByPhone(updated.patientPhone)
                 val patientName = patientUser?.fullName ?: "Пациент"
                 com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
-                    getApplication(), updated.id, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
+                    getApplication(), updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
                 )
                 
                 if (patientUser?.telegramChatId != null) {
@@ -220,7 +220,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
                 phone = user.phone,
                 onNewRecordAction = { record ->
                     com.aistudio.clinicsystem.utils.NotificationHelper.sendMedicalRecordNotification(
-                        getApplication(), record.id, record.doctorName, record.diagnosis, user.fullName
+                        getApplication(), record.serverId ?: 0, record.doctorName, record.diagnosis, user.fullName
                     )
                 }
             )

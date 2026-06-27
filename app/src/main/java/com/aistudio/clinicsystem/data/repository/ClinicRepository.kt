@@ -53,12 +53,13 @@ class ClinicRepository(private val database: ClinicDatabase) {
     fun getAppointmentsForPatient(phone: String): Flow<List<AppointmentEntity>> =
         appointmentDao.getAppointmentsByPatientFlow(phone)
 
-    suspend fun getAppointmentById(id: Int): AppointmentEntity? =
+    suspend fun getAppointmentById(id: String): AppointmentEntity? =
         appointmentDao.getAppointmentById(id)
 
     suspend fun insertAppointment(appointment: AppointmentEntity): AppointmentEntity {
-        val id = appointmentDao.insertAppointment(appointment).toInt()
-        val saved = appointment.copy(id = id)
+        val id = appointment.id
+        val saved = appointment
+        
         addSyncLog(
             logMessage = "Created appointment: ${appointment.patientName} -> ${appointment.doctorName} (${appointment.date} ${appointment.time})",
             direction = "PATIENT_TO_STAFF"
@@ -74,7 +75,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
         )
     }
 
-    suspend fun deleteAppointment(id: Int) {
+    suspend fun deleteAppointment(id: String) {
         appointmentDao.deleteAppointmentById(id)
         addSyncLog("Deleted appointment ID #${id}", "SYSTEM_SYNC")
     }
@@ -83,12 +84,12 @@ class ClinicRepository(private val database: ClinicDatabase) {
     fun getRecordsForPatient(phone: String): Flow<List<MedicalRecordEntity>> =
         medicalRecordDao.getRecordsByPatientFlow(phone)
 
-    suspend fun getMedicalRecordById(id: Int): MedicalRecordEntity? =
+    suspend fun getMedicalRecordById(id: String): MedicalRecordEntity? =
         medicalRecordDao.getRecordById(id)
 
     suspend fun insertMedicalRecord(record: MedicalRecordEntity): MedicalRecordEntity {
-        val id = medicalRecordDao.insertRecord(record).toInt()
-        val saved = record.copy(id = id)
+        val saved = record
+        
         addSyncLog(
             logMessage = "New medical record for patient phone ${record.patientPhone}: Diagnosis: ${record.diagnosis}",
             direction = "STAFF_TO_PATIENT"
@@ -273,7 +274,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                                 val existingWithReqId = appointmentDao.getAppointmentByClientRequestId(sync.clientRequestId)
                                 if (existingWithReqId != null) {
                                     appointmentDao.deleteAppointmentById(existingWithReqId.id)
-                                    val finalApp = existingWithReqId.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt())
+                                    val finalApp = existingWithReqId.copy(id = java.util.UUID.randomUUID().toString(), serverId = saved.id)
                                     appointmentDao.insertAppointment(finalApp)
                                 }
                                 addSyncLog("✓ Outbox: Синхронизирован прием ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
@@ -427,7 +428,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 val saved = response.body()!!
                 pendingSyncDao.deletePendingSync(syncRecord)
                 deleteAppointment(savedApp.id)
-                val finalApp = newApp.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt())
+                val finalApp = newApp.copy(id = java.util.UUID.randomUUID().toString(), serverId = saved.id)
                 insertAppointment(finalApp)
                 addSyncLog("🟢 API УСПЕХ [POST /api/v1/appointments]: Прием записан на сервере с ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
                 return finalApp
@@ -442,7 +443,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
 
     suspend fun updateAppointmentStatusOnServerAndLocal(
         token: String?,
-        id: Int,
+        id: String,
         status: String,
         cancelReason: String = ""
     ): AppointmentEntity? {
@@ -474,7 +475,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
 
         try {
             val response = legacyApiService.updateAppointmentStatus(
-                id = id, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
+                id = appointment.serverId ?: return updated, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
             )
             if (response.isSuccessful) {
                 pendingSyncDao.deletePendingSync(syncRecord)
@@ -548,7 +549,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 val results = mutableListOf<MedicalRecordEntity>()
                 for (dto in reports) {
                     val recordEntity = MedicalRecordEntity(
-                        id = dto.id ?: (System.currentTimeMillis() % 100000).toInt(),
+                        id = java.util.UUID.randomUUID().toString(), serverId = dto.id,
                         patientPhone = dto.patientPhone, doctorName = dto.doctorName,
                         diagnosis = dto.diagnosis, prescription = dto.prescription,
                         visitDate = dto.visitDate, recommendations = dto.recommendations ?: ""
@@ -628,7 +629,8 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 addSyncLog("✓ Успешно получено ${serverList.size} записей с сервера.", "CLOUD_SYNC_SIMULATOR")
                 for (appDto in serverList) {
                     val localEntity = AppointmentEntity(
-                        id = appDto.id ?: (System.currentTimeMillis() % 100000).toInt(),
+                        id = java.util.UUID.randomUUID().toString(),
+                        serverId = appDto.id,
                         patientPhone = appDto.patientPhone, patientName = appDto.patientName,
                         doctorName = appDto.doctorName, specialty = appDto.specialty,
                         date = appDto.date, time = appDto.time, status = appDto.status,
@@ -667,8 +669,11 @@ class ClinicRepository(private val database: ClinicDatabase) {
      * M2: registers a patient in the live queue via POST /api/v1/queue/register.
      * Staff-facing operation — uses legacy ApiService (not in the mobile API contract).
      */
-    suspend fun registerInQueue(appointmentId: Int): retrofit2.Response<QueueDto> {
-        return legacyApiService.registerInQueue(appointmentId = appointmentId)
+    suspend fun registerInQueue(appointmentId: String): retrofit2.Response<QueueDto> {
+        // M3B.4: look up serverId for API call
+        val appointment = getAppointmentById(appointmentId) ?: error("Appointment not found")
+        val serverId = appointment.serverId ?: error("Appointment not yet synced with server")
+        return legacyApiService.registerInQueue(appointmentId = serverId)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -705,7 +710,8 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     val serverList = response.body()!!
                     for (dto in serverList) {
                         val entity = AppointmentEntity(
-                            id = dto.id,
+                            id = java.util.UUID.randomUUID().toString(),
+                            serverId = dto.id,
                             patientPhone = patientPhone,
                             patientName = "",
                             doctorName = dto.doctorName ?: "",
@@ -754,7 +760,8 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     val serverList = response.body()!!
                     for (dto in serverList) {
                         val entity = MedicalRecordEntity(
-                            id = dto.id,
+                            id = java.util.UUID.randomUUID().toString(),
+                            serverId = dto.id,
                             patientPhone = patientPhone,
                             doctorName = dto.doctorName ?: "",
                             diagnosis = dto.testName,

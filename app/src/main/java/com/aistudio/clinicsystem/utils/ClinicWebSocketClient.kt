@@ -219,9 +219,9 @@ class ClinicWebSocketClient(
                         val event = adapter.fromJson(json)
                         val data = event?.data ?: return@launch
                         
-                        val id = data.id ?: -1
-                        if (id == -1) return@launch
-                        
+                        val serverId = data.id ?: -1
+                        if (serverId == -1) return@launch
+
                         val status = data.status ?: "PENDING"
                         val doctorName = data.doctorName ?: "Доктор"
                         val date = data.date ?: ""
@@ -229,19 +229,19 @@ class ClinicWebSocketClient(
                         val patientName = data.patientName ?: "Пациент"
                         val patientPhone = data.patientPhone ?: ""
 
-                        // 1. Sync SQLite Local DB & Reconciliation Guard
+                        // M3B.4: look up by serverId (WS events use backend Int IDs)
                         val appDao = database.appointmentDao()
-                        val existing = appDao.getAppointmentById(id)
+                        val existing = appDao.getAppointmentByServerId(serverId)
                         
                         val pendingSyncDao = database.pendingSyncDao()
                         val isPending = pendingSyncDao.getAllPendingSyncs().any { 
-                            it.type == "UPDATE_STATUS" && it.payload.startsWith("$id|") 
+                            it.type == "UPDATE_STATUS" && it.payload.startsWith("$serverId|") 
                         }
                         
                         if (isPending) {
                             database.syncLogDao().insertLog(
                                 com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                                    logMessage = "🛡️ Реконсиляция: Отклонено WebSocket-обновление для приема #$id, так как есть локальные отложенные изменения.",
+                                    logMessage = "🛡️ Реконсиляция: Отклонено WS-обновление для приема #$serverId — есть локальные отложенные изменения.",
                                     direction = "SYSTEM_SYNC"
                                 )
                             )
@@ -253,7 +253,8 @@ class ClinicWebSocketClient(
                             } else {
                                 appDao.insertAppointment(
                                     AppointmentEntity(
-                                        id = id,
+                                        id = java.util.UUID.randomUUID().toString(),
+                                        serverId = serverId,
                                         patientPhone = patientPhone,
                                         patientName = patientName,
                                         doctorName = doctorName,
@@ -270,7 +271,7 @@ class ClinicWebSocketClient(
                             // 2. Add System Log
                             database.syncLogDao().insertLog(
                                 com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                                    logMessage = "⚡ Реалтайм-обновление: Прием #$id теперь имеет статус [ $status ]",
+                                    logMessage = "⚡ Реалтайм-обновление: Прием #$serverId теперь имеет статус [ $status ]",
                                     direction = "SYSTEM_SYNC"
                                 )
                             )
@@ -278,7 +279,7 @@ class ClinicWebSocketClient(
                             // 3. Dispatch Local Push Alert
                             NotificationHelper.sendAppointmentStatusNotification(
                                 context = context,
-                                appointmentId = id,
+                                appointmentId = serverId,
                                 doctorName = doctorName,
                                 dateTimeString = "$date в $time",
                                 newStatus = status,
@@ -292,7 +293,7 @@ class ClinicWebSocketClient(
                         val event = adapter.fromJson(json)
                         val data = event?.data ?: return@launch
                         
-                        val id = data.id ?: 0
+                        val recordServerId = data.id ?: 0
                         val patientPhone = data.patientPhone ?: ""
                         val doctorName = data.doctorName ?: "Врач"
                         val diagnosis = data.diagnosis ?: ""
@@ -303,7 +304,8 @@ class ClinicWebSocketClient(
                         // 1. Save locally in Room cache
                         val recordDao = database.medicalRecordDao()
                         val recordEntity = MedicalRecordEntity(
-                            id = id,
+                            id = java.util.UUID.randomUUID().toString(),
+                            serverId = recordServerId,
                             patientPhone = patientPhone,
                             doctorName = doctorName,
                             diagnosis = diagnosis,
@@ -328,7 +330,7 @@ class ClinicWebSocketClient(
                         // 4. Trigger Push
                         NotificationHelper.sendMedicalRecordNotification(
                             context = context,
-                            recordId = id,
+                            recordId = recordServerId,
                             doctorName = doctorName,
                             diagnosis = diagnosis,
                             patientName = patientName
