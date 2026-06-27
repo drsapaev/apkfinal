@@ -33,7 +33,7 @@ import org.robolectric.annotation.Config
  * added as a separate androidTest class.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], manifest = Config.NONE)
+@Config(sdk = [33], manifest = Config.NONE)
 class MigrationTest {
 
     private lateinit var context: Context

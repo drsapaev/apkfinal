@@ -38,7 +38,7 @@ import org.robolectric.annotation.Config
  *     by making the mock DB return mock DAOs that don't crash
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], manifest = Config.NONE)
+@Config(sdk = [33], manifest = Config.NONE)
 class SyncWorkerTest {
 
     private lateinit var context: Context
