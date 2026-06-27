@@ -309,9 +309,11 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.runner)
-    // Stage 4 fix: Hilt testing — HiltTestApplication + @HiltAndroidTest support
+    // Stage 4 fix: Hilt testing — HiltTestApplication + @HiltAndroidTest support.
+    // HiltTestApplication itself does NOT need KSP codegen (it's a library class);
+    // only @HiltAndroidTest-annotated test classes that use @TestInstallIn need it.
+    // We'll add kspAndroidTest when we write the first @HiltAndroidTest in Stage 10.
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.51.1")
-    "kspAndroidTest"(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     "ksp"(libs.androidx.room.compiler)
