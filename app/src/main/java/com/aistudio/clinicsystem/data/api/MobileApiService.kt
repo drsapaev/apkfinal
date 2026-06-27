@@ -112,8 +112,7 @@ interface MobileApiService {
 
     @POST("api/v1/2fa/send-code")
     suspend fun send2FACode(
-        @Query("method") method: String,
-        @Query("pending_2fa_token") pendingToken: String
+        @Body request: Send2FACodeRequest
     ): Response<Unit>
 
     // ═══════════════════════════════════════════════════════════════════
@@ -354,6 +353,12 @@ data class TwoFARecoveryResponse(
 data class TwoFARecoveryVerifyRequest(
     @Json(name = "recovery_token") val recoveryToken: String,
     @Json(name = "code") val code: String
+)
+
+@JsonClass(generateAdapter = true)
+data class Send2FACodeRequest(
+    @Json(name = "method") val method: String,
+    @Json(name = "pending_2fa_token") val pending2faToken: String
 )
 
 // ═══════════════════════════════════════════════════════════════════════
