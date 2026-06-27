@@ -51,9 +51,14 @@ object NetworkMonitor {
                             )
                         )
                         
-                        // Reconnect WebSocket
+                        // M3B.2: Reconnect WebSocket via RealtimeManager
                         try {
-                            ClinicWebSocketClient.getInstance(appContext, db).start(forceReconnect = true)
+                            val sessionRepo = com.aistudio.clinicsystem.data.session.SessionRepository(
+                                SessionManagerImpl.getInstance(appContext)
+                            )
+                            com.aistudio.clinicsystem.data.realtime.RealtimeManager(
+                                appContext, db, sessionRepo
+                            ).reconnect()
                         } catch (e: Exception) {
                             Log.e("NetworkMonitor", "WebSocket reconnect failed", e)
                         }

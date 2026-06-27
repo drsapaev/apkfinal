@@ -27,7 +27,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
         sessionRepository = sessionRepository
     )
-    private val wsClient = com.aistudio.clinicsystem.utils.ClinicWebSocketClient.getInstance(application, database)
+    // M3B.2: RealtimeManager replaces direct ClinicWebSocketClient access
+    private val realtimeManager = com.aistudio.clinicsystem.data.realtime.RealtimeManager(
+        context = application,
+        database = database,
+        sessionRepository = sessionRepository
+    )
 
     // Global Active Session State
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
@@ -109,13 +114,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             _currentUser.collect { user ->
                 if (user != null) {
                     try {
-                        wsClient.start()
+                        realtimeManager.start()
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 } else {
                     try {
-                        wsClient.stop()
+                        realtimeManager.stop()
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -227,7 +232,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
             // Gracefully stop live web sockets first
             try {
-                wsClient.stop()
+                realtimeManager.stop()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
