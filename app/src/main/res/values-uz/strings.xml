@@ -1,0 +1,74 @@
+<resources>
+    <string name="app_name">Clinic System</string>
+
+    <!-- Auth -->
+    <string name="auth_login_title">Tizimga kirish</string>
+    <string name="auth_username">Foydalanuvchi nomi</string>
+    <string name="auth_password">Parol</string>
+    <string name="auth_login_button">Kirish</string>
+    <string name="auth_biometric_login">Biometriya orqali kirish</string>
+    <string name="auth_biometric_prompt">Kirishni tasdiqlash uchun barmog\'ingizni qo\'ying</string>
+    <string name="auth_error_blank">Iltimos, foydalanuvchi nomi va parolni kiriting</string>
+    <string name="auth_error_invalid">Foydalanuvchi nomi yoki parol noto\'g\'ri</string>
+    <string name="auth_error_network">Kirish xatosi: %1$s</string>
+    <string name="auth_2fa_title">Ikki bosqichli autentifikatsiya</string>
+    <string name="auth_2fa_code_hint">6 xonali kod</string>
+    <string name="auth_2fa_verify">Tasdiqlash</string>
+    <string name="auth_2fa_use_recovery">Tiklash kodidan foydalanish</string>
+    <string name="auth_2fa_trust_device">Bu qurilmaga ishonish</string>
+    <string name="auth_2fa_error_expired">2FA seansi tugagan, qaytadan kiring</string>
+    <string name="auth_2fa_error_code">Kod 6 ta raqamdan iborat bo\'lishi kerak</string>
+    <string name="auth_2fa_error_invalid">2FA kodi noto\'g\'ri</string>
+    <string name="auth_2fa_recovery_sent">Tiklash kodi %1$s ga yuborildi</string>
+    <string name="auth_2fa_recovery_invalid">Tiklash kodi noto\'g\'ri</string>
+    <string name="auth_logout">Chiqish</string>
+
+    <!-- Patient -->
+    <string name="patient_cabinet">Bemor kabineti</string>
+    <string name="patient_book_appointment">Qabulga yozilish</string>
+    <string name="patient_appointments">Mening qabullarim</string>
+    <string name="patient_medical_records">Tibbiy yozuvlar</string>
+    <string name="patient_queue_position">Sizning navbatingiz: %1$d</string>
+    <string name="patient_cancel_appointment">Qabulni bekor qilish</string>
+    <string name="patient_cancel_reason">Bekor qilish sababi</string>
+
+    <!-- Staff -->
+    <string name="staff_dashboard">Xodimlar paneli</string>
+    <string name="staff_approve">Tasdiqlash</string>
+    <string name="staff_cancel">Bekor qilish</string>
+    <string name="staff_add_notes">Eslatma qo\'shish</string>
+    <string name="staff_register_queue">Navbatga qo\'shish</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Xatolik yuz berdi. Keyinroq urinib ko\'ring</string>
+    <string name="error_offline">Internetga ulanish yo\'q</string>
+    <string name="error_server">Server xatosi: %1$d</string>
+    <string name="error_not_found">Yozuv topilmadi</string>
+    <string name="error_not_synced">Yozuv hali server bilan sinxronlanmagan</string>
+
+    <!-- Sync -->
+    <string name="sync_in_progress">Sinxronlanmoqda…</string>
+    <string name="sync_success">Sinxronlash tugadi</string>
+    <string name="sync_failed">Sinxronlash amalga oshmadi</string>
+    <string name="sync_pending_count">Kutilayotgan operatsiyalar: %1$d</string>
+
+    <!-- Notifications -->
+    <string name="notif_appointment_approved">Qabul tasdiqlandi! ✔</string>
+    <string name="notif_appointment_cancelled">Qabul bekor qilindi ❌</string>
+    <string name="notif_appointment_update">Qabul yangilanishi ⚡</string>
+    <string name="notif_medical_record">Yangi tibbiy yozuv</string>
+    <string name="notif_channel_appointments">Qabul bildirishnomalari</string>
+    <string name="notif_channel_medical">Tibbiy yozuvlar</string>
+
+    <!-- Profile -->
+    <string name="profile_edit">Profilni tahrirlash</string>
+    <string name="profile_biometric_toggle">Biometrik kirish</string>
+    <string name="profile_secure_screen">Ekran himoyasi (FLAG_SECURE)</string>
+    <string name="profile_telegram_link">Telegramni ulash</string>
+    <string name="profile_telegram_unlink">Telegramni uzish</string>
+
+    <!-- Theme -->
+    <string name="theme_system">Tizim mavzusi</string>
+    <string name="theme_light">Ochiq mavzu</string>
+    <string name="theme_dark">Qorong\'i mavzu</string>
+</resources>
