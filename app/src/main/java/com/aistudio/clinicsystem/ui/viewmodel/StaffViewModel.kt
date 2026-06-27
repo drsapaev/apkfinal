@@ -15,8 +15,19 @@ import java.util.*
 class StaffViewModel(application: Application) : AndroidViewModel(application) {
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
-    private val authRepository = AuthRepository(application, database)
-    private val sessionManager = com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+
+    // M3B.1: SessionRepository as SSOT
+    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+    )
+
+    private val authRepository = AuthRepository(
+        context = application,
+        database = database,
+        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
+        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
+        sessionRepository = sessionRepository
+    )
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
@@ -181,7 +192,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refreshSession() {
         viewModelScope.launch {
-            val savedPhone = sessionManager.getPhone()
+            val savedPhone = sessionRepository.phone
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -217,7 +228,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val appointment = repository.getAppointmentById(id)
             val oldAppt = appointment?.copy()
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -246,7 +257,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val appointment = repository.getAppointmentById(id)
             val oldAppt = appointment?.copy()
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -287,7 +298,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val activeUser = _currentUser.value
             val doctor = activeUser?.fullName ?: "Дежурный Врач"
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
 
             val saved = repository.createMedicalRecordOnServerAndLocal(
                 token = token,
@@ -314,7 +325,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     
     fun triggerCloudSynchronization() {
         viewModelScope.launch {
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             repository.syncAllAppointmentsFromServer(token)
         }
     }
@@ -329,7 +340,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         reason: String
     ) {
         viewModelScope.launch {
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             val newApp = repository.createAppointmentOnServerAndLocal(
                 token = token,
                 patientPhone = patientPhone,
@@ -384,7 +395,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
             val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
             _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
 
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             try {
                 // M2: use repository.registerInQueue instead of direct ApiClient.service access
                 val response = repository.registerInQueue(appointmentId = appointmentId)

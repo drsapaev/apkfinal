@@ -18,8 +18,11 @@ class SyncWorker(
         try {
             val db = ClinicDatabase.getDatabase(applicationContext)
             val repository = ClinicRepository(db)
-            val sessionManager = SessionManagerImpl.getInstance(applicationContext)
-            val token = sessionManager.getToken()
+            // M3B.1: use SessionRepository as SSOT for token access
+            val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+                SessionManagerImpl.getInstance(applicationContext)
+            )
+            val token = sessionRepository.accessToken
             
             val success = repository.retryUnsyncedWrites(token)
             val latency = System.currentTimeMillis() - startTime

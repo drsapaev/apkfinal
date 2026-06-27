@@ -13,8 +13,19 @@ import kotlinx.coroutines.launch
 class PatientViewModel(application: Application) : AndroidViewModel(application) {
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
-    private val authRepository = AuthRepository(application, database)
-    private val sessionManager = com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+
+    // M3B.1: SessionRepository as SSOT
+    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+    )
+
+    private val authRepository = AuthRepository(
+        context = application,
+        database = database,
+        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
+        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
+        sessionRepository = sessionRepository
+    )
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
@@ -56,7 +67,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     private fun refreshSession() {
         viewModelScope.launch {
-            val savedPhone = sessionManager.getPhone()
+            val savedPhone = sessionRepository.phone
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -151,7 +162,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _isBookingInProgress.value = true
             try {
-                val token = sessionManager.getToken()
+                val token = sessionRepository.accessToken
                 repository.createAppointmentOnServerAndLocal(
                     token = token,
                     patientPhone = user.phone,
@@ -175,7 +186,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     fun cancelAppointment(id: Int, cancelReason: String = "") {
         viewModelScope.launch {
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -203,7 +214,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
             if (_isFetchingReports.value) return@launch
             _isFetchingReports.value = true
 
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             repository.fetchMedicalRecordsFromServer(
                 token = token,
                 phone = user.phone,

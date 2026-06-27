@@ -14,8 +14,19 @@ import java.util.*
 class ClinicViewModel(application: Application) : AndroidViewModel(application) {
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
-    private val authRepository = com.aistudio.clinicsystem.data.repository.AuthRepository(application, database)
-    private val sessionManager = com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+
+    // M3B.1: SessionRepository is the SSOT for auth state
+    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+    )
+
+    private val authRepository = com.aistudio.clinicsystem.data.repository.AuthRepository(
+        context = application,
+        database = database,
+        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
+        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
+        sessionRepository = sessionRepository
+    )
     private val wsClient = com.aistudio.clinicsystem.utils.ClinicWebSocketClient.getInstance(application, database)
 
     // Global Active Session State
@@ -70,16 +81,17 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     init {
-        // Wire up the Retrofit token interceptor to read dynamically from security preferences
+        // M3B.1: SessionRepository is the SSOT. ApiClient reads token via
+        // sessionRepository.tokenProvider (which delegates to SessionManager).
         com.aistudio.clinicsystem.data.api.ApiClient.tokenProvider = {
-            sessionManager.getToken()
+            sessionRepository.accessToken
         }
 
-        // M1/E3.2 + E3.7: initialize the TokenAuthenticator so that 401 responses
-        // are transparently retried with a refreshed access token. The old
-        // AuthInterceptor.onUnauthorized callback is kept as a fallback for the
-        // case where refresh itself fails (TokenAuthenticator invokes it).
-        com.aistudio.clinicsystem.data.api.ApiClient.initWithSession(sessionManager)
+        // M1/E3.2 + E3.7: TokenAuthenticator needs the underlying SessionManager
+        // for refresh flow (it calls getRefreshToken / setTokens / clearSession).
+        com.aistudio.clinicsystem.data.api.ApiClient.initWithSession(
+            com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(getApplication())
+        )
 
         com.aistudio.clinicsystem.data.api.ApiClient.onUnauthorized = {
             viewModelScope.launch {
@@ -115,7 +127,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             repository.prepopulateDatabase()
 
             // Session restoration handler: Autologin with robust cache restoration
-            val savedPhone = sessionManager.getPhone()
+            val savedPhone = sessionRepository.phone
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -153,7 +165,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // Session Refresh requested by secondary ViewModels
     fun refreshSession() {
         viewModelScope.launch {
-            val savedPhone = sessionManager.getPhone()
+            val savedPhone = sessionRepository.phone
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -229,8 +241,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     "SYSTEM_SYNC"
                 )
                 // Force-clear local session even though server call failed
-                sessionManager.clearSession()
-                com.aistudio.clinicsystem.data.api.ApiClient.tokenProvider = { null }
+                sessionRepository.clearSession()
             }.onSuccess {
                 repository.addSyncLog("Сессия пользователя успешно завершена на сервере.", "SYSTEM_SYNC")
             }
@@ -257,7 +268,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             if (_isSyncing.value) return@launch
             _isSyncing.value = true
 
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             try {
                 repository.syncAllAppointmentsFromServer(token)
             } catch (e: Exception) {

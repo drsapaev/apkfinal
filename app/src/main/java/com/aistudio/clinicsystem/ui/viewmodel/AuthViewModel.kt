@@ -19,7 +19,19 @@ import kotlinx.coroutines.launch
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
-    private val authRepository = AuthRepository(application, database)
+
+    // M3B.1: SessionRepository as SSOT
+    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+    )
+
+    private val authRepository = AuthRepository(
+        context = application,
+        database = database,
+        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
+        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
+        sessionRepository = sessionRepository
+    )
 
     private val _phoneInput = MutableStateFlow("+7 ")
     val phoneInput: StateFlow<String> = _phoneInput.asStateFlow()

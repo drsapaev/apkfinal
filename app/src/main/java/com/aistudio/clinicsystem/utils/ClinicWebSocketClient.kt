@@ -63,7 +63,10 @@ class ClinicWebSocketClient(
             }
             webSocket = null
         }
-        val token = SessionManagerImpl.getInstance(context).getToken()
+        // M3B.1: use SessionRepository as SSOT for token access
+        val token = com.aistudio.clinicsystem.data.session.SessionRepository(
+            SessionManagerImpl.getInstance(context)
+        ).accessToken
         // E2.7: WEBSOCKET_URL is now baked into BuildConfig per build type.
         val wsUrl = com.aistudio.clinicsystem.BuildConfig.WEBSOCKET_URL
 

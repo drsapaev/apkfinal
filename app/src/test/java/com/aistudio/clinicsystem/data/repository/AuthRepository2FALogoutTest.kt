@@ -81,7 +81,15 @@ class AuthRepository2FALogoutTest {
             ClinicDatabase::class.java
         ).allowMainThreadQueries().build()
 
-        repository = AuthRepository(context, db)
+        repository = AuthRepository(
+            context = context,
+            database = db,
+            mobileApiService = mobileApiService,
+            apiService = io.mockk.mockk(relaxed = true),
+            sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+                com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(context)
+            )
+        )
     }
 
     @After
