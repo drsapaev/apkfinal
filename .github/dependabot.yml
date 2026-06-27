@@ -1,0 +1,52 @@
+version: 2
+updates:
+  # Gradle dependencies (Kotlin / AndroidX / etc.)
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Samarkand"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "gradle"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+          - "com.google.android.material:*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin:*"
+          - "org.jetbrains.kotlinx:*"
+      square:
+        patterns:
+          - "com.squareup.*"
+      testing:
+        patterns:
+          - "junit:*"
+          - "org.junit.*"
+          - "io.mockk:*"
+          - "org.robolectric:*"
+          - "androidx.test.*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Samarkand"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"

@@ -4,42 +4,50 @@ import okhttp3.Interceptor
 import okhttp3.Response
 
 /**
- * AuthInterceptor automatically appends the user's JWT bearer token under
- * the standard HTTP 'Authorization' header for private, secure endpoints.
+ * Stage 2.6 (H-9 fix): AuthInterceptor — adds the Bearer token to every
+ * outgoing request. NOTHING ELSE.
+ *
+ * The previous implementation also called [onUnauthorized] on every 401,
+ * which RACED the [TokenAuthenticator] refresh flow: a single expired
+ * access token would trigger logout (via [onUnauthorized]) WHILE the
+ * authenticator was still trying to refresh. Even worse, [AuthInterceptor]
+ * is an *application* interceptor, so it sees the response AFTER the
+ * authenticator — meaning a successful refresh + retry was still
+ * interpreted as "session invalid".
+ *
+ * Now [AuthInterceptor] only adds the header. 401 handling is the sole
+ * responsibility of [TokenAuthenticator], which calls
+ * [SessionRepository.invalidate] on refresh failure.
+ *
+ * The `onUnauthorized` constructor parameter is GONE.
  */
 class AuthInterceptor(
     private val tokenProvider: () -> String?,
-    private val onUnauthorized: () -> Unit = {}
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
-        
-        // If the request already contains an Authorization header, respect it and continue
+
+        // If the request already has an Authorization header (e.g. the
+        // refresh endpoint uses a refresh-token bearer), respect it.
         if (originalRequest.header("Authorization") != null) {
-            val response = chain.proceed(originalRequest)
-            return handleUnauthorized(originalRequest.url.encodedPath, response)
+            return chain.proceed(originalRequest)
         }
 
         val token = tokenProvider()
-        val builder = originalRequest.newBuilder()
-        
-        if (!token.isNullOrBlank()) {
-            val bearerValue = if (token.startsWith("Bearer ", ignoreCase = true)) {
-                token
-            } else {
-                "Bearer $token"
-            }
-            builder.header("Authorization", bearerValue)
+        if (token.isNullOrBlank()) {
+            // No token — proceed without Authorization header. The server
+            // will 401, and TokenAuthenticator will handle it.
+            return chain.proceed(originalRequest)
         }
-        
-        val response = chain.proceed(builder.build())
-        return handleUnauthorized(originalRequest.url.encodedPath, response)
-    }
 
-    private fun handleUnauthorized(path: String, response: Response): Response {
-        if (response.code == 401 && !path.endsWith("/login")) {
-            onUnauthorized()
+        val bearerValue = if (token.startsWith("Bearer ", ignoreCase = true)) {
+            token
+        } else {
+            "Bearer $token"
         }
-        return response
+        val authedRequest = originalRequest.newBuilder()
+            .header("Authorization", bearerValue)
+            .build()
+        return chain.proceed(authedRequest)
     }
 }

@@ -1,18 +1,15 @@
 package com.aistudio.clinicsystem.data.repository
 
 import androidx.test.core.app.ApplicationProvider
-import com.aistudio.clinicsystem.data.api.ApiClient
 import com.aistudio.clinicsystem.data.api.ApiService
 import com.aistudio.clinicsystem.data.api.LoginResponse
 import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.api.RefreshTokenResponse
 import com.aistudio.clinicsystem.data.api.TwoFARecoveryResponse
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
+import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
 import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -33,11 +30,17 @@ import retrofit2.converter.moshi.MoshiConverterFactory
  *  - verify2FA() with correct code → returns LoginOutcome.Success
  *  - logout() calls POST /authentication/logout on the backend
  *
+ * Stage 2.11: ApiClient is no longer an `object` (Hilt @Singleton class).
+ * Tests now construct AuthRepository with the MockWebServer-backed
+ * MobileApiService directly — no mockkObject(ApiClient).
+ *
  * Strategy:
  *  - MockWebServer returns canned JSON for each endpoint.
- *  - mockkObject(ApiClient) redirects ApiClient.mobileService to a Retrofit
- *    interface pointing at MockWebServer.
+ *  - mobileApiService is a Retrofit interface pointing at MockWebServer,
+ *    passed to AuthRepository via constructor.
  *  - SessionManager singleton is reset before each test.
+ *  - SessionRepository is constructed with the (real) SessionManager and
+ *    (real) ClinicDatabase — no Hilt needed in unit tests.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
@@ -47,6 +50,7 @@ class AuthRepository2FALogoutTest {
     private lateinit var mobileApiService: MobileApiService
     private lateinit var repository: AuthRepository
     private lateinit var context: android.content.Context
+    private lateinit var db: ClinicDatabase
 
     @Before
     fun setUp() {
@@ -59,9 +63,6 @@ class AuthRepository2FALogoutTest {
             .addConverterFactory(MoshiConverterFactory.create())
             .build()
             .create(MobileApiService::class.java)
-
-        mockkObject(ApiClient)
-        every { ApiClient.mobileService } returns mobileApiService
 
         // Reset SessionManager singleton
         try {
@@ -76,26 +77,32 @@ class AuthRepository2FALogoutTest {
             // best-effort
         }
 
-        val db = androidx.room.Room.inMemoryDatabaseBuilder(
+        db = androidx.room.Room.inMemoryDatabaseBuilder(
             context,
             ClinicDatabase::class.java
         ).allowMainThreadQueries().build()
+
+        // Stage 2.11: SessionRepository now takes (context, sessionManager, database).
+        // No Hilt in unit tests — construct manually.
+        val sessionRepo = SessionRepository(
+            appContext = context,
+            sessionManager = SessionManagerImpl.getInstance(context),
+            database = db,
+        )
 
         repository = AuthRepository(
             context = context,
             database = db,
             mobileApiService = mobileApiService,
             apiService = io.mockk.mockk(relaxed = true),
-            sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
-                com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(context)
-            )
+            sessionRepository = sessionRepo,
         )
     }
 
     @After
     fun tearDown() {
-        unmockkObject(ApiClient)
         mockWebServer.shutdown()
+        db.close()
     }
 
     @Test

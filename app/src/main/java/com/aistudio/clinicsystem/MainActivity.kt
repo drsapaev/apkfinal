@@ -1,54 +1,71 @@
 package com.aistudio.clinicsystem
 
+import android.os.Build
 import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.aistudio.clinicsystem.ui.screens.AuthScreen
-import com.aistudio.clinicsystem.ui.screens.PatientScreen
-import com.aistudio.clinicsystem.ui.screens.StaffScreen
+import androidx.lifecycle.lifecycleScope
+import com.aistudio.clinicsystem.data.session.SessionState
 import com.aistudio.clinicsystem.ui.screens.SyncConsoleView
 import com.aistudio.clinicsystem.ui.theme.MyApplicationTheme
-import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
 import com.aistudio.clinicsystem.ui.viewmodel.ClinicViewModel
 import com.aistudio.clinicsystem.utils.NotificationHelper
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
-import androidx.core.app.ActivityCompat
+/**
+ * Stage 2.8: MainActivity is now @AndroidEntryPoint (required for Hilt
+ * ViewModel injection) and the navigation decision is driven by
+ * [SessionRepository.sessionState] (the SSOT), not by ClinicViewModel's
+ * local `_currentUser` flow.
+ *
+ * Closes audit finding H-6 (navigation depending on per-ViewModel state).
+ *
+ * The `viewModel()` factory call is replaced with `by viewModels()` (KTX
+ * property delegate) — Hilt's `@HiltViewModel` annotation handles
+ * construction.
+ *
+ * NetworkMonitor.startMonitoring() is moved to Application.onCreate
+ * (Stage 2.9); MainActivity no longer touches it.
+ */
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
 
-class MainActivity : FragmentActivity() {
+    private val viewModel: ClinicViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         NotificationHelper.createNotificationChannels(this)
-        
-        // Start background managers & connection callbacks
-        com.aistudio.clinicsystem.utils.NetworkMonitor.startMonitoring(this)
+
+        // Stage 2.5: NetworkMonitor is started from Application.onCreate
+        // (singleton). SyncWorkScheduler still needs a Context — kept here
+        // for now, will move to Application in Stage 2.9.
         com.aistudio.clinicsystem.utils.SyncWorkScheduler.schedulePeriodicSync(this)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permissionStatus = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
             if (permissionStatus != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                    101,
+                )
             }
         }
 
         enableEdgeToEdge()
         setContent {
-            val viewModel: ClinicViewModel = viewModel(
-                factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(application)
-            )
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
             val systemTheme = androidx.compose.foundation.isSystemInDarkTheme()
             val useDarkTheme = when (themeMode) {
@@ -58,57 +75,80 @@ class MainActivity : FragmentActivity() {
             }
 
             MyApplicationTheme(darkTheme = useDarkTheme) {
-                val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
-                val currentRole by viewModel.currentRole.collectAsStateWithLifecycle()
-                
-                val navController = androidx.navigation.compose.rememberNavController()
-                
-                // Observe Auth State to Route Automatically
-                LaunchedEffect(currentUser, currentRole) {
-                    if (currentUser == null) {
-                        navController.navigate("auth") {
-                            popUpTo(navController.graph.id) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    } else if (currentRole == "PATIENT") {
-                        navController.navigate("patient") {
-                            popUpTo(navController.graph.id) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    } else {
-                        navController.navigate("staff") {
-                            popUpTo(navController.graph.id) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                }
+                // Stage 2.8: single source of truth for navigation.
+                val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize()
-                ) { innerPadding ->
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding)
+                            .padding(innerPadding),
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            // Main Screen Section via NavHost
                             Box(modifier = Modifier.weight(1f)) {
-                                com.aistudio.clinicsystem.ui.navigation.ClinicNavGraph(
-                                    navController = navController,
-                                    viewModel = viewModel,
-                                    startDestination = "auth"
-                                )
+                                when (val state = sessionState) {
+                                    is SessionState.Loading -> {
+                                        // Splash / spinner while SessionRepository
+                                        // verifies cached tokens against the backend.
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+
+                                    is SessionState.Unauthenticated -> {
+                                        com.aistudio.clinicsystem.ui.navigation.ClinicNavGraph(
+                                            navController = androidx.navigation.compose.rememberNavController(),
+                                            viewModel = viewModel,
+                                            startDestination = "auth",
+                                        )
+                                    }
+
+                                    is SessionState.RequiresTwoFactor -> {
+                                        // Stage 6: full 2FA UI. For now, route to AuthScreen
+                                        // with the 2FA challenge token in savedStateHandle.
+                                        com.aistudio.clinicsystem.ui.navigation.ClinicNavGraph(
+                                            navController = androidx.navigation.compose.rememberNavController(),
+                                            viewModel = viewModel,
+                                            startDestination = "auth",
+                                        )
+                                    }
+
+                                    is SessionState.Authenticated -> {
+                                        val startDest = if (state.user?.role == "STAFF") "staff" else "patient"
+                                        com.aistudio.clinicsystem.ui.navigation.ClinicNavGraph(
+                                            navController = androidx.navigation.compose.rememberNavController(),
+                                            viewModel = viewModel,
+                                            startDestination = startDest,
+                                        )
+                                    }
+
+                                    is SessionState.SessionExpired -> {
+                                        // Stage 6 (UI-6 fix): show "Session expired" dialog.
+                                        // For now, acknowledge immediately and route to auth.
+                                        AlertDialog(
+                                            onDismissRequest = { viewModel.acknowledgeSessionExpired() },
+                                            title = { Text("Сессия истекла") },
+                                            text = {
+                                                Text(
+                                                    "Ваша сессия истекла или была отозвана. " +
+                                                        "Пожалуйста, войдите в систему заново.",
+                                                )
+                                            },
+                                            confirmButton = {
+                                                TextButton(onClick = { viewModel.acknowledgeSessionExpired() }) {
+                                                    Text("Войти заново")
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
                             }
 
-                            // E1.3: DemoSandboxToggleBar was removed in M0.
-                            // Role switching without re-authentication is a security ship-blocker.
-                            // Real role-based routing is driven by the JWT claims + ClinicViewModel.currentUser.
-
-                            // E5.6: SyncConsoleView is now gated behind BuildConfig.DEBUG.
-                            // Release builds do NOT show the debug sync console — it exposes
-                            // internal sync logs, pending queue state, and security flags
-                            // that should not be visible in production.
+                            // SyncConsoleView is DEBUG-only — gated by BuildConfig.DEBUG.
+                            // Stage 6 will move it to src/debug/java/.
                             if (BuildConfig.DEBUG) {
                                 SyncConsoleView(viewModel = viewModel)
                             }
@@ -119,9 +159,3 @@ class MainActivity : FragmentActivity() {
         }
     }
 }
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(text = "Hello $name!", modifier = modifier)
-}
-

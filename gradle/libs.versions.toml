@@ -1,5 +1,16 @@
 [versions]
-agp = "9.1.1"
+# Stage 1.4 (Critical fix C3/C4 build): pin to real, mutually-compatible
+# versions. Previous pins (`agp = "9.1.1"`, `kotlin = "2.2.10"`,
+# `googleDevtoolsKsp = "2.3.5"`) did not exist or were mutually
+# incompatible — the project could not be built at all.
+#
+# Compatibility matrix:
+#   - AGP 8.13.0 → requires Gradle 8.13+ (we have 9.3.1, OK)
+#   - Kotlin 2.1.0 → KSP must be 2.1.0-1.0.29
+#   - Compose Compiler plugin 2.1.0 → matches Kotlin 2.1.0
+#   - Compose BOM 2025.04.00 → compatible with Kotlin 2.1.0
+#   - Hilt 2.51.1 → KSP processor, compatible with Kotlin 2.1.x
+agp = "8.13.0"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -8,9 +19,14 @@ lifecycleRuntimeKtx = "2.9.1"
 lifecycleViewmodelCompose = "2.9.1"
 lifecycleRuntimeCompose = "2.9.1"
 activityCompose = "1.10.1"
-kotlin = "2.2.10"
+kotlin = "2.1.0"
 composeBom = "2025.04.00"
-googleDevtoolsKsp = "2.3.5"
+googleDevtoolsKsp = "2.1.0-1.0.29"
+# Stage 2.1: Hilt DI — replaces manual singleton wiring
+hilt = "2.51.1"
+hiltNavigationCompose = "1.2.0"
+hiltWork = "1.2.0"
+hiltCompiler = "1.2.0"
 navigationCompose = "2.9.0"
 roomRuntime = "2.7.0"
 roomKtx = "2.7.0"
@@ -30,7 +46,7 @@ cameraCamera2 = "1.5.0"
 cameraLifecycle = "1.5.0"
 cameraView = "1.5.0"
 cameraCore = "1.5.0"
-loggingInterceptor = "4.10.0"
+loggingInterceptor = "4.12.0"
 okhttp = "4.12.0"
 mockwebserver = "4.12.0"
 mockk = "1.13.13"
@@ -39,12 +55,15 @@ moshiKotlinCodegen = "1.15.2"
 datastorePreferences = "1.1.7"
 robolectric = "4.14.1"
 roborazzi = "1.59.0"
-firebaseBom = "34.12.0"
 secretsGradlePlugin = "2.0.1"
 workRuntime = "2.9.1"
 ktlint = "12.1.1"
 detekt = "1.23.7"
 jacoco = "0.8.12"
+
+# Stage 0.3: Jacoco coverage gate
+# Used to enforce minimum coverage on `data/` and `domain/` packages.
+# CI runs `./gradlew jacocoTestReport` then `.github/scripts/coverage-gate.py`.
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -99,9 +118,21 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
-firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
-firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
+
+# Stage 2.4: Firebase BOM / firestore / firebase-ai entries REMOVED.
+# FirestoreSyncManager was dead code (no-op shim); the real-time channel
+# is RealtimeManager (OkHttp WebSocket). Re-add only if a real Firebase
+# feature is reintroduced (with google-services plugin + config).
+
+# Stage 2.1: Hilt DI
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+hilt-compiler-androidx = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltCompiler" }
+
+# Stage 2.9: ProcessLifecycleOwner for WebSocket lifecycle
+lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleRuntimeKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -111,3 +142,6 @@ roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+jacoco = { id = "org.jacoco", version.ref = "jacoco" }
+# Stage 2.1: Hilt Gradle plugin — applied at top-level (false) + app module (true)
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

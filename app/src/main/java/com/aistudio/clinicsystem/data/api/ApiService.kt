@@ -134,7 +134,14 @@ data class AppointmentDto(
     @Json(name = "status") val status: String, // "PENDING", "APPROVED", "COMPLETED", "CANCELLED"
     @Json(name = "reason") val reason: String,
     @Json(name = "notes") val notes: String?,
-    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base",
+    // Stage 3.4 (H-5 fix): version + updatedAt for delta sync and conflict resolution.
+    // Both optional — server may not return them on legacy endpoints.
+    @Json(name = "version") val version: Int? = null,
+    @Json(name = "updated_at") val updatedAt: Long? = null,
+    // Stage 3.3: client_request_id for idempotency. Server uses this to
+    // dedup concurrent POSTs with the same key (24h window).
+    @Json(name = "client_request_id") val clientRequestId: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -146,7 +153,11 @@ data class MedicalRecordDto(
     @Json(name = "prescription") val prescription: String,
     @Json(name = "visit_date") val visitDate: String,
     @Json(name = "recommendations") val recommendations: String?,
-    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base",
+    // Stage 3.4: version + updatedAt
+    @Json(name = "version") val version: Int? = null,
+    @Json(name = "updated_at") val updatedAt: Long? = null,
+    @Json(name = "client_request_id") val clientRequestId: String? = null,
 )
 
 @JsonClass(generateAdapter = true)

@@ -122,8 +122,66 @@ object Migrations {
         }
     }
 
+    /**
+     * Stage 3.1 (H-8 fix): Migration 6 → 7 — adds database indices for
+     * referential integrity and query performance, plus the new columns
+     * introduced in Stage 3:
+     *   - appointments.etag (TEXT, nullable)
+     *   - medical_records.updatedAt, version, etag (TEXT/INTEGER)
+     *   - pending_syncs.lastHttpCode (INTEGER, nullable)
+     *   - users unique index on phone
+     *
+     * No data is lost — all new columns have safe defaults.
+     *
+     * Foreign keys are NOT added in this migration (would require
+     * backfilling orphan rows); they are scheduled for Stage 8 (multi-clinic).
+     */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // ── appointments: add etag column + indices ──────────────
+            db.execSQL("ALTER TABLE appointments ADD COLUMN etag TEXT")
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_appointments_patientPhone ON appointments(patientPhone)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_appointments_serverId ON appointments(serverId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_appointments_clientRequestId ON appointments(clientRequestId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_appointments_status ON appointments(status)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_appointments_clinicId ON appointments(clinicId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_appointments_date_time ON appointments(date, time)")
+
+            // ── medical_records: add updatedAt, version, etag + indices ─
+            db.execSQL("ALTER TABLE medical_records ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE medical_records ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE medical_records ADD COLUMN etag TEXT")
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_medical_records_patientPhone ON medical_records(patientPhone)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_medical_records_serverId ON medical_records(serverId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_medical_records_clinicId ON medical_records(clinicId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_medical_records_visitDate ON medical_records(visitDate)")
+
+            // ── pending_syncs: add lastHttpCode + index on clientRequestId ──
+            db.execSQL("ALTER TABLE pending_syncs ADD COLUMN lastHttpCode INTEGER")
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_syncs_clientRequestId ON pending_syncs(clientRequestId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_syncs_clinicId ON pending_syncs(clinicId)")
+
+            // ── users: unique index on phone, plus role/clinicId indices ──
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_users_phone ON users(phone)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_users_role ON users(role)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_users_clinicId ON users(clinicId)")
+
+            // ── queue_snapshots: indices ──
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_queue_snapshots_appointmentId ON queue_snapshots(appointmentId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_queue_snapshots_clinicId ON queue_snapshots(clinicId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_queue_snapshots_status ON queue_snapshots(status)")
+
+            // ── sync_logs: index on timestamp (for DESC LIMIT queries) ──
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_logs_timestamp ON sync_logs(timestamp)")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_4_5,
         MIGRATION_5_6,
+        MIGRATION_6_7,
     )
 }

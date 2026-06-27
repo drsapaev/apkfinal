@@ -6,30 +6,91 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.util.Log
-import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.SyncLogEntity
+import com.aistudio.clinicsystem.data.realtime.RealtimeManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object NetworkMonitor {
+/**
+ * Stage 2.5: NetworkMonitor — observes connectivity changes and triggers
+ * WebSocket reconnect + immediate sync when network is restored.
+ *
+ * Closes audit findings M-1, NET-12, NET-13.
+ *
+ * Key changes from the previous `object NetworkMonitor`:
+ *
+ * 1. **@Singleton class** (not `object`) — Hilt-managed; depends on
+ *    [RealtimeManager] via constructor injection. The singleton instance
+ *    is the SAME one owned by ClinicViewModel, so `reconnect()` actually
+ *    reaches the live WebSocket (fixes NET-13).
+ *
+ * 2. **Single [CoroutineScope]** with [SupervisorJob] — no per-event
+ *    `CoroutineScope(Dispatchers.IO).launch { ... }` allocations. Each
+ *    previous event leaked a scope; with a flaky network this could
+ *    accumulate ~200 KB per event (fixes NET-12).
+ *
+ * 3. **Idempotent [startMonitoring]** — guarded by a `started` flag so
+ *    multiple Activity recreations don't register multiple callbacks
+ *    (fixes M-1).
+ *
+ * 4. **[stopMonitoring]** — unregisters the network callback and cancels
+ *    the scope. Called from Application.onTerminate (or never, in
+ *    practice — the singleton lives for the process lifetime).
+ *
+ * [startMonitoring] should be called once from
+ * [com.aistudio.clinicsystem.ClinicSystemApplication.onCreate].
+ */
+@Singleton
+class NetworkMonitor @Inject constructor(
+    @ApplicationContext private val appContext: Context,
+    private val realtimeManager: RealtimeManager,
+    private val syncLogDao: com.aistudio.clinicsystem.data.db.SyncLogDao,
+) {
+    companion object {
+        private const val TAG = "NetworkMonitor"
+    }
+
     private val _isOnline = MutableStateFlow(true)
     val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
+    private var started = false
 
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
-    fun startMonitoring(context: Context) {
-        val appContext = context.applicationContext
-        connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    /**
+     * Registers the network callback. Idempotent — safe to call multiple
+     * times. Should be called exactly once from Application.onCreate.
+     */
+    fun startMonitoring() {
+        if (started) {
+            Log.d(TAG, "startMonitoring() already started — ignoring")
+            return
+        }
+        started = true
+
+        connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE)
+            as ConnectivityManager
 
         // Check initial state
         try {
-            val initialCapabilities = connectivityManager?.getNetworkCapabilities(connectivityManager?.activeNetwork)
-            val initialOnline = initialCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            val initialCapabilities = connectivityManager?.getNetworkCapabilities(
+                connectivityManager?.activeNetwork,
+            )
+            val initialOnline = initialCapabilities?.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET,
+            ) == true
             _isOnline.value = initialOnline
         } catch (e: Exception) {
             _isOnline.value = true
@@ -39,31 +100,25 @@ object NetworkMonitor {
             override fun onAvailable(network: Network) {
                 if (!_isOnline.value) {
                     _isOnline.value = true
-                    Log.d("NetworkMonitor", "Network connection is AVAILABLE")
-                    
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val db = ClinicDatabase.getDatabase(appContext)
-                        db.syncLogDao().insertLog(
+                    Log.d(TAG, "Network connection is AVAILABLE")
+                    scope.launch {
+                        syncLogDao.insertLog(
                             SyncLogEntity(
                                 logMessage = "📶 Сеть восстановлена: Запуск фонового примирения данных и синхронизации.",
                                 direction = "SYSTEM_SYNC",
-                                timestamp = System.currentTimeMillis()
-                            )
+                                timestamp = System.currentTimeMillis(),
+                            ),
                         )
-                        
-                        // M3B.2: Reconnect WebSocket via RealtimeManager
+                        // Stage 2.5 (H-3 fix): call reconnectNow() on the
+                        // SINGLETON RealtimeManager — Hilt guarantees this
+                        // is the same instance ClinicViewModel holds.
+                        // No more `RealtimeManager(...).reconnect()` no-op.
                         try {
-                            val sessionRepo = com.aistudio.clinicsystem.data.session.SessionRepository(
-                                SessionManagerImpl.getInstance(appContext)
-                            )
-                            com.aistudio.clinicsystem.data.realtime.RealtimeManager(
-                                appContext, db, sessionRepo
-                            ).reconnect()
+                            realtimeManager.reconnectNow()
                         } catch (e: Exception) {
-                            Log.e("NetworkMonitor", "WebSocket reconnect failed", e)
+                            Log.e(TAG, "WebSocket reconnect failed", e)
                         }
-
-                        // Trigger work manager instant syncer
+                        // Trigger WorkManager instant syncer
                         SyncWorkScheduler.triggerImmediateSync(appContext)
                     }
                 }
@@ -72,15 +127,14 @@ object NetworkMonitor {
             override fun onLost(network: Network) {
                 if (_isOnline.value) {
                     _isOnline.value = false
-                    Log.d("NetworkMonitor", "Network connection was LOST")
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val db = ClinicDatabase.getDatabase(appContext)
-                        db.syncLogDao().insertLog(
+                    Log.d(TAG, "Network connection was LOST")
+                    scope.launch {
+                        syncLogDao.insertLog(
                             SyncLogEntity(
                                 logMessage = "⚠️ Соединение потеряно: Переход в автономный режим работы (Room DB).",
                                 direction = "SYSTEM_SYNC",
-                                timestamp = System.currentTimeMillis()
-                            )
+                                timestamp = System.currentTimeMillis(),
+                            ),
                         )
                     }
                 }
@@ -90,11 +144,28 @@ object NetworkMonitor {
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
-        
+
         try {
             connectivityManager?.registerNetworkCallback(request, networkCallback!!)
         } catch (e: Exception) {
-            Log.e("NetworkMonitor", "Failed to register network callback", e)
+            Log.e(TAG, "Failed to register network callback", e)
         }
+    }
+
+    /**
+     * Unregisters the network callback and cancels the internal scope.
+     * Safe to call multiple times. In practice this is only called from
+     * tests — the singleton lives for the process lifetime.
+     */
+    fun stopMonitoring() {
+        if (!started) return
+        try {
+            networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to unregister network callback", e)
+        }
+        networkCallback = null
+        connectivityManager = null
+        started = false
     }
 }

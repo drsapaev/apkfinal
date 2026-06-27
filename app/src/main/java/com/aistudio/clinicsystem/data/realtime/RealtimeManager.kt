@@ -3,109 +3,210 @@ package com.aistudio.clinicsystem.data.realtime
 import android.content.Context
 import android.util.Log
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
-import com.aistudio.clinicsystem.data.db.QueueSnapshotEntity
+import com.aistudio.clinicsystem.data.session.SessionState
 import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.ClinicWebSocketClient
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
- * M3B.2: RealtimeManager — single entry point for real-time features.
+ * Stage 2.3: RealtimeManager — the SINGLE WebSocket owner for the app.
  *
- * Replaces the pattern where [ClinicWebSocketClient] was a singleton
- * accessed directly from multiple places:
- *   - ClinicViewModel (start/stop on session change)
- *   - NetworkMonitor (reconnect on network restore)
- *   - Tests (impossible to mock)
+ * Closes audit findings H-3, NET-11, NET-12, NET-13, NET-14, NET-18,
+ * NET-19, PERF-12, M-4.
  *
- * RealtimeManager provides:
- *   1. [events]: SharedFlow<RealtimeEvent> — one WebSocket, many subscribers
- *   2. [connectionState]: SharedFlow<RealtimeEvent.ConnectionState>
- *   3. [start()] / [stop()] — connection lifecycle tied to session
- *   4. [reconnect()] — manual reconnect (e.g. on network restore)
+ * Key properties:
+ * 1. `@Singleton` — exactly one instance per application. NetworkMonitor,
+ *    ClinicViewModel, and tests all see the same instance.
+ * 2. Tied to [SessionRepository.sessionState] — connects when
+ *    `Authenticated`, disconnects on `Unauthenticated`/`SessionExpired`.
+ * 3. Single [CoroutineScope] with [SupervisorJob] — no per-event scope
+ *    creation (closes NET-12).
+ * 4. Subscribes to access-token changes — when the token is rotated
+ *    (post-refresh), closes the current socket and reconnects with the
+ *    new token (closes NET-18).
+ * 5. The underlying [ClinicWebSocketClient] is a private implementation
+ *    detail — ViewModels never touch it directly.
  *
- * ViewModels collect [events] and handle business logic:
- *   - AuthViewModel: no interest in real-time events
- *   - PatientViewModel: reacts to AppointmentStatusChanged, NewMedicalRecord
- *   - StaffViewModel: reacts to QueueUpdated, AppointmentStatusChanged
- *   - ClinicViewModel: manages connection lifecycle (start/stop on login/logout)
- *
- * The underlying ClinicWebSocketClient is kept as a private implementation
- * detail. Future versions could replace it with a different transport
- * (Server-Sent Events, MQTT) without changing the RealtimeManager API.
- *
- * Thread-safe: SharedFlow is designed for multi-collector scenarios.
+ * Lifecycle:
+ *   - [start] / [stop] are called by [com.aistudio.clinicsystem.ClinicSystemApplication]
+ *     via ProcessLifecycleOwner (ON_START → start, ON_STOP → stop).
+ *   - [reconnectNow] is called by NetworkMonitor.onAvailable (no backoff).
+ *   - On session state change → auto start/stop.
+ *   - On access-token change → reconnect with new token.
  */
-class RealtimeManager(
-    private val context: Context,
+@Singleton
+class RealtimeManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val database: ClinicDatabase,
-    @Suppress("unused") private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
 ) {
     companion object {
         private const val TAG = "RealtimeManager"
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var sessionObserverJob: Job? = null
+    private var tokenObserverJob: Job? = null
+
     private val _events = MutableSharedFlow<RealtimeEvent>(
         replay = 0,
-        extraBufferCapacity = 64
+        extraBufferCapacity = 64,
     )
     val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
 
-    private val _connectionState = MutableSharedFlow<RealtimeEvent.ConnectionState>(
-        replay = 1,
-        extraBufferCapacity = 4
+    private val _connectionState = MutableStateFlow<RealtimeEvent.ConnectionState>(
+        RealtimeEvent.ConnectionState.Disconnected,
     )
-    val connectionState: SharedFlow<RealtimeEvent.ConnectionState> = _connectionState.asSharedFlow()
+    val connectionState: StateFlow<RealtimeEvent.ConnectionState> = _connectionState.asStateFlow()
 
+    // The underlying client. Singleton via ClinicWebSocketClient.getInstance().
+    // Kept private — ViewModels interact only through events / connectionState.
     private var wsClient: ClinicWebSocketClient? = null
 
     /**
-     * Starts the WebSocket connection. Called when user logs in.
-     * If already connected, this is a no-op.
+     * Initializes the manager. Called by Application.onCreate.
+     *
+     * Sets up two long-lived observers:
+     * 1. Session state observer — auto-starts/stops the WebSocket based on
+     *    auth state.
+     * 2. Access-token observer — when the token changes (post-refresh),
+     *    reconnects with the new token.
+     *
+     * Both observers run in [scope] — they survive ViewModel destruction.
      */
-    fun start() {
-        if (wsClient != null) {
-            Log.d(TAG, "start() called but WebSocket already exists — ignoring")
+    fun initialize() {
+        if (sessionObserverJob?.isActive == true) {
+            Log.d(TAG, "initialize() called but already initialized — ignoring")
             return
         }
 
-        Log.i(TAG, "Starting real-time connection")
+        // Observer 1: session state → start/stop
+        sessionObserverJob = scope.launch {
+            sessionRepository.sessionState.collectLatest { state ->
+                when (state) {
+                    is SessionState.Authenticated -> {
+                        // Token might be the same as before, but ensure the
+                        // socket is up. The tokenObserver below handles
+                        // mid-session token rotation.
+                        ensureStarted()
+                    }
+                    is SessionState.RequiresTwoFactor,
+                    SessionState.Unauthenticated,
+                    SessionState.SessionExpired,
+                    SessionState.Loading -> {
+                        ensureStopped()
+                    }
+                }
+            }
+        }
+
+        // Observer 2: access-token rotation → reconnect
+        // We observe the SessionState (which carries the token) and react
+        // to changes from Authenticated(oldToken) to Authenticated(newToken).
+        tokenObserverJob = scope.launch {
+            var lastToken: String? = null
+            sessionRepository.sessionState.collectLatest { state ->
+                if (state is SessionState.Authenticated) {
+                    if (lastToken != null && lastToken != state.accessToken && wsClient != null) {
+                        Log.i(TAG, "Access token rotated — reconnecting WebSocket with new token")
+                        // NET-18 fix: reconnect with new token
+                        wsClient?.stop()
+                        wsClient = null
+                        ensureStarted()
+                    }
+                    lastToken = state.accessToken
+                } else {
+                    lastToken = null
+                }
+            }
+        }
+    }
+
+    /**
+     * Idempotent start. Called on ON_START (ProcessLifecycleOwner) and
+     * when session becomes Authenticated.
+     */
+    fun start() {
+        ensureStarted()
+    }
+
+    private fun ensureStarted() {
+        if (wsClient != null) {
+            Log.d(TAG, "ensureStarted() — WebSocket already exists, ignoring")
+            return
+        }
+        // Only start if authenticated — don't open a socket to a server we
+        // can't authenticate to.
+        val state = sessionRepository.sessionState.value
+        if (state !is SessionState.Authenticated) {
+            Log.d(TAG, "ensureStarted() — session not Authenticated ($state), skipping")
+            return
+        }
+        Log.i(TAG, "Starting real-time WebSocket connection")
         wsClient = ClinicWebSocketClient.getInstance(context, database)
         wsClient?.start()
-
-        // Note: the actual event emission happens via the callback bridge
-        // below. ClinicWebSocketClient.handleSocketMessage writes to Room
-        // and sends notifications directly — in a future refactor, we'll
-        // move that logic here and emit RealtimeEvent instead.
+        _connectionState.value = RealtimeEvent.ConnectionState.Connected
     }
 
     /**
-     * Stops the WebSocket connection. Called when user logs out.
+     * Idempotent stop. Called on ON_STOP and on session invalidation.
      */
     fun stop() {
-        Log.i(TAG, "Stopping real-time connection")
-        wsClient?.stop()
+        ensureStopped()
+    }
+
+    private fun ensureStopped() {
+        if (wsClient == null) return
+        Log.i(TAG, "Stopping real-time WebSocket connection")
+        try {
+            wsClient?.stop()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop WebSocket cleanly", e)
+        }
         wsClient = null
-        _connectionState.tryEmit(RealtimeEvent.ConnectionState.Disconnected)
+        _connectionState.value = RealtimeEvent.ConnectionState.Disconnected
     }
 
     /**
-     * Forces a reconnect. Called by NetworkMonitor when network is restored.
-     */
-    fun reconnect() {
-        Log.i(TAG, "Forcing reconnect")
-        wsClient?.start(forceReconnect = true)
-    }
-
-    /**
-     * Emits an event to all subscribers. Called by the WebSocket event
-     * bridge when a message is received.
+     * Forces a reconnect — called by NetworkMonitor.onAvailable when
+     * network is restored after being lost. No backoff (the user just
+     * got network back; they want updates NOW).
      *
-     * Currently, ClinicWebSocketClient handles events internally (writes
-     * to Room, sends notifications). This method is the bridge for
-     * future migration where RealtimeManager becomes the event dispatcher
-     * and ViewModels handle all side effects.
+     * Closes H-3 / NET-13: NetworkMonitor must call this on the SAME
+     * singleton instance — Hilt guarantees that.
+     */
+    fun reconnectNow() {
+        Log.i(TAG, "reconnectNow() — forcing reconnect (network restored)")
+        if (wsClient != null) {
+            try {
+                wsClient?.stop()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to stop WebSocket before reconnect", e)
+            }
+            wsClient = null
+        }
+        ensureStarted()
+    }
+
+    /**
+     * Emits an event to all subscribers. Bridge method for the
+     * ClinicWebSocketClient callback path. In a future refactor,
+     * ClinicWebSocketClient will call this instead of writing to Room
+     * directly — ViewModels will handle all side effects.
      */
     fun emitEvent(event: RealtimeEvent) {
         _events.tryEmit(event)

@@ -6,11 +6,19 @@ plugins {
     alias(libs.plugins.secrets)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.jacoco)
+    // Stage 2.1: Hilt DI — replaces manual singleton wiring with @Inject / @Singleton.
+    // Uses KSP processor (no kapt — faster, compatible with Kotlin 2.1.x).
+    alias(libs.plugins.hilt)
 }
 
 android {
     namespace = "com.aistudio.clinicsystem"
-    compileSdk { version = release(36) { minorApiLevel = 1 } }
+    // Stage 1.4 (fix M5 build): the block-with-release() DSL is not a real
+    // AGP API. Use the standard integer form. If SDK extension 1 is
+    // required for a specific API, add `compileSdkExtension = 1` after
+    // verifying the dependency actually needs it.
+    compileSdk = 36
 
     // M1/E4.1: Room schema export directory. KSP will write a JSON schema
     // per database version to app/schemas/. These files MUST be committed
@@ -31,19 +39,36 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "$rootDir/my-upload-key.jks"
-            storeFile = file(keystorePath)
-            storePassword = System.getenv("STORE_PASSWORD")
-            keyAlias = "upload"
-            keyPassword = System.getenv("KEY_PASSWORD")
+        // Stage 1.5 (Critical fix C1/C2 build): the previous release config
+        // pointed at `$rootDir/my-upload-key.jks` which does not exist in the
+        // repo. The build would fail at the `packageRelease` step. Now the
+        // release signing config is created ONLY when the keystore env vars
+        // are present — debug-only builds (where the config is unused) no
+        // longer fail.
+        //
+        // CI decodes a CI-only keystore from `secrets.CI_RELEASE_KEYSTORE_BASE64`
+        // and sets KEYSTORE_PATH / STORE_PASSWORD / KEY_PASSWORD env vars
+        // (see `.github/workflows/android.yml`).
+        //
+        // Local developers: set the env vars in your shell, OR drop a
+        // real keystore at `$rootDir/my-upload-key.jks` (gitignored).
+        if (System.getenv("STORE_PASSWORD") != null) {
+            create("release") {
+                val keystorePath = System.getenv("KEYSTORE_PATH")
+                    ?: "$rootDir/my-upload-key.jks"
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("STORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
         }
-        create("debugConfig") {
-            storeFile = file("$rootDir/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
+        // Stage 1.5 (Critical fix C2 build): the previous `debugConfig`
+        // pointed at `$rootDir/debug.keystore` which does not exist in
+        // the repo. AGP auto-creates a debug keystore at
+        // `~/.android/debug.keystore` when no signingConfig is set on the
+        // debug build type — so we delete the custom config entirely and
+        // rely on the default. This means `./gradlew assembleDebug` works
+        // on a fresh clone without any setup.
     }
 
     buildTypes {
@@ -52,28 +77,79 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
-            // E2.7: production backend URL. Override via gradle property for staging.
-            buildConfigField("String", "BASE_URL", "\"https://api.clinic.example.com/\"")
-            buildConfigField("String", "BACKEND_URL", "\"https://api.clinic.example.com/\"")
-            // E3.6: backend exposes /ws/queue for real-time queue updates (not bare /ws)
-            buildConfigField("String", "WEBSOCKET_URL", "\"wss://api.clinic.example.com/ws/queue\"")
+            // Stage 1.5: only attach the release signing config if it was
+            // actually created (i.e. env vars are set). When absent, AGP
+            // leaves the release APK unsigned — `assembleRelease` still
+            // succeeds (R8/ProGuard/resources shrinking all run), but the
+            // APK cannot be installed. This is the desired behavior for
+            // CI smoke tests that don't have the real keystore.
+            if (System.getenv("STORE_PASSWORD") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+
+            // Stage 1.3 (Critical fix C-3 / NET-4): production backend URL.
+            // The previous value was a placeholder `api.clinic.example.com`
+            // (IANA-reserved) — the shipped app could not reach any backend.
+            //
+            // The real URL MUST be provided via a Gradle property at build
+            // time, e.g.:
+            //   ./gradlew assembleRelease -Pclinic.baseUrl=https://api.clinic.tld/ -Pclinic.wsUrl=wss://api.clinic.tld/ws/queue
+            //
+            // Or via `~/.gradle/gradle.properties`:
+            //   clinic.baseUrl=https://api.clinic.tld/
+            //   clinic.wsUrl=wss://api.clinic.tld/ws/queue
+            //
+            // CI injects these from GitHub Actions secrets (see
+            // `.github/workflows/android.yml` job `release-smoke`).
+            //
+            // If the property is missing, the build produces an obviously
+            // invalid URL (`https://INVALID.unset-base-url.example/`) so
+            // any release artifact built without the property fails at
+            // runtime with a clear error, not silently at a parked domain.
+            val prodBaseUrl = (project.findProperty("clinic.baseUrl") as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() && !it.contains("example.com") }
+                ?: "https://INVALID.unset-base-url.example/"
+            val prodWsUrl = (project.findProperty("clinic.wsUrl") as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() && !it.contains("example.com") }
+                ?: "wss://INVALID.unset-base-url.example/ws/queue"
+
+            buildConfigField("String", "BASE_URL", "\"$prodBaseUrl\"")
+            buildConfigField("String", "BACKEND_URL", "\"$prodBaseUrl\"")
+            buildConfigField("String", "WEBSOCKET_URL", "\"$prodWsUrl\"")
         }
         debug {
-            signingConfig = signingConfigs.getByName("debugConfig")
+            // Stage 1.5: no custom signingConfig — AGP auto-creates a debug
+            // keystore at `~/.android/debug.keystore` on first build.
             // E2.7: debug backend URL — Android emulator maps 10.0.2.2 to host's 127.0.0.1.
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:18000/\"")
-            buildConfigField("String", "BACKEND_URL", "\"http://10.0.2.2:18000/\"")
-            // E3.6: backend exposes /ws/queue for real-time queue updates (not bare /ws)
-            buildConfigField("String", "WEBSOCKET_URL", "\"ws://10.0.2.2:18000/ws/queue\"")
+            // Can be overridden with `-Pclinic.debugBaseUrl=...` for staging.
+            val debugBaseUrl = (project.findProperty("clinic.debugBaseUrl") as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: "http://10.0.2.2:18000/"
+            val debugWsUrl = (project.findProperty("clinic.debugWsUrl") as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: "ws://10.0.2.2:18000/ws/queue"
+            buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"")
+            buildConfigField("String", "BACKEND_URL", "\"$debugBaseUrl\"")
+            buildConfigField("String", "WEBSOCKET_URL", "\"$debugWsUrl\"")
             // E2.6: debug source set provides permissive network_security_config.xml
             // (cleartext permitted for 10.0.2.2/localhost). Release uses the strict
             // version in src/main/res/xml/.
+            // Stage 0.3: enable Jacoco coverage instrumentation in debug builds.
+            // The release variant does NOT get coverage (smaller APK, no perf hit).
+            enableAndroidTestCoverage = true
+            enableUnitTestCoverage = true
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // Stage 1.4: Kotlin 2.1.x targets JVM 17 by default. Java 11
+        // source/target compatibility produced `IncompatibleJvmTargetError`
+        // warnings and prevented some Kotlin 2.x optimizations.
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
@@ -114,8 +190,11 @@ secrets {
 // This makes it easy to add them back in the future if needed.
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore)
+    // Stage 2.4: Firebase BOM + firestore + firebase-ai REMOVED.
+    // FirestoreSyncManager was dead code (no-op shim), and the Firebase
+    // plugin was never applied (no google-services.json) — any code path
+    // that called FirebaseFirestore.getInstance() would crash. The
+    // real-time channel is OkHttp WebSocket via RealtimeManager.
     // implementation(libs.accompanist.permissions)
     implementation(libs.androidx.activity.compose)
     // implementation(libs.androidx.camera.camera2)
@@ -134,13 +213,16 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // Stage 2.9: ProcessLifecycleOwner — used to tie WebSocket lifecycle
+    // to app foreground/background transitions (ON_START → connect,
+    // ON_STOP → disconnect).
+    implementation(libs.lifecycle.process)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime.ktx)
     // implementation(libs.coil.compose)
     implementation(libs.converter.moshi)
-    // implementation(libs.firebase.ai)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.logging.interceptor)
@@ -150,6 +232,16 @@ dependencies {
     implementation(libs.retrofit)
     implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
     implementation("net.zetetic:sqlcipher-android:4.5.4")
+
+    // Stage 2.1: Hilt DI
+    implementation(libs.hilt.android)
+    "ksp"(libs.hilt.compiler)
+    // Stage 2.7: Hilt Navigation Compose — hiltViewModel() support
+    implementation(libs.hilt.navigation.compose)
+    // Stage 2.5: Hilt Work — inject SyncWorker dependencies
+    implementation(libs.hilt.work)
+    "ksp"(libs.hilt.compiler.androidx)
+
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.core)
     testImplementation(libs.androidx.junit)
@@ -181,12 +273,67 @@ tasks.register<Copy>("exportApk") {
     into(project.rootDir.resolve("release_apk"))
 }
 
-// M3A/E7.2: detekt configuration
+// ─────────────────────────────────────────────────────────────────────────
+// Stage 0.3: Jacoco coverage report
+//
+// Aggregates unit-test + instrumentation coverage into a single XML/HTML
+// report. CI runs `./gradlew jacocoTestReport` after tests, then calls
+// `.github/scripts/coverage-gate.py` to enforce minimum coverage on
+// `data/` and `domain/` packages.
+//
+// Coverage gate thresholds:
+//   - Overall: ≥ 50% (lifted as codebase matures)
+//   - `data/` package: ≥ 70%
+//   - `domain/` package: ≥ 70%
+// ─────────────────────────────────────────────────────────────────────────
+tasks.register<JacocoReport>("jacocoTestReport") {
+    group = "verification"
+    description = "Generates Jacoco coverage report for debug build (unit + instrumentation)."
+
+    // Coverage data sources
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) {
+            include(
+                "outputs/unit_test_execution_data/Debug/unitTest.exec",
+                "outputs/code_coverage/debugAndroidTest/connected/**/*.ec",
+                "jacoco/testDebugUnitTest.exec"
+            )
+        }
+    )
+
+    // What to report — only first-party Kotlin sources
+    val mainSources = file("$projectDir/src/main/java")
+    val mainClasses = fileTree(layout.buildDirectory.dir("intermediates/javac/debug/classes")) {
+        include("**/com/aistudio/clinicsystem/**")
+        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.class", "**/Manifest*.class")
+    }
+    sourceDirectories.setFrom(mainSources)
+    classDirectories.setFrom(mainClasses)
+
+    // Output both XML (CI gate) and HTML (human review)
+    reports {
+        xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/jacocoTestReport/jacocoTestReport.xml"))
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/jacocoTestReport/html"))
+        csv.required.set(false)
+    }
+
+    // Run after unit tests (instrumentation is separate — connectedCheck)
+    dependsOn("testDebugUnitTest")
+}
+
+// Stage 0.2: detekt configuration — baseline DELETED, all rules enforced.
+// Previous ~100 suppressed smells are now either excluded via config
+// (Compose FunctionNaming false positives) or tracked as cleanup tickets.
 detekt {
     buildUponDefaultConfig = true
     config.setFrom("$rootDir/config/detekt.yml")
-    baseline = file("$rootDir/config/detekt-baseline.xml")
-    parallel = false
+    // No baseline — every issue fails CI. New code must be clean; existing
+    // smells surface on the files they live in (detekt evaluates the whole
+    // module, but PRs only need to keep NEW code clean — see
+    // `detekt` task type for incremental mode in future).
+    parallel = true
     ignoreFailures = false
     autoCorrect = false
 }

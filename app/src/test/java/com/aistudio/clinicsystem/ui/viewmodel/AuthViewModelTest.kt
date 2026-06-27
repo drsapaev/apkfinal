@@ -1,16 +1,17 @@
 package com.aistudio.clinicsystem.ui.viewmodel
 
-import android.app.Application
-import androidx.test.core.app.ApplicationProvider
-import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.repository.AuthError
 import com.aistudio.clinicsystem.data.repository.AuthRepository
 import com.aistudio.clinicsystem.data.repository.ClinicRepository
 import com.aistudio.clinicsystem.data.repository.LoginOutcome
+import com.aistudio.clinicsystem.data.session.SessionRepository
+import com.aistudio.clinicsystem.data.session.SessionState
 import com.aistudio.clinicsystem.data.api.UserDto
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -28,19 +29,26 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * M3A/E6.5: Unit tests for [AuthViewModel].
+ * Stage 2.11: AuthViewModelTest — rewired for Hilt constructor injection.
  *
- * Tests the login flow state machine: input validation, success, 2FA,
- * error handling, and state management.
+ * The previous test used reflection to set private `authRepository` and
+ * `repository` fields after constructing the ViewModel via the deprecated
+ * `AndroidViewModel(application)` form. Now that AuthViewModel is
+ * `@HiltViewModel` with `@Inject constructor(repo, authRepo, sessionRepo)`,
+ * the test simply passes mockk() instances to the constructor directly —
+ * no reflection, no Application, no ClinicDatabase.
+ *
+ * Closes audit finding TEST-6: "AuthViewModelTest uses reflection to set
+ * private fields — brittle".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AuthViewModelTest {
 
-    private lateinit var application: Application
-    private lateinit var database: ClinicDatabase
     private lateinit var viewModel: AuthViewModel
     private lateinit var authRepository: AuthRepository
+    private lateinit var repository: ClinicRepository
+    private lateinit var sessionRepository: SessionRepository
 
     private val testUser = UserDto(
         id = 1, phone = "+77771112233", fullName = "Test User",
@@ -51,46 +59,25 @@ class AuthViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        application = ApplicationProvider.getApplicationContext()
-        database = androidx.room.Room.inMemoryDatabaseBuilder(
-            application, ClinicDatabase::class.java
-        ).allowMainThreadQueries().build()
 
-        // Mock the ClinicDatabase.getDatabase singleton to return our in-memory DB
-        // BEFORE creating the ViewModel (which calls getDatabase in its constructor)
-        databaseMockk()
-
-        viewModel = AuthViewModel(application)
-
+        // Stage 2.11: real mocks, no reflection.
         authRepository = mockk(relaxed = true)
-        val authRepoField = AuthViewModel::class.java.getDeclaredField("authRepository")
-        authRepoField.isAccessible = true
-        authRepoField.set(viewModel, authRepository)
+        repository = mockk(relaxed = true)
+        sessionRepository = mockk(relaxed = true)
+        // Default session state — Unauthenticated (the AuthScreen is showing).
+        every { sessionRepository.sessionState } returns MutableStateFlow(SessionState.Unauthenticated)
+        every { sessionRepository.accessToken } returns null
 
-        val clinicRepo = mockk<ClinicRepository>(relaxed = true)
-        val clinicRepoField = AuthViewModel::class.java.getDeclaredField("repository")
-        clinicRepoField.isAccessible = true
-        clinicRepoField.set(viewModel, clinicRepo)
-    }
-
-    /** Mock ClinicDatabase.getDatabase() to return in-memory DB, avoiding SQLCipher. */
-    private fun databaseMockk() {
-        io.mockk.mockkObject(ClinicDatabase.Companion)
-        io.mockk.every { ClinicDatabase.getDatabase(any()) } returns database
+        viewModel = AuthViewModel(
+            repository = repository,
+            authRepository = authRepository,
+            sessionRepository = sessionRepository,
+        )
     }
 
     @After
     fun tearDown() {
-        io.mockk.unmockkObject(ClinicDatabase.Companion)
         Dispatchers.resetMain()
-        database.close()
-    }
-
-    private fun set2FAChallenge(token: String) {
-        val field = AuthViewModel::class.java.getDeclaredField("_pending2FAChallenge")
-        field.isAccessible = true
-        @Suppress("UNCHECKED_CAST")
-        (field.get(viewModel) as kotlinx.coroutines.flow.MutableStateFlow<String?>).value = token
     }
 
     @Test
