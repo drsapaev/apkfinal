@@ -53,12 +53,13 @@ class ClinicRepository(private val database: ClinicDatabase) {
     fun getAppointmentsForPatient(phone: String): Flow<List<AppointmentEntity>> =
         appointmentDao.getAppointmentsByPatientFlow(phone)
 
-    suspend fun getAppointmentById(id: Int): AppointmentEntity? =
+    suspend fun getAppointmentById(id: String): AppointmentEntity? =
         appointmentDao.getAppointmentById(id)
 
     suspend fun insertAppointment(appointment: AppointmentEntity): AppointmentEntity {
-        val id = appointmentDao.insertAppointment(appointment).toInt()
-        val saved = appointment.copy(id = id)
+        val id = appointment.id
+        val saved = appointment
+        
         addSyncLog(
             logMessage = "Created appointment: ${appointment.patientName} -> ${appointment.doctorName} (${appointment.date} ${appointment.time})",
             direction = "PATIENT_TO_STAFF"
@@ -74,7 +75,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
         )
     }
 
-    suspend fun deleteAppointment(id: Int) {
+    suspend fun deleteAppointment(id: String) {
         appointmentDao.deleteAppointmentById(id)
         addSyncLog("Deleted appointment ID #${id}", "SYSTEM_SYNC")
     }
@@ -83,12 +84,12 @@ class ClinicRepository(private val database: ClinicDatabase) {
     fun getRecordsForPatient(phone: String): Flow<List<MedicalRecordEntity>> =
         medicalRecordDao.getRecordsByPatientFlow(phone)
 
-    suspend fun getMedicalRecordById(id: Int): MedicalRecordEntity? =
+    suspend fun getMedicalRecordById(id: String): MedicalRecordEntity? =
         medicalRecordDao.getRecordById(id)
 
     suspend fun insertMedicalRecord(record: MedicalRecordEntity): MedicalRecordEntity {
-        val id = medicalRecordDao.insertRecord(record).toInt()
-        val saved = record.copy(id = id)
+        val saved = record
+        
         addSyncLog(
             logMessage = "New medical record for patient phone ${record.patientPhone}: Diagnosis: ${record.diagnosis}",
             direction = "STAFF_TO_PATIENT"
@@ -242,19 +243,28 @@ class ClinicRepository(private val database: ClinicDatabase) {
     }
 
     suspend fun retryUnsyncedWrites(token: String?): Boolean {
-        val list = pendingSyncDao.getAllPendingSyncs()
+        // M3B.3: Outbox pattern — only process PENDING items that are ready for retry
+        val list = pendingSyncDao.getPendingForRetry()
         if (list.isEmpty()) return true
 
-        addSyncLog("🔄 Начинаем отправку отложенных операций (${list.size} в очереди)...", "CLOUD_SYNC_SIMULATOR")
-        val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
+        // M3B.3: Also recover stuck PROCESSING items (crash during sync)
+        val stuck = pendingSyncDao.getStuckProcessing()
+        val allToProcess = list + stuck
+        if (allToProcess.isEmpty()) return true
+
+        addSyncLog("🔄 Outbox: обработка ${allToProcess.size} отложенных операций...", "CLOUD_SYNC_SIMULATOR")
         val moshi = com.squareup.moshi.Moshi.Builder().build()
         val appointmentAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentDto::class.java)
         val medicalRecordAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.MedicalRecordDto::class.java)
+        val retryPolicy = com.aistudio.clinicsystem.data.outbox.OutboxRetryPolicy()
 
         var successCount = 0
-        for (sync in list) {
+        for (sync in allToProcess) {
+            // Mark as PROCESSING
+            pendingSyncDao.updateStatus(sync.id, "PROCESSING")
+
             try {
-                when (sync.type) {
+                val succeeded = when (sync.type) {
                     "CREATE_APPOINTMENT" -> {
                         val dto = appointmentAdapter.fromJson(sync.payload)
                         if (dto != null) {
@@ -264,14 +274,16 @@ class ClinicRepository(private val database: ClinicDatabase) {
                                 val existingWithReqId = appointmentDao.getAppointmentByClientRequestId(sync.clientRequestId)
                                 if (existingWithReqId != null) {
                                     appointmentDao.deleteAppointmentById(existingWithReqId.id)
-                                    val finalApp = existingWithReqId.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt())
+                                    val finalApp = existingWithReqId.copy(id = java.util.UUID.randomUUID().toString(), serverId = saved.id)
                                     appointmentDao.insertAppointment(finalApp)
                                 }
-                                pendingSyncDao.deletePendingSync(sync)
-                                successCount++
-                                addSyncLog("✓ [Отложенная запись]: Синхронизирован прием ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
+                                addSyncLog("✓ Outbox: Синхронизирован прием ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
+                                true
+                            } else {
+                                addSyncLog("⚠️ Outbox: Сервер отклонил прием (HTTP ${response.code()})", "CLOUD_SYNC_SIMULATOR")
+                                false
                             }
-                        }
+                        } else false
                     }
                     "UPDATE_STATUS" -> {
                         val parts = sync.payload.split("|", limit = 3)
@@ -282,32 +294,80 @@ class ClinicRepository(private val database: ClinicDatabase) {
                             if (id != null) {
                                 val response = legacyApiService.updateAppointmentStatus(id, status, notes)
                                 if (response.isSuccessful) {
-                                    pendingSyncDao.deletePendingSync(sync)
-                                    successCount++
-                                    addSyncLog("✓ [Отложенный статус]: Обновлен статус приема #$id -> $status", "CLOUD_SYNC_SIMULATOR")
-                                }
-                            }
-                        }
+                                    addSyncLog("✓ Outbox: Обновлен статус приема #$id → $status", "CLOUD_SYNC_SIMULATOR")
+                                    true
+                                } else false
+                            } else false
+                        } else false
                     }
                     "CREATE_MEDICAL_RECORD" -> {
                         val dto = medicalRecordAdapter.fromJson(sync.payload)
                         if (dto != null) {
                             val response = legacyApiService.createMedicalRecord(dto)
                             if (response.isSuccessful) {
-                                pendingSyncDao.deletePendingSync(sync)
-                                successCount++
-                                addSyncLog("✓ [Отложенная медкарта]: Синхронизирована медкарта пациента ${dto.patientPhone}", "CLOUD_SYNC_SIMULATOR")
-                            }
-                        }
+                                addSyncLog("✓ Outbox: Синхронизирована медкарта пациента ${dto.patientPhone}", "CLOUD_SYNC_SIMULATOR")
+                                true
+                            } else false
+                        } else false
                     }
+                    else -> false
+                }
+
+                if (succeeded) {
+                    // M3B.3: Mark as COMPLETED, then delete
+                    pendingSyncDao.updateStatus(sync.id, "COMPLETED")
+                    pendingSyncDao.deletePendingSync(sync)
+                    successCount++
+                } else {
+                    // M3B.3: Failed — increment retry count, schedule next retry
+                    handleOutboxFailure(sync, "Server returned error", retryPolicy)
                 }
             } catch (e: Exception) {
-                val updatedSync = sync.copy(retryCount = sync.retryCount + 1)
-                pendingSyncDao.insertPendingSync(updatedSync)
-                addSyncLog("⚠️ Сбой отложенной отправки (${sync.type}): ${e.localizedMessage}. Будет выполнен повтор позже.", "CLOUD_SYNC_SIMULATOR")
+                // M3B.3: Network/exception error — schedule retry with backoff
+                handleOutboxFailure(sync, e.localizedMessage ?: e.javaClass.simpleName, retryPolicy)
+                addSyncLog("⚠️ Outbox: Сбой (${sync.type}): ${e.message}. Повтор через backoff.", "CLOUD_SYNC_SIMULATOR")
             }
         }
-        return successCount == list.size
+
+        // Clean up completed items
+        pendingSyncDao.deleteCompleted()
+        return successCount == allToProcess.size
+    }
+
+    /**
+     * M3B.3: Handles outbox failure — increments retry count, calculates
+     * next retry time with exponential backoff, and moves to DEAD_LETTER
+     * if max retries exceeded.
+     */
+    private suspend fun handleOutboxFailure(
+        sync: PendingSyncEntity,
+        error: String,
+        retryPolicy: com.aistudio.clinicsystem.data.outbox.OutboxRetryPolicy
+    ) {
+        val newRetryCount = sync.retryCount + 1
+        if (newRetryCount >= retryPolicy.maxRetries) {
+            // Dead letter — requires manual intervention
+            pendingSyncDao.updateRetryState(
+                id = sync.id,
+                status = "DEAD_LETTER",
+                retryCount = newRetryCount,
+                error = error,
+                nextRetryAt = null
+            )
+            addSyncLog("💀 Outbox: Операция ${sync.type} (${sync.id}) перемещена в DEAD_LETTER после $newRetryCount попыток.", "SYSTEM_SYNC")
+        } else {
+            // Schedule retry with exponential backoff
+            val nextRetry = System.currentTimeMillis() + retryPolicy.backoffFor(newRetryCount)
+            pendingSyncDao.updateRetryState(
+                id = sync.id,
+                status = "FAILED",
+                retryCount = newRetryCount,
+                error = error,
+                nextRetryAt = nextRetry
+            )
+            // Reset to PENDING so it gets picked up on next cycle
+            pendingSyncDao.updateStatus(sync.id, "PENDING")
+        }
     }
 
     suspend fun createAppointmentOnServerAndLocal(
@@ -368,7 +428,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 val saved = response.body()!!
                 pendingSyncDao.deletePendingSync(syncRecord)
                 deleteAppointment(savedApp.id)
-                val finalApp = newApp.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt())
+                val finalApp = newApp.copy(id = java.util.UUID.randomUUID().toString(), serverId = saved.id)
                 insertAppointment(finalApp)
                 addSyncLog("🟢 API УСПЕХ [POST /api/v1/appointments]: Прием записан на сервере с ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
                 return finalApp
@@ -383,7 +443,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
 
     suspend fun updateAppointmentStatusOnServerAndLocal(
         token: String?,
-        id: Int,
+        id: String,
         status: String,
         cancelReason: String = ""
     ): AppointmentEntity? {
@@ -415,7 +475,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
 
         try {
             val response = legacyApiService.updateAppointmentStatus(
-                id = id, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
+                id = appointment.serverId ?: return updated, status = status, notes = cancelReason.ifEmpty { "Отклонено." }
             )
             if (response.isSuccessful) {
                 pendingSyncDao.deletePendingSync(syncRecord)
@@ -489,7 +549,7 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 val results = mutableListOf<MedicalRecordEntity>()
                 for (dto in reports) {
                     val recordEntity = MedicalRecordEntity(
-                        id = dto.id ?: (System.currentTimeMillis() % 100000).toInt(),
+                        id = java.util.UUID.randomUUID().toString(), serverId = dto.id,
                         patientPhone = dto.patientPhone, doctorName = dto.doctorName,
                         diagnosis = dto.diagnosis, prescription = dto.prescription,
                         visitDate = dto.visitDate, recommendations = dto.recommendations ?: ""
@@ -569,7 +629,8 @@ class ClinicRepository(private val database: ClinicDatabase) {
                 addSyncLog("✓ Успешно получено ${serverList.size} записей с сервера.", "CLOUD_SYNC_SIMULATOR")
                 for (appDto in serverList) {
                     val localEntity = AppointmentEntity(
-                        id = appDto.id ?: (System.currentTimeMillis() % 100000).toInt(),
+                        id = java.util.UUID.randomUUID().toString(),
+                        serverId = appDto.id,
                         patientPhone = appDto.patientPhone, patientName = appDto.patientName,
                         doctorName = appDto.doctorName, specialty = appDto.specialty,
                         date = appDto.date, time = appDto.time, status = appDto.status,
@@ -608,8 +669,11 @@ class ClinicRepository(private val database: ClinicDatabase) {
      * M2: registers a patient in the live queue via POST /api/v1/queue/register.
      * Staff-facing operation — uses legacy ApiService (not in the mobile API contract).
      */
-    suspend fun registerInQueue(appointmentId: Int): retrofit2.Response<QueueDto> {
-        return legacyApiService.registerInQueue(appointmentId = appointmentId)
+    suspend fun registerInQueue(appointmentId: String): retrofit2.Response<QueueDto> {
+        // M3B.4: look up serverId for API call
+        val appointment = getAppointmentById(appointmentId) ?: error("Appointment not found")
+        val serverId = appointment.serverId ?: error("Appointment not yet synced with server")
+        return legacyApiService.registerInQueue(appointmentId = serverId)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -646,7 +710,8 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     val serverList = response.body()!!
                     for (dto in serverList) {
                         val entity = AppointmentEntity(
-                            id = dto.id,
+                            id = java.util.UUID.randomUUID().toString(),
+                            serverId = dto.id,
                             patientPhone = patientPhone,
                             patientName = "",
                             doctorName = dto.doctorName ?: "",
@@ -695,7 +760,8 @@ class ClinicRepository(private val database: ClinicDatabase) {
                     val serverList = response.body()!!
                     for (dto in serverList) {
                         val entity = MedicalRecordEntity(
-                            id = dto.id,
+                            id = java.util.UUID.randomUUID().toString(),
+                            serverId = dto.id,
                             patientPhone = patientPhone,
                             doctorName = dto.doctorName ?: "",
                             diagnosis = dto.testName,

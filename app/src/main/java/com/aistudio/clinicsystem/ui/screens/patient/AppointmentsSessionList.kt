@@ -50,7 +50,7 @@ import java.util.Locale
 fun AppointmentsSessionList(
     appointments: List<AppointmentEntity>,
     pendingSyncs: List<com.aistudio.clinicsystem.data.db.PendingSyncEntity>,
-    onCancelClick: (Int) -> Unit
+    onCancelClick: (String) -> Unit
 ) {
     if (appointments.isEmpty()) {
         Card(

@@ -91,7 +91,7 @@ private fun PatientScreenContent(
     // Navigation and filters
     var selectedAppFilter by remember { mutableStateOf("ALL") } // ALL, ACTIVE, FINISHED
     var medicalSearchQuery by remember { mutableStateOf("") }
-    var expandedRecords by remember { mutableStateOf(setOf<Int>()) }
+    var expandedRecords by remember { mutableStateOf(setOf<String>()) }
 
     val tealPrimary = MaterialTheme.colorScheme.primary
     val tealLight = MaterialTheme.colorScheme.primaryContainer

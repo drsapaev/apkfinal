@@ -4,59 +4,126 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * M1/E4.3: Room migrations for [ClinicDatabase].
+ * M3B.3: Room migrations for [ClinicDatabase].
  *
- * History: prior to M0, the database used `fallbackToDestructiveMigration()`
- * which silently wiped user data on every schema change. The DB version was
- * bumped to 4 during development without writing any migration — so any
- * existing user with version 1, 2, or 3 already had their data wiped at
- * some point. There is no way to recover those migrations.
- *
- * Starting from M1/E4.2, destructive migration is REMOVED. Every future
- * schema bump MUST be accompanied by a [Migration] object registered in
- * [ALL]. The [MIGRATION_4_5] below is a no-op template that demonstrates
- * the pattern — replace its body with real SQL when version 5 introduces
- * actual schema changes.
- *
- * Migration testing is set up in M1/E4.4 (MigrationTest.kt) using
- * MigrationTestHelper from androidx.room:room-testing.
- *
- * Reference: https://developer.android.com/training/data-storage/room/migrating-db-versions
+ * MIGRATION_4_5: Outbox pattern — changes pending_syncs table:
+ *   - Primary key: id Int (autoGenerate) → id TEXT (UUID)
+ *   - New columns: status, lastError, nextRetryAt, updatedAt
+ *   - Index on (status, nextRetryAt) for efficient retry queries
  */
 object Migrations {
 
-    /**
-     * Example migration: 4 → 5.
-     *
-     * Currently a no-op because no schema changes have been made between
-     * version 4 and the next planned version 5. When version 5 introduces
-     * real changes (e.g. adding a column, creating an index, renaming a
-     * table), update the @Database version to 5 and put the SQL here.
-     *
-     * Example body for adding a column:
-     * ```
-     * override fun migrate(db: SupportSQLiteDatabase) {
-     *     db.execSQL("ALTER TABLE appointments ADD COLUMN sync_priority INTEGER NOT NULL DEFAULT 0")
-     *     db.execSQL("CREATE INDEX IF NOT EXISTS index_appointments_date ON appointments(date)")
-     * }
-     * ```
-     */
     val MIGRATION_4_5 = object : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // No-op: version 5 has not yet introduced schema changes.
-            // When you bump @Database(version = 5), put your ALTER TABLE /
-            // CREATE INDEX / DROP+CREATE statements here.
-            //
-            // IMPORTANT: never use empty body for a real migration — if the
-            // schema actually changed, Room will detect the mismatch between
-            // the migrated schema and the declared @Entity structure and
-            // throw IllegalStateException at runtime.
+            // M3B.3: Recreate pending_syncs with UUID primary key + outbox columns.
+            // SQLite doesn't support ALTER TABLE to change primary key, so we
+            // create a new table, copy data, and swap.
+
+            // 1. Create new table with UUID primary key
+            db.execSQL("""
+                CREATE TABLE pending_syncs_new (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    type TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    clientRequestId TEXT NOT NULL,
+                    clinicId TEXT NOT NULL DEFAULT 'clinic_base',
+                    timestamp INTEGER NOT NULL DEFAULT 0,
+                    retryCount INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'PENDING',
+                    lastError TEXT,
+                    nextRetryAt INTEGER,
+                    updatedAt INTEGER NOT NULL DEFAULT 0
+                )
+            """.trimIndent())
+
+            // 2. Copy existing data — convert Int id to String, set new columns
+            db.execSQL("""
+                INSERT INTO pending_syncs_new (id, type, payload, clientRequestId, clinicId, timestamp, retryCount, status, lastError, nextRetryAt, updatedAt)
+                SELECT CAST(id AS TEXT), type, payload, clientRequestId, clinicId, timestamp, retryCount, 'PENDING', NULL, NULL, timestamp
+                FROM pending_syncs
+            """.trimIndent())
+
+            // 3. Drop old table
+            db.execSQL("DROP TABLE pending_syncs")
+
+            // 4. Rename new table
+            db.execSQL("ALTER TABLE pending_syncs_new RENAME TO pending_syncs")
+
+            // 5. Create index for efficient retry queries
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_syncs_status ON pending_syncs(status)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_syncs_next_retry ON pending_syncs(status, nextRetryAt)")
         }
     }
 
-    /** All registered migrations, indexed by (from, to) version pairs. */
+    /**
+     * M3B.4: Migration 5 → 6 — UUID for appointments and medical_records.
+     *
+     * Changes:
+     *   - appointments.id: Int (autoGenerate) → String (UUID)
+     *   - appointments.serverId: new Int? column (backend-assigned ID)
+     *   - medical_records.id: Int (autoGenerate) → String (UUID)
+     *   - medical_records.serverId: new Int? column
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Appointments: recreate with UUID PK + serverId
+            db.execSQL("""
+                CREATE TABLE appointments_new (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    serverId INTEGER,
+                    patientPhone TEXT NOT NULL,
+                    patientName TEXT NOT NULL,
+                    doctorName TEXT NOT NULL,
+                    specialty TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    time TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    clinicId TEXT NOT NULL DEFAULT 'clinic_base',
+                    notes TEXT NOT NULL DEFAULT '',
+                    updatedAt INTEGER NOT NULL DEFAULT 0,
+                    clientRequestId TEXT,
+                    version INTEGER NOT NULL DEFAULT 1
+                )
+            """.trimIndent())
+
+            // Copy existing data — convert Int id to String, set serverId = old id
+            db.execSQL("""
+                INSERT INTO appointments_new (id, serverId, patientPhone, patientName, doctorName, specialty, date, time, status, reason, clinicId, notes, updatedAt, clientRequestId, version)
+                SELECT CAST(id AS TEXT), id, patientPhone, patientName, doctorName, specialty, date, time, status, reason, clinicId, notes, updatedAt, clientRequestId, version
+                FROM appointments
+            """.trimIndent())
+            db.execSQL("DROP TABLE appointments")
+            db.execSQL("ALTER TABLE appointments_new RENAME TO appointments")
+
+            // Medical records: recreate with UUID PK + serverId
+            db.execSQL("""
+                CREATE TABLE medical_records_new (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    serverId INTEGER,
+                    patientPhone TEXT NOT NULL,
+                    doctorName TEXT NOT NULL,
+                    diagnosis TEXT NOT NULL,
+                    prescription TEXT NOT NULL,
+                    visitDate TEXT NOT NULL,
+                    clinicId TEXT NOT NULL DEFAULT 'clinic_base',
+                    recommendations TEXT NOT NULL DEFAULT '',
+                    timestamp INTEGER NOT NULL DEFAULT 0
+                )
+            """.trimIndent())
+
+            db.execSQL("""
+                INSERT INTO medical_records_new (id, serverId, patientPhone, doctorName, diagnosis, prescription, visitDate, clinicId, recommendations, timestamp)
+                SELECT CAST(id AS TEXT), id, patientPhone, doctorName, diagnosis, prescription, visitDate, clinicId, recommendations, timestamp
+                FROM medical_records
+            """.trimIndent())
+            db.execSQL("DROP TABLE medical_records")
+            db.execSQL("ALTER TABLE medical_records_new RENAME TO medical_records")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_4_5,
-        // Add MIGRATION_5_6, MIGRATION_6_7, ... here as the schema evolves.
+        MIGRATION_5_6,
     )
 }

@@ -50,7 +50,7 @@ import java.util.Locale
 fun AppointmentCardItem(
     appointment: AppointmentEntity,
     isPendingSync: Boolean = false,
-    onCancelClick: (Int) -> Unit
+    onCancelClick: (String) -> Unit
 ) {
     val statusColor = when (appointment.status) {
         "PENDING" -> Color(0xFFFF8F00) // Beautiful Amber

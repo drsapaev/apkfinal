@@ -22,7 +22,7 @@ class BookAppointmentUseCaseTest {
     private lateinit var useCase: BookAppointmentUseCase
 
     private val testAppointment = Appointment(
-        id = 1, patientPhone = "+77771112233", patientName = "Test",
+        id = "1", patientPhone = "+77771112233", patientName = "Test",
         doctorName = "Dr. Smith", specialty = "Cardiology",
         date = "2026-07-01", time = "10:00", status = AppointmentStatus.PENDING,
         reason = "Checkup"

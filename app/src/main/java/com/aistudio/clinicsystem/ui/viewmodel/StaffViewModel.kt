@@ -15,8 +15,19 @@ import java.util.*
 class StaffViewModel(application: Application) : AndroidViewModel(application) {
     private val database = ClinicDatabase.getDatabase(application)
     private val repository = ClinicRepository(database)
-    private val authRepository = AuthRepository(application, database)
-    private val sessionManager = com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+
+    // M3B.1: SessionRepository as SSOT
+    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
+    )
+
+    private val authRepository = AuthRepository(
+        context = application,
+        database = database,
+        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
+        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
+        sessionRepository = sessionRepository
+    )
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
@@ -28,7 +39,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     // Undo action structures
     sealed class UndoAction {
         data class RestoreAppointment(val oldAppt: AppointmentEntity) : UndoAction()
-        data class DeleteAppointment(val id: Int) : UndoAction()
+        data class DeleteAppointment(val id: String) : UndoAction()
         data class RestoreQueue(val oldSnapshots: List<QueueSnapshotEntity>) : UndoAction()
     }
 
@@ -181,7 +192,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refreshSession() {
         viewModelScope.launch {
-            val savedPhone = sessionManager.getPhone()
+            val savedPhone = sessionRepository.phone
             if (!savedPhone.isNullOrBlank()) {
                 val cached = repository.getUserByPhone(savedPhone)
                 if (cached != null) {
@@ -213,11 +224,11 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun approveAppointment(id: Int) {
+    fun approveAppointment(id: String) {
         viewModelScope.launch {
             val appointment = repository.getAppointmentById(id)
             val oldAppt = appointment?.copy()
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -231,7 +242,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                 val patientName = patientUser?.fullName ?: "Пациент"
                 
                 com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
-                    getApplication(), updated.id, updated.doctorName, "${updated.date} в ${updated.time}", "APPROVED", patientName
+                    getApplication(), updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "APPROVED", patientName
                 )
 
                 if (patientUser?.telegramChatId != null) {
@@ -242,11 +253,11 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun cancelAppointment(id: Int, cancelReason: String = "") {
+    fun cancelAppointment(id: String, cancelReason: String = "") {
         viewModelScope.launch {
             val appointment = repository.getAppointmentById(id)
             val oldAppt = appointment?.copy()
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
                 id = id,
@@ -261,7 +272,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                 val patientName = patientUser?.fullName ?: "Пациент"
 
                 com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
-                    getApplication(), updated.id, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
+                    getApplication(), updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
                 )
 
                 if (patientUser?.telegramChatId != null) {
@@ -272,7 +283,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addStaffNotesToAppointment(id: Int, notes: String) {
+    fun addStaffNotesToAppointment(id: String, notes: String) {
         viewModelScope.launch {
             val appointment = repository.getAppointmentById(id)
             if (appointment != null) {
@@ -287,7 +298,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val activeUser = _currentUser.value
             val doctor = activeUser?.fullName ?: "Дежурный Врач"
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
 
             val saved = repository.createMedicalRecordOnServerAndLocal(
                 token = token,
@@ -302,7 +313,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
             val patientName = patientUser?.fullName ?: "Пациент"
 
             com.aistudio.clinicsystem.utils.NotificationHelper.sendMedicalRecordNotification(
-                getApplication(), saved.id, doctor, diagnosis, patientName
+                getApplication(), saved.serverId ?: 0, doctor, diagnosis, patientName
             )
 
             if (patientUser?.telegramChatId != null) {
@@ -314,7 +325,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     
     fun triggerCloudSynchronization() {
         viewModelScope.launch {
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             repository.syncAllAppointmentsFromServer(token)
         }
     }
@@ -329,7 +340,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         reason: String
     ) {
         viewModelScope.launch {
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             val newApp = repository.createAppointmentOnServerAndLocal(
                 token = token,
                 patientPhone = patientPhone,
@@ -346,7 +357,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateAppointment(
-        id: Int,
+        id: String,
         patientPhone: String,
         patientName: String,
         doctorName: String,
@@ -379,12 +390,12 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun registerPatientInQueue(appointmentId: Int) {
+    fun registerPatientInQueue(appointmentId: String) {
         viewModelScope.launch {
             val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
             _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
 
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             try {
                 // M2: use repository.registerInQueue instead of direct ApiClient.service access
                 val response = repository.registerInQueue(appointmentId = appointmentId)
@@ -396,9 +407,9 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                         val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
                         val nextPosition = (snapshots.maxOfOrNull { it.position } ?: 0) + 1
                         val localSnapshot = QueueSnapshotEntity(
-                            id = appointmentId,
+                            id = (appt.serverId ?: 0),
                             patientName = appt.patientName,
-                            appointmentId = appointmentId,
+                            appointmentId = (appt.serverId ?: 0),
                             position = nextPosition,
                             status = "WAITING"
                         )
@@ -412,9 +423,9 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                     val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
                     val nextPosition = (snapshots.maxOfOrNull { it.position } ?: 0) + 1
                     val localSnapshot = QueueSnapshotEntity(
-                        id = appointmentId,
+                        id = (appt.serverId ?: 0),
                         patientName = appt.patientName,
-                        appointmentId = appointmentId,
+                        appointmentId = (appt.serverId ?: 0),
                         position = nextPosition,
                         status = "WAITING"
                     )

@@ -4,34 +4,31 @@ import android.content.Context
 import android.util.Log
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.UserEntity
-import com.aistudio.clinicsystem.data.api.ApiClient
+import com.aistudio.clinicsystem.data.api.ApiService
+import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.api.LoginRequest
 import com.aistudio.clinicsystem.data.api.LogoutRequest
 import com.aistudio.clinicsystem.data.api.UserDto
+import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * AuthRepository manages network authentication workflows with the backend FastAPI 'final' server,
- * while maintaining local cache synchronization in the Room database (`com.aistudio.clinicsystem.data.db.UserEntity`).
+ * while maintaining local cache synchronization in the Room database.
  *
- * M1/E3.2: uses the new [com.aistudio.clinicsystem.data.api.MobileApiService] for the
- * canonical /authentication/login flow (returns access + refresh tokens).
- *
- * M1/E3.3: [logout] is now suspend and invalidates the session server-side via
- * POST /api/v1/authentication/logout before clearing local tokens.
- *
- * M1/E3.4: [login] now detects 2FA challenges (LoginResponse.requires_2fa=true)
- * and returns [LoginOutcome.TwoFactorRequired] instead of completing login.
+ * M3B.1: now uses [SessionRepository] as SSOT for session state.
+ * Token storage and session state updates go through SessionRepository
+ * instead of directly calling SessionManagerImpl.
  */
 class AuthRepository(
     private val context: Context,
-    private val database: ClinicDatabase
+    private val database: ClinicDatabase,
+    private val mobileApiService: MobileApiService,
+    private val apiService: ApiService,
+    private val sessionRepository: SessionRepository
 ) {
-    private val apiService = ApiClient.service
-    private val mobileApiService = ApiClient.mobileService
-    private val sessionManager = SessionManagerImpl.getInstance(context)
     private val userDao = database.userDao()
 
     /**
@@ -84,8 +81,7 @@ class AuthRepository(
                 ?: return@withContext Result.failure(IllegalStateException("Login response missing refresh_token"))
 
             // Persist both tokens
-            sessionManager.setTokens(accessToken, refreshToken)
-            ApiClient.tokenProvider = { accessToken }
+            sessionRepository.onTokensRefreshed(accessToken, refreshToken)
 
             // Fetch full profile (loginResp.user is untyped Map; profile endpoint gives typed data)
             val profileResponse = mobileApiService.getProfile()
@@ -94,8 +90,7 @@ class AuthRepository(
             }
 
             val userProfile = profileResponse.body()!!
-            sessionManager.saveSession(
-                token = accessToken,
+            sessionRepository.onProfileLoaded(
                 phone = userProfile.phone ?: "",
                 role = userProfile.role ?: "PATIENT"
             )
@@ -171,8 +166,7 @@ class AuthRepository(
             val refreshToken = loginResp.refreshToken
                 ?: return@withContext Result.failure(IllegalStateException("2FA response missing refresh_token"))
 
-            sessionManager.setTokens(accessToken, refreshToken)
-            ApiClient.tokenProvider = { accessToken }
+            sessionRepository.onTokensRefreshed(accessToken, refreshToken)
 
             // Fetch profile to populate phone/role
             val profileResponse = mobileApiService.getProfile()
@@ -180,8 +174,7 @@ class AuthRepository(
                 return@withContext Result.failure(retrofit2.HttpException(profileResponse))
             }
             val userProfile = profileResponse.body()!!
-            sessionManager.saveSession(
-                token = accessToken,
+            sessionRepository.onProfileLoaded(
                 phone = userProfile.phone ?: "",
                 role = userProfile.role ?: "PATIENT"
             )
@@ -277,16 +270,14 @@ class AuthRepository(
             val refreshToken = loginResp.refreshToken
                 ?: return@withContext Result.failure(IllegalStateException("Recovery verify missing refresh_token"))
 
-            sessionManager.setTokens(accessToken, refreshToken)
-            ApiClient.tokenProvider = { accessToken }
+            sessionRepository.onTokensRefreshed(accessToken, refreshToken)
 
             val profileResponse = mobileApiService.getProfile()
             if (!profileResponse.isSuccessful) {
                 return@withContext Result.failure(retrofit2.HttpException(profileResponse))
             }
             val userProfile = profileResponse.body()!!
-            sessionManager.saveSession(
-                token = accessToken,
+            sessionRepository.onProfileLoaded(
                 phone = userProfile.phone ?: "",
                 role = userProfile.role ?: "PATIENT"
             )
@@ -320,7 +311,7 @@ class AuthRepository(
      */
     suspend fun verifyCurrentSession(): Result<UserDto> = withContext(Dispatchers.IO) {
         try {
-            val token = sessionManager.getToken()
+            val token = sessionRepository.accessToken
             if (token.isNullOrBlank()) {
                 return@withContext Result.failure(Exception("Сессия отсутствует"))
             }
@@ -358,7 +349,7 @@ class AuthRepository(
                 )
             } else {
                 // TokenAuthenticator already tried to refresh and failed — give up.
-                sessionManager.clearSession()
+                sessionRepository.clearSession()
                 Result.failure(Exception("Срок действия сессии истек"))
             }
         } catch (e: Exception) {
@@ -372,11 +363,11 @@ class AuthRepository(
      */
     suspend fun linkTelegram(telegramId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val token = sessionManager.getToken() ?: return@withContext Result.failure(Exception("Не авторизован"))
+            val token = sessionRepository.accessToken ?: return@withContext Result.failure(Exception("Не авторизован"))
             val response = apiService.linkTelegram(telegramId)
             if (response.isSuccessful) {
                 // Update local DB cache as well
-                sessionManager.getPhone()?.let { phone ->
+                sessionRepository.phone?.let { phone ->
                     userDao.getUserByPhone(phone)?.let { user ->
                         userDao.updateUser(user.copy(telegramChatId = telegramId))
                     }
@@ -407,7 +398,7 @@ class AuthRepository(
      *    but the user wanted to log out, so we honor that locally.
      */
     suspend fun logout(): Result<Unit> = withContext(Dispatchers.IO) {
-        val refreshToken = sessionManager.getRefreshToken()
+        val refreshToken = sessionRepository.refreshToken
 
         // If we have a refresh token, notify the server first
         if (!refreshToken.isNullOrBlank()) {
@@ -429,8 +420,7 @@ class AuthRepository(
         }
 
         // Clear local state
-        sessionManager.clearSession()
-        ApiClient.tokenProvider = { null }
+        sessionRepository.clearSession()
         Result.success(Unit)
     }
 

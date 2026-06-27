@@ -85,7 +85,7 @@ class ClinicWebSocketClientTest {
         runBlocking {
             database.appointmentDao().insertAppointment(
                 com.aistudio.clinicsystem.data.db.AppointmentEntity(
-                    id = 42, patientPhone = "+77771112233", patientName = "Patient",
+                    id = "42", patientPhone = "+77771112233", patientName = "Patient",
                     doctorName = "Dr. Smith", specialty = "Cardiology",
                     date = "2026-07-01", time = "10:00", status = "PENDING",
                     reason = "Checkup"
@@ -96,7 +96,7 @@ class ClinicWebSocketClientTest {
         handleMessage("""{"event":"APPOINTMENT_STATUS","data":{"id":42,"status":"APPROVED","doctor_name":"Dr. Smith","date":"2026-07-01","time":"10:00","patient_name":"Patient","patient_phone":"+77771112233"}}""")
 
         runBlocking {
-            val updated = database.appointmentDao().getAppointmentById(42)
+            val updated = database.appointmentDao().getAppointmentById("42")
             assertNotNull("Appointment should exist", updated)
             assertEquals("APPROVED", updated?.status)
         }
@@ -107,7 +107,7 @@ class ClinicWebSocketClientTest {
         handleMessage("""{"event":"APPOINTMENT_STATUS","data":{"id":99,"status":"PENDING","doctor_name":"Dr. New","date":"2026-08-01","time":"14:00","patient_name":"New Patient","patient_phone":"+77001112233","specialty":"Neurology","reason":"New visit"}}""")
 
         runBlocking {
-            val created = database.appointmentDao().getAppointmentById(99)
+            val created = database.appointmentDao().getAppointmentById("99")
             assertNotNull("Appointment should be created", created)
             assertEquals("Dr. New", created?.doctorName)
             assertEquals("PENDING", created?.status)
@@ -119,7 +119,7 @@ class ClinicWebSocketClientTest {
         runBlocking {
             database.appointmentDao().insertAppointment(
                 com.aistudio.clinicsystem.data.db.AppointmentEntity(
-                    id = 10, patientPhone = "+77771112233", patientName = "P",
+                    id = "10", patientPhone = "+77771112233", patientName = "P",
                     doctorName = "Dr.", specialty = "S", date = "2026-07-01", time = "10:00",
                     status = "PENDING", reason = "R"
                 )
@@ -136,7 +136,7 @@ class ClinicWebSocketClientTest {
         handleMessage("""{"event":"APPOINTMENT_STATUS","data":{"id":10,"status":"CANCELLED","doctor_name":"Dr.","date":"2026-07-01","time":"10:00","patient_name":"P","patient_phone":"+77771112233"}}""")
 
         runBlocking {
-            val appointment = database.appointmentDao().getAppointmentById(10)
+            val appointment = database.appointmentDao().getAppointmentById("10")
             assertEquals("Should remain PENDING (reconciliation guard)", "PENDING", appointment?.status)
         }
     }
@@ -153,7 +153,7 @@ class ClinicWebSocketClientTest {
         handleMessage("""{"event":"NEW_MEDICAL_RECORD","data":{"id":55,"patient_phone":"+77771112233","doctor_name":"Dr. House","diagnosis":"Lupus","prescription":"Steroids","visit_date":"2026-06-15","recommendations":"Rest"}}""")
 
         runBlocking {
-            val record = database.medicalRecordDao().getRecordById(55)
+            val record = database.medicalRecordDao().getRecordById("55")
             assertNotNull("Medical record should be inserted", record)
             assertEquals("Dr. House", record?.doctorName)
             assertEquals("Lupus", record?.diagnosis)
@@ -165,7 +165,7 @@ class ClinicWebSocketClientTest {
         handleMessage("""{"event":"NEW_MEDICAL_RECORD","data":{"id":56,"patient_phone":"+77771112233"}}""")
 
         runBlocking {
-            val record = database.medicalRecordDao().getRecordById(56)
+            val record = database.medicalRecordDao().getRecordById("56")
             assertNotNull("Record should be inserted even with null fields", record)
             assertEquals("", record?.diagnosis)
         }

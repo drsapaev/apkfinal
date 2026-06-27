@@ -51,10 +51,10 @@ fun MedicalReportsSection(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     records: List<MedicalRecordEntity>,
-    expandedRecords: Set<Int>,
+    expandedRecords: Set<String>,
     isFetching: Boolean,
     onFetchClick: () -> Unit,
-    onRecordToggle: (Int) -> Unit
+    onRecordToggle: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Section Title

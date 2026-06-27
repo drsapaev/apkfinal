@@ -39,10 +39,14 @@ interface AppointmentDao {
     suspend fun updateAppointment(appointment: AppointmentEntity)
 
     @Query("SELECT * FROM appointments WHERE id = :id LIMIT 1")
-    suspend fun getAppointmentById(id: Int): AppointmentEntity?
+    suspend fun getAppointmentById(id: String): AppointmentEntity?
+
+    // M3B.4: lookup by server-assigned ID (used by WebSocket events)
+    @Query("SELECT * FROM appointments WHERE serverId = :serverId LIMIT 1")
+    suspend fun getAppointmentByServerId(serverId: Int): AppointmentEntity?
 
     @Query("DELETE FROM appointments WHERE id = :id")
-    suspend fun deleteAppointmentById(id: Int)
+    suspend fun deleteAppointmentById(id: String)
 
     @Query("DELETE FROM appointments WHERE patientPhone = :phone")
     suspend fun deleteAppointmentsByPatient(phone: String)
@@ -68,11 +72,43 @@ interface QueueSnapshotDao {
 
 @Dao
 interface PendingSyncDao {
-    @Query("SELECT * FROM pending_syncs ORDER BY id ASC")
+    @Query("SELECT * FROM pending_syncs ORDER BY timestamp ASC")
     suspend fun getAllPendingSyncs(): List<PendingSyncEntity>
 
-    @Query("SELECT * FROM pending_syncs ORDER BY id ASC")
+    @Query("SELECT * FROM pending_syncs ORDER BY timestamp ASC")
     fun observeAllPendingSyncs(): kotlinx.coroutines.flow.Flow<List<PendingSyncEntity>>
+
+    // M3B.3: Outbox queries
+    @Query("SELECT * FROM pending_syncs WHERE status = 'PENDING' AND (nextRetryAt IS NULL OR nextRetryAt <= :now) ORDER BY timestamp ASC")
+    suspend fun getPendingForRetry(now: Long = System.currentTimeMillis()): List<PendingSyncEntity>
+
+    @Query("SELECT * FROM pending_syncs WHERE status = 'PROCESSING' ORDER BY timestamp ASC")
+    suspend fun getStuckProcessing(): List<PendingSyncEntity>
+
+    @Query("SELECT * FROM pending_syncs WHERE status = 'DEAD_LETTER' ORDER BY timestamp ASC")
+    suspend fun getDeadLettered(): List<PendingSyncEntity>
+
+    @Query("UPDATE pending_syncs SET status = :status, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateStatus(id: String, status: String, updatedAt: Long = System.currentTimeMillis())
+
+    @Query(
+        """UPDATE pending_syncs 
+           SET status = :status, retryCount = :retryCount, 
+               lastError = :error, nextRetryAt = :nextRetryAt, 
+               updatedAt = :updatedAt 
+           WHERE id = :id"""
+    )
+    suspend fun updateRetryState(
+        id: String,
+        status: String,
+        retryCount: Int,
+        error: String?,
+        nextRetryAt: Long?,
+        updatedAt: Long = System.currentTimeMillis()
+    )
+
+    @Query("DELETE FROM pending_syncs WHERE status = 'COMPLETED'")
+    suspend fun deleteCompleted()
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPendingSync(sync: PendingSyncEntity)
@@ -96,7 +132,7 @@ interface MedicalRecordDao {
     suspend fun insertRecord(record: MedicalRecordEntity): Long
 
     @Query("SELECT * FROM medical_records WHERE id = :id LIMIT 1")
-    suspend fun getRecordById(id: Int): MedicalRecordEntity?
+    suspend fun getRecordById(id: String): MedicalRecordEntity?
 
     @Query("DELETE FROM medical_records WHERE patientPhone = :phone")
     suspend fun deleteRecordsByPatient(phone: String)
@@ -123,7 +159,7 @@ interface SyncLogDao {
         QueueSnapshotEntity::class,
         PendingSyncEntity::class
     ],
-    version = 4,
+    version = 6,
     // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
     // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/4.json
     // on every build. This file must be committed to git — it is the

@@ -91,7 +91,15 @@ class AuthRepositoryDemoBypassTest {
             ClinicDatabase::class.java
         ).allowMainThreadQueries().build()
 
-        repository = AuthRepository(context, db)
+        repository = AuthRepository(
+            context = context,
+            database = db,
+            mobileApiService = mockApiService,
+            apiService = io.mockk.mockk(relaxed = true),
+            sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
+                com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(context)
+            )
+        )
     }
 
     @After
