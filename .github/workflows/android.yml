@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -51,7 +51,7 @@ jobs:
           path: |
             ~/.gradle/caches/robolectric
             ~/.m2/repository/org/robolectric
-          key: robolectric-sdk-33-${{ runner.os }}-v2
+          key: robolectric-4.14.1-sdk-33-${{ runner.os }}-v3
 
       - name: Run ktlint
         run: ./gradlew ktlintCheck --max-workers=2
@@ -63,6 +63,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --max-workers=2
         env:
           JAVA_TOOL_OPTIONS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+          ROBOLECTRIC_SDK_DOWNLOAD_TIMEOUT: "600"
 
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --max-workers=2
@@ -76,10 +77,11 @@ jobs:
           retention-days: 14
 
       - name: Upload test results on failure
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: |
             app/build/reports/tests/
             app/build/reports/detekt/
+            app/build/test-results/
