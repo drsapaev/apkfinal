@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -44,6 +44,12 @@ jobs:
 
       - name: Create Robolectric temp directories
         run: mkdir -p /tmp/robolectric-tmp
+
+      - name: Cache Robolectric SDK jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches/robolectric
+          key: robolectric-sdk-34-${{ runner.os }}
 
       - name: Run ktlint
         run: ./gradlew ktlintCheck --max-workers=1
