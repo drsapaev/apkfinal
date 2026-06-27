@@ -1,0 +1,74 @@
+<resources>
+    <string name="app_name">Clinic System</string>
+
+    <!-- Auth -->
+    <string name="auth_login_title">Sign In</string>
+    <string name="auth_username">Username</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_login_button">Sign In</string>
+    <string name="auth_biometric_login">Sign in with biometrics</string>
+    <string name="auth_biometric_prompt">Place your finger to confirm login</string>
+    <string name="auth_error_blank">Please enter username and password</string>
+    <string name="auth_error_invalid">Invalid username or password</string>
+    <string name="auth_error_network">Login error: %1$s</string>
+    <string name="auth_2fa_title">Two-Factor Authentication</string>
+    <string name="auth_2fa_code_hint">6-digit code</string>
+    <string name="auth_2fa_verify">Verify</string>
+    <string name="auth_2fa_use_recovery">Use recovery code</string>
+    <string name="auth_2fa_trust_device">Trust this device</string>
+    <string name="auth_2fa_error_expired">2FA session expired, please log in again</string>
+    <string name="auth_2fa_error_code">Code must be 6 digits</string>
+    <string name="auth_2fa_error_invalid">Invalid 2FA code</string>
+    <string name="auth_2fa_recovery_sent">Recovery code sent to %1$s</string>
+    <string name="auth_2fa_recovery_invalid">Invalid recovery code</string>
+    <string name="auth_logout">Log Out</string>
+
+    <!-- Patient -->
+    <string name="patient_cabinet">Patient Dashboard</string>
+    <string name="patient_book_appointment">Book Appointment</string>
+    <string name="patient_appointments">My Appointments</string>
+    <string name="patient_medical_records">Medical Records</string>
+    <string name="patient_queue_position">Your position: %1$d</string>
+    <string name="patient_cancel_appointment">Cancel Appointment</string>
+    <string name="patient_cancel_reason">Cancellation reason</string>
+
+    <!-- Staff -->
+    <string name="staff_dashboard">Staff Dashboard</string>
+    <string name="staff_approve">Approve</string>
+    <string name="staff_cancel">Cancel</string>
+    <string name="staff_add_notes">Add Notes</string>
+    <string name="staff_register_queue">Add to Queue</string>
+
+    <!-- Errors -->
+    <string name="error_generic">An error occurred. Please try again later</string>
+    <string name="error_offline">No internet connection</string>
+    <string name="error_server">Server error: %1$d</string>
+    <string name="error_not_found">Record not found</string>
+    <string name="error_not_synced">Record not yet synced with server</string>
+
+    <!-- Sync -->
+    <string name="sync_in_progress">Syncing…</string>
+    <string name="sync_success">Sync complete</string>
+    <string name="sync_failed">Sync failed</string>
+    <string name="sync_pending_count">Pending operations: %1$d</string>
+
+    <!-- Notifications -->
+    <string name="notif_appointment_approved">Appointment approved! ✔</string>
+    <string name="notif_appointment_cancelled">Appointment cancelled ❌</string>
+    <string name="notif_appointment_update">Appointment update ⚡</string>
+    <string name="notif_medical_record">New medical record</string>
+    <string name="notif_channel_appointments">Appointment notifications</string>
+    <string name="notif_channel_medical">Medical records</string>
+
+    <!-- Profile -->
+    <string name="profile_edit">Edit Profile</string>
+    <string name="profile_biometric_toggle">Biometric Login</string>
+    <string name="profile_secure_screen">Screen Protection (FLAG_SECURE)</string>
+    <string name="profile_telegram_link">Link Telegram</string>
+    <string name="profile_telegram_unlink">Unlink Telegram</string>
+
+    <!-- Theme -->
+    <string name="theme_system">System theme</string>
+    <string name="theme_light">Light theme</string>
+    <string name="theme_dark">Dark theme</string>
+</resources>

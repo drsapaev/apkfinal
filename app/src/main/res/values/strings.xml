@@ -1,3 +1,74 @@
 <resources>
     <string name="app_name">Clinic System</string>
+
+    <!-- Auth -->
+    <string name="auth_login_title">Вход в систему</string>
+    <string name="auth_username">Имя пользователя</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_login_button">Войти</string>
+    <string name="auth_biometric_login">Войти по биометрии</string>
+    <string name="auth_biometric_prompt">Приложите палец для подтверждения входа</string>
+    <string name="auth_error_blank">Пожалуйста, введите имя пользователя и пароль</string>
+    <string name="auth_error_invalid">Неверный логин или пароль</string>
+    <string name="auth_error_network">Ошибка входа: %1$s</string>
+    <string name="auth_2fa_title">Двухфакторная аутентификация</string>
+    <string name="auth_2fa_code_hint">6-значный код</string>
+    <string name="auth_2fa_verify">Подтвердить</string>
+    <string name="auth_2fa_use_recovery">Использовать recovery-код</string>
+    <string name="auth_2fa_trust_device">Доверять этому устройству</string>
+    <string name="auth_2fa_error_expired">Сессия 2FA истекла, войдите заново</string>
+    <string name="auth_2fa_error_code">Код должен состоять из 6 цифр</string>
+    <string name="auth_2fa_error_invalid">Неверный код 2FA</string>
+    <string name="auth_2fa_recovery_sent">Код восстановления отправлен на %1$s</string>
+    <string name="auth_2fa_recovery_invalid">Неверный код восстановления</string>
+    <string name="auth_logout">Выйти</string>
+
+    <!-- Patient -->
+    <string name="patient_cabinet">Личный Кабинет Пациента</string>
+    <string name="patient_book_appointment">Запись на приём</string>
+    <string name="patient_appointments">Мои записи</string>
+    <string name="patient_medical_records">Медицинские записи</string>
+    <string name="patient_queue_position">Ваша позиция: %1$d</string>
+    <string name="patient_cancel_appointment">Отменить запись</string>
+    <string name="patient_cancel_reason">Причина отмены</string>
+
+    <!-- Staff -->
+    <string name="staff_dashboard">Панель персонала</string>
+    <string name="staff_approve">Подтвердить</string>
+    <string name="staff_cancel">Отменить</string>
+    <string name="staff_add_notes">Добавить заметки</string>
+    <string name="staff_register_queue">Добавить в очередь</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Произошла ошибка. Попробуйте позже</string>
+    <string name="error_offline">Нет подключения к интернету</string>
+    <string name="error_server">Ошибка сервера: %1$d</string>
+    <string name="error_not_found">Запись не найдена</string>
+    <string name="error_not_synced">Запись ещё не синхронизирована с сервером</string>
+
+    <!-- Sync -->
+    <string name="sync_in_progress">Синхронизация…</string>
+    <string name="sync_success">Синхронизация завершена</string>
+    <string name="sync_failed">Сбой синхронизации</string>
+    <string name="sync_pending_count">Отложенных операций: %1$d</string>
+
+    <!-- Notifications -->
+    <string name="notif_appointment_approved">Прием одобрен! ✔</string>
+    <string name="notif_appointment_cancelled">Прием отменен ❌</string>
+    <string name="notif_appointment_update">Обновление записи на прием ⚡</string>
+    <string name="notif_medical_record">Новая запись в медицинской карте</string>
+    <string name="notif_channel_appointments">Уведомления о записях</string>
+    <string name="notif_channel_medical">Медицинские записи</string>
+
+    <!-- Profile -->
+    <string name="profile_edit">Редактировать профиль</string>
+    <string name="profile_biometric_toggle">Биометрический вход</string>
+    <string name="profile_secure_screen">Защита экрана (FLAG_SECURE)</string>
+    <string name="profile_telegram_link">Привязать Telegram</string>
+    <string name="profile_telegram_unlink">Отвязать Telegram</string>
+
+    <!-- Theme -->
+    <string name="theme_system">Системная тема</string>
+    <string name="theme_light">Светлая тема</string>
+    <string name="theme_dark">Темная тема</string>
 </resources>
