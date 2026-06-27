@@ -48,13 +48,18 @@ data class QueueSnapshotEntity(
 
 @Entity(tableName = "pending_syncs")
 data class PendingSyncEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey val id: String = com.aistudio.clinicsystem.data.outbox.generateOutboxId(),
     val type: String, // "CREATE_APPOINTMENT", "UPDATE_APPOINTMENT_STATUS", "CREATE_MEDICAL_RECORD"
     val payload: String, // JSON payload representing the synchronized dto
     val clientRequestId: String,
     val clinicId: String = "clinic_base",
     val timestamp: Long = System.currentTimeMillis(),
-    val retryCount: Int = 0
+    val retryCount: Int = 0,
+    // M3B.3: Outbox fields
+    val status: String = "PENDING", // OutboxStatus.name
+    val lastError: String? = null,
+    val nextRetryAt: Long? = null, // epoch millis, null = retry immediately
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "medical_records")

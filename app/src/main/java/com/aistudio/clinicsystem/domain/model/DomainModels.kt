@@ -81,12 +81,15 @@ enum class QueueStatus {
 }
 
 data class PendingSync(
-    val id: Int,
+    val id: String,
     val type: String,
     val payload: String,
     val clientRequestId: String,
     val timestamp: Long,
-    val retryCount: Int = 0
+    val retryCount: Int = 0,
+    val status: String = "PENDING",
+    val lastError: String? = null,
+    val nextRetryAt: Long? = null
 )
 
 sealed class LoginResult {

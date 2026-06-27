@@ -242,19 +242,28 @@ class ClinicRepository(private val database: ClinicDatabase) {
     }
 
     suspend fun retryUnsyncedWrites(token: String?): Boolean {
-        val list = pendingSyncDao.getAllPendingSyncs()
+        // M3B.3: Outbox pattern — only process PENDING items that are ready for retry
+        val list = pendingSyncDao.getPendingForRetry()
         if (list.isEmpty()) return true
 
-        addSyncLog("🔄 Начинаем отправку отложенных операций (${list.size} в очереди)...", "CLOUD_SYNC_SIMULATOR")
-        val authHeader = if (!token.isNullOrBlank()) "Bearer $token" else ""
+        // M3B.3: Also recover stuck PROCESSING items (crash during sync)
+        val stuck = pendingSyncDao.getStuckProcessing()
+        val allToProcess = list + stuck
+        if (allToProcess.isEmpty()) return true
+
+        addSyncLog("🔄 Outbox: обработка ${allToProcess.size} отложенных операций...", "CLOUD_SYNC_SIMULATOR")
         val moshi = com.squareup.moshi.Moshi.Builder().build()
         val appointmentAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentDto::class.java)
         val medicalRecordAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.MedicalRecordDto::class.java)
+        val retryPolicy = com.aistudio.clinicsystem.data.outbox.OutboxRetryPolicy()
 
         var successCount = 0
-        for (sync in list) {
+        for (sync in allToProcess) {
+            // Mark as PROCESSING
+            pendingSyncDao.updateStatus(sync.id, "PROCESSING")
+
             try {
-                when (sync.type) {
+                val succeeded = when (sync.type) {
                     "CREATE_APPOINTMENT" -> {
                         val dto = appointmentAdapter.fromJson(sync.payload)
                         if (dto != null) {
@@ -267,11 +276,13 @@ class ClinicRepository(private val database: ClinicDatabase) {
                                     val finalApp = existingWithReqId.copy(id = saved.id ?: (System.currentTimeMillis() % 100000).toInt())
                                     appointmentDao.insertAppointment(finalApp)
                                 }
-                                pendingSyncDao.deletePendingSync(sync)
-                                successCount++
-                                addSyncLog("✓ [Отложенная запись]: Синхронизирован прием ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
+                                addSyncLog("✓ Outbox: Синхронизирован прием ID #${saved.id}", "CLOUD_SYNC_SIMULATOR")
+                                true
+                            } else {
+                                addSyncLog("⚠️ Outbox: Сервер отклонил прием (HTTP ${response.code()})", "CLOUD_SYNC_SIMULATOR")
+                                false
                             }
-                        }
+                        } else false
                     }
                     "UPDATE_STATUS" -> {
                         val parts = sync.payload.split("|", limit = 3)
@@ -282,32 +293,80 @@ class ClinicRepository(private val database: ClinicDatabase) {
                             if (id != null) {
                                 val response = legacyApiService.updateAppointmentStatus(id, status, notes)
                                 if (response.isSuccessful) {
-                                    pendingSyncDao.deletePendingSync(sync)
-                                    successCount++
-                                    addSyncLog("✓ [Отложенный статус]: Обновлен статус приема #$id -> $status", "CLOUD_SYNC_SIMULATOR")
-                                }
-                            }
-                        }
+                                    addSyncLog("✓ Outbox: Обновлен статус приема #$id → $status", "CLOUD_SYNC_SIMULATOR")
+                                    true
+                                } else false
+                            } else false
+                        } else false
                     }
                     "CREATE_MEDICAL_RECORD" -> {
                         val dto = medicalRecordAdapter.fromJson(sync.payload)
                         if (dto != null) {
                             val response = legacyApiService.createMedicalRecord(dto)
                             if (response.isSuccessful) {
-                                pendingSyncDao.deletePendingSync(sync)
-                                successCount++
-                                addSyncLog("✓ [Отложенная медкарта]: Синхронизирована медкарта пациента ${dto.patientPhone}", "CLOUD_SYNC_SIMULATOR")
-                            }
-                        }
+                                addSyncLog("✓ Outbox: Синхронизирована медкарта пациента ${dto.patientPhone}", "CLOUD_SYNC_SIMULATOR")
+                                true
+                            } else false
+                        } else false
                     }
+                    else -> false
+                }
+
+                if (succeeded) {
+                    // M3B.3: Mark as COMPLETED, then delete
+                    pendingSyncDao.updateStatus(sync.id, "COMPLETED")
+                    pendingSyncDao.deletePendingSync(sync)
+                    successCount++
+                } else {
+                    // M3B.3: Failed — increment retry count, schedule next retry
+                    handleOutboxFailure(sync, "Server returned error", retryPolicy)
                 }
             } catch (e: Exception) {
-                val updatedSync = sync.copy(retryCount = sync.retryCount + 1)
-                pendingSyncDao.insertPendingSync(updatedSync)
-                addSyncLog("⚠️ Сбой отложенной отправки (${sync.type}): ${e.localizedMessage}. Будет выполнен повтор позже.", "CLOUD_SYNC_SIMULATOR")
+                // M3B.3: Network/exception error — schedule retry with backoff
+                handleOutboxFailure(sync, e.localizedMessage ?: e.javaClass.simpleName, retryPolicy)
+                addSyncLog("⚠️ Outbox: Сбой (${sync.type}): ${e.message}. Повтор через backoff.", "CLOUD_SYNC_SIMULATOR")
             }
         }
-        return successCount == list.size
+
+        // Clean up completed items
+        pendingSyncDao.deleteCompleted()
+        return successCount == allToProcess.size
+    }
+
+    /**
+     * M3B.3: Handles outbox failure — increments retry count, calculates
+     * next retry time with exponential backoff, and moves to DEAD_LETTER
+     * if max retries exceeded.
+     */
+    private suspend fun handleOutboxFailure(
+        sync: PendingSyncEntity,
+        error: String,
+        retryPolicy: com.aistudio.clinicsystem.data.outbox.OutboxRetryPolicy
+    ) {
+        val newRetryCount = sync.retryCount + 1
+        if (newRetryCount >= retryPolicy.maxRetries) {
+            // Dead letter — requires manual intervention
+            pendingSyncDao.updateRetryState(
+                id = sync.id,
+                status = "DEAD_LETTER",
+                retryCount = newRetryCount,
+                error = error,
+                nextRetryAt = null
+            )
+            addSyncLog("💀 Outbox: Операция ${sync.type} (${sync.id}) перемещена в DEAD_LETTER после $newRetryCount попыток.", "SYSTEM_SYNC")
+        } else {
+            // Schedule retry with exponential backoff
+            val nextRetry = System.currentTimeMillis() + retryPolicy.backoffFor(newRetryCount)
+            pendingSyncDao.updateRetryState(
+                id = sync.id,
+                status = "FAILED",
+                retryCount = newRetryCount,
+                error = error,
+                nextRetryAt = nextRetry
+            )
+            // Reset to PENDING so it gets picked up on next cycle
+            pendingSyncDao.updateStatus(sync.id, "PENDING")
+        }
     }
 
     suspend fun createAppointmentOnServerAndLocal(
