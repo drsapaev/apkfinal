@@ -34,7 +34,7 @@ import org.robolectric.annotation.Config
  * error handling, and state management.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], manifest = Config.NONE)
+@Config(sdk = [33], manifest = Config.NONE)
 class AuthViewModelTest {
 
     private lateinit var application: Application
