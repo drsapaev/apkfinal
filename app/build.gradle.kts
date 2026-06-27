@@ -36,16 +36,17 @@ android {
         versionCode = 2
         versionName = "1.0.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.aistudio.clinicsystem.HiltTestRunner"
 
         // Stage 4.5 (C-8 fix): Privacy Policy URL placeholder.
         // Substituted into AndroidManifest via ${privacyPolicyUrl}.
         // Default is a placeholder; release builds MUST override via
         // `clinic.privacyPolicyUrl` gradle property (CI secret).
-        val privacyUrl = (project.findProperty("clinic.privacyUrl") as? String)
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: "https://clinic.tld/privacy"
+        val privacyUrl =
+            (project.findProperty("clinic.privacyUrl") as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: "https://clinic.tld/privacy"
         manifestPlaceholders["privacyPolicyUrl"] = privacyUrl
     }
 
@@ -65,8 +66,9 @@ android {
         // real keystore at `$rootDir/my-upload-key.jks` (gitignored).
         if (System.getenv("STORE_PASSWORD") != null) {
             create("release") {
-                val keystorePath = System.getenv("KEYSTORE_PATH")
-                    ?: "$rootDir/my-upload-key.jks"
+                val keystorePath =
+                    System.getenv("KEYSTORE_PATH")
+                        ?: "$rootDir/my-upload-key.jks"
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("STORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
@@ -117,14 +119,16 @@ android {
             // invalid URL (`https://INVALID.unset-base-url.example/`) so
             // any release artifact built without the property fails at
             // runtime with a clear error, not silently at a parked domain.
-            val prodBaseUrl = (project.findProperty("clinic.baseUrl") as? String)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() && !it.contains("example.com") }
-                ?: "https://INVALID.unset-base-url.example/"
-            val prodWsUrl = (project.findProperty("clinic.wsUrl") as? String)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() && !it.contains("example.com") }
-                ?: "wss://INVALID.unset-base-url.example/ws/queue"
+            val prodBaseUrl =
+                (project.findProperty("clinic.baseUrl") as? String)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() && !it.contains("example.com") }
+                    ?: "https://INVALID.unset-base-url.example/"
+            val prodWsUrl =
+                (project.findProperty("clinic.wsUrl") as? String)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() && !it.contains("example.com") }
+                    ?: "wss://INVALID.unset-base-url.example/ws/queue"
 
             buildConfigField("String", "BASE_URL", "\"$prodBaseUrl\"")
             buildConfigField("String", "BACKEND_URL", "\"$prodBaseUrl\"")
@@ -137,12 +141,14 @@ android {
             // If unset, NO pins are configured (development mode — debug
             // builds against 10.0.2.2 don't need pinning). Release builds
             // MUST set the pins via CI secrets.
-            val certPin1 = (project.findProperty("clinic.certPin1") as? String)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() } ?: "UNSET"
-            val certPin2 = (project.findProperty("clinic.certPin2") as? String)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() } ?: "UNSET"
+            val certPin1 =
+                (project.findProperty("clinic.certPin1") as? String)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() } ?: "UNSET"
+            val certPin2 =
+                (project.findProperty("clinic.certPin2") as? String)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() } ?: "UNSET"
             buildConfigField("String", "CERT_PIN_PRIMARY", "\"$certPin1\"")
             buildConfigField("String", "CERT_PIN_BACKUP", "\"$certPin2\"")
         }
@@ -151,14 +157,16 @@ android {
             // keystore at `~/.android/debug.keystore` on first build.
             // E2.7: debug backend URL — Android emulator maps 10.0.2.2 to host's 127.0.0.1.
             // Can be overridden with `-Pclinic.debugBaseUrl=...` for staging.
-            val debugBaseUrl = (project.findProperty("clinic.debugBaseUrl") as? String)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-                ?: "http://10.0.2.2:18000/"
-            val debugWsUrl = (project.findProperty("clinic.debugWsUrl") as? String)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-                ?: "ws://10.0.2.2:18000/ws/queue"
+            val debugBaseUrl =
+                (project.findProperty("clinic.debugBaseUrl") as? String)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: "http://10.0.2.2:18000/"
+            val debugWsUrl =
+                (project.findProperty("clinic.debugWsUrl") as? String)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: "ws://10.0.2.2:18000/ws/queue"
             buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"")
             buildConfigField("String", "BACKEND_URL", "\"$debugBaseUrl\"")
             buildConfigField("String", "WEBSOCKET_URL", "\"$debugWsUrl\"")
@@ -301,6 +309,9 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.runner)
+    // Stage 4 fix: Hilt testing — HiltTestApplication + @HiltAndroidTest support
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.51.1")
+    "kspAndroidTest"(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     "ksp"(libs.androidx.room.compiler)
@@ -331,15 +342,17 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     group = "verification"
     description = "Generates Jacoco coverage report for debug build (unit + instrumentation)."
 
-    // Coverage data sources
+    // Coverage data sources — AGP 8.x uses different paths than 7.x.
+    // Include all common patterns so the report works regardless of AGP version.
     executionData.setFrom(
         fileTree(layout.buildDirectory) {
             include(
                 "outputs/unit_test_execution_data/Debug/unitTest.exec",
                 "outputs/code_coverage/debugAndroidTest/connected/**/*.ec",
-                "jacoco/testDebugUnitTest.exec"
+                "jacoco/testDebugUnitTest.exec",
+                "outputs/code-coverage/connected/*.ec",
             )
-        }
+        },
     )
 
     // What to report — only first-party Kotlin sources
