@@ -71,7 +71,7 @@
     <string name="theme_system">Tizim mavzusi</string>
     <string name="theme_light">Ochiq mavzu</string>
     <string name="theme_dark">Qorong\'i mavzu</string>
-</resources>
+
 
     <!-- Plurals -->
     <plurals name="appointments_count">

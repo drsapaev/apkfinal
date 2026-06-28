@@ -71,7 +71,7 @@
     <string name="theme_system">System theme</string>
     <string name="theme_light">Light theme</string>
     <string name="theme_dark">Dark theme</string>
-</resources>
+
 
     <!-- Plurals -->
     <plurals name="appointments_count">
