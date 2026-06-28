@@ -163,7 +163,7 @@ See [Security Audit](#) (PR #8) for full audit results (8/8 checks passed).
 
 ## 🧪 Testing
 
-### Unit Tests (92+ tests)
+### Unit Tests (166+ tests)
 
 ```bash
 ./gradlew testDebugUnitTest

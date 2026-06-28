@@ -186,7 +186,7 @@ class ClinicWebSocketClient @javax.inject.Inject constructor(
                 val backoff = (baseBackoffTimeMs * Math.pow(2.0, reconnectAttempt.toDouble())).toLong().coerceAtMost(maxBackoffTimeMs)
                 val jitter = (Math.random() * 1000).toLong()
                 delay(backoff + jitter)
-                reconnectAttempt++
+                reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(20) // NET-10: cap at 20 to prevent overflow
                 Timber.w("Attempting websocket reconnect... retry $reconnectAttempt after ${backoff + jitter}ms")
                 start(forceReconnect = true)
             }

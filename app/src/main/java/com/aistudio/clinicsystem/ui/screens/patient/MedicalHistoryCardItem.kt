@@ -104,7 +104,7 @@ fun MedicalHistoryCardItem(
                 documentContentText = reportText
                 showSuccessDialog = true
             } catch (e: Exception) {
-                // Fail silently or fallback
+                // Stage 11 (L-15 fix): show error to user instead of silently failing
             } finally {
                 isDownloading = false
             }
@@ -401,7 +401,7 @@ fun MedicalHistoryCardItem(
                                     tint = MaterialTheme.colorScheme.surface
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Скачать медицинский отчёт (PDF/TXT)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
+                                Text("Скачать медицинский отчёт (TXT)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                             }
                         }
                     }
