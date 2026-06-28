@@ -229,7 +229,7 @@
     <string name="ui_filtr_po_vrachu">Фильтр по врачу:</string>
     <string name="ui_filtr_po_statusu">Фильтр по статусу:</string>
     <string name="ui_yavka_cherez_3_dnya">Явка через 3 дня</string>
-</resources>
+
     <!-- Stage 12: AlertDialog titles -->
     <string name="dialog_exit_editor">Выйти из редактора?</string>
     <string name="dialog_close_form">Закрыть форму записи?</string>
