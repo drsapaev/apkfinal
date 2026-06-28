@@ -1,6 +1,7 @@
 package com.aistudio.clinicsystem.domain.model
 
-import com.aistudio.clinicsystem.data.model.UserRole
+// Stage 5.1 (C-10 fix): UserRole is now in this same package (domain.model).
+// No more import from data.model — domain layer no longer depends on data layer.
 
 data class User(
     val id: String,

@@ -3,7 +3,7 @@ package com.aistudio.clinicsystem.domain.usecase.auth
 import com.aistudio.clinicsystem.domain.model.LoginResult
 import com.aistudio.clinicsystem.domain.model.User
 import com.aistudio.clinicsystem.domain.repository.AuthRepositoryInterface
-import com.aistudio.clinicsystem.data.model.UserRole
+import com.aistudio.clinicsystem.domain.model.UserRole
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking

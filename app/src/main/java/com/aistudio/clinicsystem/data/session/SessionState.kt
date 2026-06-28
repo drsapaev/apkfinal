@@ -1,6 +1,6 @@
 package com.aistudio.clinicsystem.data.session
 
-import com.aistudio.clinicsystem.data.model.UserRole
+import com.aistudio.clinicsystem.domain.model.UserRole
 import com.aistudio.clinicsystem.data.db.UserEntity
 
 /**
