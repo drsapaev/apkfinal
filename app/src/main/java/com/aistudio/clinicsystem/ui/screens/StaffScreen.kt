@@ -42,6 +42,8 @@ import com.aistudio.clinicsystem.utils.TokenManager
 import com.aistudio.clinicsystem.ui.screens.staff.AnalyticsCard
 import com.aistudio.clinicsystem.ui.screens.staff.StaffAppointmentCardItem
 import com.aistudio.clinicsystem.ui.screens.staff.StaffPatientCardItem
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -477,7 +479,7 @@ private fun StaffScreenContent(
                                                 colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
                                                 modifier = Modifier.heightIn(min = 44.dp).testTag("remove_queue_patient_button")
                                             ) {
-                                                Text("Убрать", fontSize = 10.sp)
+                                                Text(stringResource(R.string.ui_ubrat), fontSize = 10.sp)
                                             }
                                         }
                                     }
@@ -533,7 +535,7 @@ private fun StaffScreenContent(
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Приём", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.ui_priem), fontSize = 11.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -900,7 +902,7 @@ private fun StaffScreenContent(
                                 )
                             }
                             Text(
-                                text = "Сбросить",
+                                text = stringResource(R.string.ui_sbrosit),
                                 fontSize = 11.sp,
                                 color = Color.Red,
                                 fontWeight = FontWeight.Bold,
@@ -1205,7 +1207,7 @@ private fun StaffScreenContent(
                                 showAddRecordDialog = false
                             }
                         }) {
-                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -1305,7 +1307,7 @@ private fun StaffScreenContent(
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                     modifier = Modifier.testTag("confirm_remove_queue_patient_btn")
                 ) {
-                    Text("Удалить", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.ui_udalit), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
@@ -1313,7 +1315,7 @@ private fun StaffScreenContent(
                     showRemoveQueueConfirmDialog = false
                     targetQueueSnapshotToRemove = null
                 }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.ui_otmena))
                 }
             }
         )
@@ -1347,7 +1349,7 @@ private fun StaffScreenContent(
             },
             dismissButton = {
                 TextButton(onClick = { showCancelReasonDialog = false }) {
-                    Text("Назад")
+                    Text(stringResource(R.string.ui_nazad))
                 }
             }
         )
@@ -1375,12 +1377,12 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Внести", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.ui_vnesti), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNotesDialog = false }) {
-                    Text("Назад")
+                    Text(stringResource(R.string.ui_nazad))
                 }
             }
         )
@@ -1461,7 +1463,7 @@ private fun StaffScreenContent(
                             createPatientPhone = it
                             viewModel.setDraftCreatePatientPhone(it)
                         },
-                        label = { Text("Телефон") },
+                        label = { Text(stringResource(R.string.ui_telefon)) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                         modifier = Modifier.fillMaxWidth().testTag("manual_patient_phone")
@@ -1551,7 +1553,7 @@ private fun StaffScreenContent(
                                 showCreateAppointmentDialog = false
                             }
                         }) {
-                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -1610,7 +1612,7 @@ private fun StaffScreenContent(
                     OutlinedTextField(
                         value = editPatientPhone,
                         onValueChange = { editPatientPhone = it },
-                        label = { Text("Телефон") },
+                        label = { Text(stringResource(R.string.ui_telefon)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("edit_patient_phone")
                     )
@@ -1653,14 +1655,14 @@ private fun StaffScreenContent(
                         OutlinedTextField(
                             value = editDate,
                             onValueChange = { editDate = it },
-                            label = { Text("Дата") },
+                            label = { Text(stringResource(R.string.ui_data)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f).testTag("edit_date")
                         )
                         OutlinedTextField(
                             value = editTime,
                             onValueChange = { editTime = it },
-                            label = { Text("Время") },
+                            label = { Text(stringResource(R.string.ui_vremya)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f).testTag("edit_time")
                         )
@@ -1713,7 +1715,7 @@ private fun StaffScreenContent(
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { showEditAppointmentDialog = false }) {
-                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(

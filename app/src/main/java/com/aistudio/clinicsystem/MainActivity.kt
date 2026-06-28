@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.aistudio.clinicsystem.data.session.SessionState
@@ -44,6 +45,8 @@ class MainActivity : ComponentActivity() {
     private val viewModel: ClinicViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Stage 7.3 (UI-18 fix): install splash screen BEFORE super.onCreate
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         NotificationHelper.createNotificationChannels(this)

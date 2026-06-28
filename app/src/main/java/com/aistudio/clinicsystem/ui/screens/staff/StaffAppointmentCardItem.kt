@@ -44,6 +44,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 
 @Composable
 fun StaffAppointmentCardItem(
@@ -244,7 +246,7 @@ fun StaffAppointmentCardItem(
                     ) {
                         Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Одобрить", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface)
+                        Text(stringResource(R.string.ui_odobrit), fontSize = 11.sp, color = MaterialTheme.colorScheme.surface)
                     }
 
                     OutlinedButton(
@@ -256,7 +258,7 @@ fun StaffAppointmentCardItem(
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Red)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Отклонить", fontSize = 11.sp, color = Color.Red)
+                        Text(stringResource(R.string.ui_otklonit), fontSize = 11.sp, color = Color.Red)
                     }
                 } else {
                     OutlinedButton(
@@ -267,7 +269,7 @@ fun StaffAppointmentCardItem(
                     ) {
                         Icon(Icons.Default.NoteAlt, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Заметка", fontSize = 11.sp)
+                        Text(stringResource(R.string.ui_zametka), fontSize = 11.sp)
                     }
                 }
             }
