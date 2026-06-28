@@ -65,9 +65,7 @@ style:
     excludes:
       - '**/test/**'
       - '**/androidTest/**'
-      # SyncConsoleView is DEBUG-only and contains long Russian pentest strings.
-      # It will be moved to src/debug/ in Stage 6 — lift the exclude then.
-      - '**/ui/screens/SyncConsoleView.kt'
+      - '**/debug/**'
   UseDataClass:
     active: true
   UtilityClassWithPublicConstructor:
