@@ -53,6 +53,7 @@ class RealtimeManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: ClinicDatabase,
     private val sessionRepository: SessionRepository,
+    private val wsClient: ClinicWebSocketClient,
 ) {
     companion object {
         private const val TAG = "RealtimeManager"
@@ -73,9 +74,8 @@ class RealtimeManager @Inject constructor(
     )
     val connectionState: StateFlow<RealtimeEvent.ConnectionState> = _connectionState.asStateFlow()
 
-    // The underlying client. Singleton via ClinicWebSocketClient.getInstance().
+    // The underlying client. Injected via Hilt (@Singleton).
     // Kept private — ViewModels interact only through events / connectionState.
-    private var wsClient: ClinicWebSocketClient? = null
 
     /**
      * Initializes the manager. Called by Application.onCreate.
@@ -121,12 +121,11 @@ class RealtimeManager @Inject constructor(
             var lastToken: String? = null
             sessionRepository.sessionState.collectLatest { state ->
                 if (state is SessionState.Authenticated) {
-                    if (lastToken != null && lastToken != state.accessToken && wsClient != null) {
+                    if (lastToken != null && lastToken != state.accessToken) {
                         Log.i(TAG, "Access token rotated — reconnecting WebSocket with new token")
                         // NET-18 fix: reconnect with new token
-                        wsClient?.stop()
-                        wsClient = null
-                        ensureStarted()
+                        wsClient.stop()
+                        wsClient.start()
                     }
                     lastToken = state.accessToken
                 } else {
@@ -135,6 +134,9 @@ class RealtimeManager @Inject constructor(
             }
         }
     }
+
+    @Volatile
+    private var isStarted = false
 
     /**
      * Idempotent start. Called on ON_START (ProcessLifecycleOwner) and
@@ -145,8 +147,8 @@ class RealtimeManager @Inject constructor(
     }
 
     private fun ensureStarted() {
-        if (wsClient != null) {
-            Log.d(TAG, "ensureStarted() — WebSocket already exists, ignoring")
+        if (isStarted) {
+            Log.d(TAG, "ensureStarted() — WebSocket already started, ignoring")
             return
         }
         // Only start if authenticated — don't open a socket to a server we
@@ -157,8 +159,8 @@ class RealtimeManager @Inject constructor(
             return
         }
         Log.i(TAG, "Starting real-time WebSocket connection")
-        wsClient = ClinicWebSocketClient.getInstance(context, database)
-        wsClient?.start()
+        wsClient.start()
+        isStarted = true
         _connectionState.value = RealtimeEvent.ConnectionState.Connected
     }
 
@@ -170,14 +172,14 @@ class RealtimeManager @Inject constructor(
     }
 
     private fun ensureStopped() {
-        if (wsClient == null) return
+        if (!isStarted) return
         Log.i(TAG, "Stopping real-time WebSocket connection")
         try {
-            wsClient?.stop()
+            wsClient.stop()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stop WebSocket cleanly", e)
         }
-        wsClient = null
+        isStarted = false
         _connectionState.value = RealtimeEvent.ConnectionState.Disconnected
     }
 
@@ -191,13 +193,13 @@ class RealtimeManager @Inject constructor(
      */
     fun reconnectNow() {
         Log.i(TAG, "reconnectNow() — forcing reconnect (network restored)")
-        if (wsClient != null) {
+        if (isStarted) {
             try {
-                wsClient?.stop()
+                wsClient.stop()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to stop WebSocket before reconnect", e)
             }
-            wsClient = null
+            isStarted = false
         }
         ensureStarted()
     }

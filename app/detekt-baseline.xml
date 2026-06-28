@@ -1,0 +1,149 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AppointmentCardItem.kt$@Composable fun AppointmentCardItem( appointment: AppointmentEntity, isPendingSync: Boolean = false, onCancelClick: (String) -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:AuthRepository.kt$AuthRepository$override suspend fun login(username: String, password: String): Result&lt;LoginOutcome&gt;</ID>
+    <ID>CyclomaticComplexMethod:AuthRepository.kt$AuthRepository$override suspend fun verify2FA( challengeToken: String, totpCode: String, rememberDevice: Boolean ): Result&lt;LoginOutcome&gt;</ID>
+    <ID>CyclomaticComplexMethod:AuthRepository.kt$AuthRepository$override suspend fun verifyCurrentSession(): Result&lt;UserDto&gt;</ID>
+    <ID>CyclomaticComplexMethod:ClinicRepository.kt$ClinicRepository$override suspend fun retryUnsyncedWrites(token: String?): Boolean</ID>
+    <ID>CyclomaticComplexMethod:ClinicRepository.kt$ClinicRepository$private suspend fun reconcileAppointmentFromServer(appDto: AppointmentDto)</ID>
+    <ID>CyclomaticComplexMethod:ClinicWebSocketClient.kt$ClinicWebSocketClient$@Suppress("UNCHECKED_CAST") private fun handleSocketMessage(json: String)</ID>
+    <ID>CyclomaticComplexMethod:PatientScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun PatientScreenContent( viewModel: PatientViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>CyclomaticComplexMethod:StaffAppointmentCardItem.kt$@Composable fun StaffAppointmentCardItem( appt: AppointmentEntity, isPendingSync: Boolean = false, onApprove: () -&gt; Unit, onCancelClick: () -&gt; Unit, onAddNotesClick: () -&gt; Unit, onEditClick: () -&gt; Unit, onRegisterQueue: () -&gt; Unit, accentColor: Color )</ID>
+    <ID>CyclomaticComplexMethod:StaffScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun StaffScreenContent( viewModel: StaffViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>CyclomaticComplexMethod:SyncConsoleView.kt$@Composable fun PendingSyncQueueList( pendingSyncs: List&lt;PendingSyncEntity&gt;, onDismissSync: (PendingSyncEntity) -&gt; Unit, onRetrySync: () -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:SyncConsoleView.kt$@Composable fun SyncConsoleView( viewModel: ClinicViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>EmptyFunctionBlock:AuthViewModel.kt$AuthViewModel${}</ID>
+    <ID>ForbiddenComment:ClinicRepository.kt$ClinicRepository$// Stage 6 TODO: LabResultOut is NOT a medical record — it's</ID>
+    <ID>ForbiddenComment:ClinicViewModel.kt$ClinicViewModel$// Stage 2.7 TODO: move SharedPreferences access to a ThemeRepository</ID>
+    <ID>ForbiddenComment:PatientViewModel.kt$PatientViewModel$// Stage 6 TODO: NotificationHelper should accept a Context</ID>
+    <ID>ForbiddenComment:PatientViewModel.kt$PatientViewModel$// Stage 6 TODO: same as cancelAppointment — notification</ID>
+    <ID>FunctionNaming:AuthRepository2FALogoutTest.kt$AuthRepository2FALogoutTest$@Test fun login_2faRequired_returnsTwoFactorChallenge()</ID>
+    <ID>FunctionNaming:AuthRepository2FALogoutTest.kt$AuthRepository2FALogoutTest$@Test fun login_normalSuccess_returnsSuccess()</ID>
+    <ID>FunctionNaming:AuthRepository2FALogoutTest.kt$AuthRepository2FALogoutTest$@Test fun logout_callsBackendLogoutEndpoint()</ID>
+    <ID>FunctionNaming:AuthRepository2FALogoutTest.kt$AuthRepository2FALogoutTest$@Test fun logout_networkError_returnsFailure()</ID>
+    <ID>FunctionNaming:AuthRepositoryDemoBypassTest.kt$AuthRepositoryDemoBypassTest$@Test fun login_adminDemoBypass_doesNotSaveFakeToken()</ID>
+    <ID>FunctionNaming:AuthRepositoryDemoBypassTest.kt$AuthRepositoryDemoBypassTest$@Test fun login_adminDemoBypass_isRemoved()</ID>
+    <ID>FunctionNaming:AuthRepositoryDemoBypassTest.kt$AuthRepositoryDemoBypassTest$@Test fun login_arbitraryCredentials_reachesNetwork()</ID>
+    <ID>FunctionNaming:AuthRepositoryDemoBypassTest.kt$AuthRepositoryDemoBypassTest$@Test fun login_patientDemoBypass_isRemoved()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `addSyncLog and recentLogs flow work`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `allAppointments flow emits all appointments`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `clearSensitiveDataForPatient removes appointments and records`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `deleteAppointment removes from Room`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `getAppointmentsForPatient returns only patient appointments`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `insertAppointment saves to Room`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `insertMedicalRecord saves to Room`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `insertUser saves to Room`()</ID>
+    <ID>FunctionNaming:ClinicRepositoryRoomTest.kt$ClinicRepositoryRoomTest$@Test fun `updateAppointment changes status`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `APPOINTMENT_STATUS creates new appointment if not in Room`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `APPOINTMENT_STATUS reconciliation guard blocks update when pending sync exists`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `APPOINTMENT_STATUS updates existing appointment in Room`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `APPOINTMENT_STATUS with null id does not crash`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `NEW_MEDICAL_RECORD inserts record into Room`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `NEW_MEDICAL_RECORD with null fields uses defaults`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `QUEUE_UPDATE replaces queue snapshots in Room`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `QUEUE_UPDATE with empty queue clears Room`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `empty JSON string does not crash`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `malformed JSON does not crash`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `missing event field does not crash`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `null event field does not crash`()</ID>
+    <ID>FunctionNaming:ClinicWebSocketClientTest.kt$ClinicWebSocketClientTest$@Test fun `unknown event type does not crash`()</ID>
+    <ID>FunctionNaming:ExampleRobolectricTest.kt$ExampleRobolectricTest$@Test fun `read string from context`()</ID>
+    <ID>FunctionNaming:ExampleUnitTest.kt$ExampleUnitTest$@Test fun addition_isCorrect()</ID>
+    <ID>FunctionNaming:GreetingScreenshotTest.kt$GreetingScreenshotTest$@Test fun greeting_screenshot()</ID>
+    <ID>FunctionNaming:LoginUseCaseTest.kt$LoginUseCaseTest$@Test fun `2FA challenge is propagated`()</ID>
+    <ID>FunctionNaming:LoginUseCaseTest.kt$LoginUseCaseTest$@Test fun `blank password returns failure`()</ID>
+    <ID>FunctionNaming:LoginUseCaseTest.kt$LoginUseCaseTest$@Test fun `blank username returns failure`()</ID>
+    <ID>FunctionNaming:LoginUseCaseTest.kt$LoginUseCaseTest$@Test fun `repository failure is propagated`()</ID>
+    <ID>FunctionNaming:LoginUseCaseTest.kt$LoginUseCaseTest$@Test fun `valid credentials delegate to repository`()</ID>
+    <ID>FunctionNaming:LogoutUseCaseTest.kt$LogoutUseCaseTest$@Test fun `logout delegates to repository`()</ID>
+    <ID>FunctionNaming:LogoutUseCaseTest.kt$LogoutUseCaseTest$@Test fun `logout failure is propagated`()</ID>
+    <ID>FunctionNaming:MigrationTest.kt$MigrationTest$@Test fun appointmentEntity_hasEtagColumn()</ID>
+    <ID>FunctionNaming:MigrationTest.kt$MigrationTest$@Test fun medicalRecordEntity_hasVersionAndUpdateAtColumns()</ID>
+    <ID>FunctionNaming:MigrationTest.kt$MigrationTest$@Test fun migration_4_to_5_exists()</ID>
+    <ID>FunctionNaming:MigrationTest.kt$MigrationTest$@Test fun migration_5_to_6_exists()</ID>
+    <ID>FunctionNaming:MigrationTest.kt$MigrationTest$@Test fun migration_6_to_7_exists()</ID>
+    <ID>FunctionNaming:MigrationTest.kt$MigrationTest$@Test fun pendingSyncEntity_hasLastHttpCodeColumn()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `empty cache triggers fetch, non-empty cache skips fetch`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `error message falls back to 'Network error' when localizedMessage is null`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `network failure - emits Loading then Error with cached data`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `onFetchFailed callback is called on network failure`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `query is called at least twice - once for initial, once after save`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `saveFetchResult is NOT called on network failure`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `saveFetchResult is called with network data on success`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `shouldFetch false - emits Success with cached data only`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `shouldFetch receives cached data for decision`()</ID>
+    <ID>FunctionNaming:NetworkBoundResourceTest.kt$NetworkBoundResourceTest$@Test fun `shouldFetch true - emits Loading then Success with updated data`()</ID>
+    <ID>FunctionNaming:SyncWorkerTest.kt$SyncWorkerTest$@Test fun `doWork handles empty token`()</ID>
+    <ID>FunctionNaming:SyncWorkerTest.kt$SyncWorkerTest$@Test fun `doWork handles null token gracefully`()</ID>
+    <ID>FunctionNaming:SyncWorkerTest.kt$SyncWorkerTest$@Test fun `doWork returns retry on exception`()</ID>
+    <ID>FunctionNaming:SyncWorkerTest.kt$SyncWorkerTest$@Test fun `doWork returns retry when retryUnsyncedWrites fails`()</ID>
+    <ID>FunctionNaming:SyncWorkerTest.kt$SyncWorkerTest$@Test fun `doWork returns success when retryUnsyncedWrites succeeds`()</ID>
+    <ID>FunctionNaming:SyncWorkerTest.kt$SyncWorkerTest$@Test fun `doWork with repository exception returns retry`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 when token already refreshed retries with new token without refresh call`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 with blank refresh token clears session and returns null`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 with expired refresh token clears session and returns null`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 with no refresh token clears session and returns null`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 with priorResponse returns null immediately without refresh`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 with refresh endpoint 500 clears session and returns null`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 with refresh endpoint null body clears session and returns null`()</ID>
+    <ID>FunctionNaming:TokenAuthenticatorTest.kt$TokenAuthenticatorTest$@Test fun `401 with valid refresh token retries with new access token`()</ID>
+    <ID>FunctionNaming:Verify2FAUseCaseTest.kt$Verify2FAUseCaseTest$@Test fun `blank challenge token returns failure`()</ID>
+    <ID>FunctionNaming:Verify2FAUseCaseTest.kt$Verify2FAUseCaseTest$@Test fun `code longer than 6 digits returns failure`()</ID>
+    <ID>FunctionNaming:Verify2FAUseCaseTest.kt$Verify2FAUseCaseTest$@Test fun `code shorter than 6 digits returns failure`()</ID>
+    <ID>FunctionNaming:Verify2FAUseCaseTest.kt$Verify2FAUseCaseTest$@Test fun `code with letters returns failure`()</ID>
+    <ID>FunctionNaming:Verify2FAUseCaseTest.kt$Verify2FAUseCaseTest$@Test fun `repository failure is propagated`()</ID>
+    <ID>FunctionNaming:Verify2FAUseCaseTest.kt$Verify2FAUseCaseTest$@Test fun `valid 6-digit code delegates to repository`()</ID>
+    <ID>FunctionOnlyReturningConstant:TokenManager.kt$TokenManager$fun isScreenSecureEnabled(context: Context): Boolean</ID>
+    <ID>LargeClass:AuthRepository.kt$AuthRepository : AuthRepositoryInterface</ID>
+    <ID>LargeClass:ClinicRepository.kt$ClinicRepository : ClinicRepositoryInterface</ID>
+    <ID>LargeClass:StaffViewModel.kt$StaffViewModel : ViewModel</ID>
+    <ID>LongMethod:AppointmentCardItem.kt$@Composable fun AppointmentCardItem( appointment: AppointmentEntity, isPendingSync: Boolean = false, onCancelClick: (String) -&gt; Unit )</ID>
+    <ID>LongMethod:AuthScreen.kt$@Composable private fun AuthScreenContent( viewModel: AuthViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>LongMethod:ClinicRepository.kt$ClinicRepository$override suspend fun retryUnsyncedWrites(token: String?): Boolean</ID>
+    <ID>LongMethod:ClinicWebSocketClient.kt$ClinicWebSocketClient$@Suppress("UNCHECKED_CAST") private fun handleSocketMessage(json: String)</ID>
+    <ID>LongMethod:HeaderGreetingBanner.kt$@Composable fun HeaderGreetingBanner( userName: String, activeAppointmentsCount: Int, completedRecordsCount: Int )</ID>
+    <ID>LongMethod:MedicalHistoryCardItem.kt$@Composable fun MedicalHistoryCardItem( record: MedicalRecordEntity, isExpanded: Boolean, onExpandClick: () -&gt; Unit )</ID>
+    <ID>LongMethod:PatientScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun PatientScreenContent( viewModel: PatientViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>LongMethod:ProfileCabinetCard.kt$@Composable fun ProfileCabinetCard( user: com.aistudio.clinicsystem.data.db.UserEntity?, onEditClick: () -&gt; Unit, onBiometricToggle: (Boolean) -&gt; Unit )</ID>
+    <ID>LongMethod:StaffAppointmentCardItem.kt$@Composable fun StaffAppointmentCardItem( appt: AppointmentEntity, isPendingSync: Boolean = false, onApprove: () -&gt; Unit, onCancelClick: () -&gt; Unit, onAddNotesClick: () -&gt; Unit, onEditClick: () -&gt; Unit, onRegisterQueue: () -&gt; Unit, accentColor: Color )</ID>
+    <ID>LongMethod:StaffScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun StaffScreenContent( viewModel: StaffViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>LongMethod:SyncConsoleView.kt$@Composable fun PendingSyncQueueList( pendingSyncs: List&lt;PendingSyncEntity&gt;, onDismissSync: (PendingSyncEntity) -&gt; Unit, onRetrySync: () -&gt; Unit )</ID>
+    <ID>LongMethod:SyncConsoleView.kt$@Composable fun SyncConsoleView( viewModel: ClinicViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>LongMethod:TelegramBotCard.kt$@Composable fun TelegramBotCard( user: com.aistudio.clinicsystem.data.db.UserEntity?, onLinkClick: (String) -&gt; Unit, onUnlinkClick: () -&gt; Unit, onTestClick: () -&gt; Unit )</ID>
+    <ID>LongParameterList:ClinicRepositoryInterface.kt$ClinicRepositoryInterface$( token: String?, patientPhone: String, patientName: String, doctorName: String, specialty: String, date: String, time: String, reason: String, )</ID>
+    <ID>LongParameterList:StaffViewModel.kt$StaffViewModel$( id: String, patientPhone: String, patientName: String, doctorName: String, specialty: String, date: String, time: String, reason: String, status: String )</ID>
+    <ID>MatchingDeclarationName:NetworkBoundResource.kt$Resource&lt;T&gt;</ID>
+    <ID>MaxLineLength:AuthScreen.kt$Text(text = "${user.role} • ${user.phone}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:ClinicRepository.kt$ClinicRepository$addSyncLog("⏳ Сервер FastAPI offline. Запись сохранена локально и добавлена в очередь отложенной отправки: ${e.localizedMessage}", "CLOUD_SYNC_SIMULATOR")</ID>
+    <ID>MaxLineLength:MedicalHistoryCardItem.kt$Text("Скачать медицинский отчёт (PDF/TXT)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)</ID>
+    <ID>MaxLineLength:PatientScreen.kt$color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant</ID>
+    <ID>MaxLineLength:StaffScreen.kt$text = { Text("Введенная информация будет сохранена в локальный черновик на этом экране, чтобы вы не потеряли данные при случайном клике. Вы хотите закрыть окно создания записи?") }</ID>
+    <ID>MaxLineLength:StaffScreen.kt$text = { Text("Вы хотите исключить из списка ожидания пациента ${targetQueueSnapshotToRemove?.patientName ?: "пациента"}? (Эту операцию можно будет отменить).") }</ID>
+    <ID>MaxLineLength:StaffScreen.kt$text = { Text("Данные приёма сохранены во временный черновик в целях безопасности. Вы действительно хотите закрыть окно создания записи к врачу?") }</ID>
+    <ID>MaxLineLength:StaffViewModel.kt$StaffViewModel$val draftCreateDoctorSelected = MutableStateFlow(prefs.getString("draft_create_doctor_selected", "Д-р Сапаев (Стоматолог-терапевт)") ?: "Д-р Сапаев (Стоматолог-терапевт)")</ID>
+    <ID>MaxLineLength:TelegramBotCard.kt$Text("Проверить доставку (Тестовое оповещение)", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)</ID>
+    <ID>NestedBlockDepth:ClinicRepository.kt$ClinicRepository$override suspend fun fetchMedicalRecordsFromServer( token: String?, phone: String, onNewRecordAction: (MedicalRecordEntity) -&gt; Unit = {} ): List&lt;MedicalRecordEntity&gt;</ID>
+    <ID>NestedBlockDepth:ClinicRepository.kt$ClinicRepository$override suspend fun retryUnsyncedWrites(token: String?): Boolean</ID>
+    <ID>PrintStackTrace:ClinicRepository.kt$ClinicRepository$e</ID>
+    <ID>SpreadOperator:MigrationTest.kt$MigrationTest$(*Migrations.ALL)</ID>
+    <ID>UnusedParameter:AuthViewModel.kt$AuthViewModel$context: android.content.Context</ID>
+    <ID>UnusedParameter:AuthViewModel.kt$AuthViewModel$phone: String</ID>
+    <ID>UnusedParameter:NotificationHelper.kt$NotificationHelper$dateTimeString: String</ID>
+    <ID>UnusedParameter:NotificationHelper.kt$NotificationHelper$diagnosis: String</ID>
+    <ID>UnusedParameter:NotificationHelper.kt$NotificationHelper$doctorName: String</ID>
+    <ID>UnusedParameter:NotificationHelper.kt$NotificationHelper$patientName: String</ID>
+    <ID>UnusedParameter:TokenManager.kt$TokenManager$context: Context</ID>
+    <ID>UnusedPrivateProperty:AuthScreen.kt$val tealAccent = MaterialTheme.colorScheme.tertiary</ID>
+    <ID>UnusedPrivateProperty:AuthScreen.kt$val timer by viewModel.timerSeconds.collectAsStateWithLifecycle()</ID>
+    <ID>UnusedPrivateProperty:AuthViewModel.kt$AuthViewModel$private val sessionRepository: SessionRepository</ID>
+    <ID>UnusedPrivateProperty:BiometricCryptoHelper.kt$BiometricCryptoHelper$private const val GCM_IV_LENGTH = 12 // bytes</ID>
+    <ID>UnusedPrivateProperty:PatientScreen.kt$val tealDark = MaterialTheme.colorScheme.secondary</ID>
+    <ID>UnusedPrivateProperty:RealtimeManager.kt$RealtimeManager$@ApplicationContext private val context: Context</ID>
+    <ID>UnusedPrivateProperty:RealtimeManager.kt$RealtimeManager$private val database: ClinicDatabase</ID>
+    <ID>UnusedPrivateProperty:SessionRepository.kt$SessionRepository$@ApplicationContext private val appContext: Context</ID>
+    <ID>UnusedPrivateProperty:StaffScreen.kt$var showEditUnsavedWarning by remember { mutableStateOf(false) }</ID>
+    <ID>UnusedPrivateProperty:TokenManager.kt$TokenManager$private const val TAG = "TokenManager"</ID>
+  </CurrentIssues>
+</SmellBaseline>
