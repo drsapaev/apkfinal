@@ -359,10 +359,11 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 
     // What to report — only first-party Kotlin sources
     val mainSources = file("$projectDir/src/main/java")
-    val mainClasses = fileTree(layout.buildDirectory.dir("intermediates/javac/debug/classes")) {
-        include("**/com/aistudio/clinicsystem/**")
-        exclude("**/R.class", "**/R$*.class", "**/BuildConfig.class", "**/Manifest*.class")
-    }
+    val mainClasses =
+        fileTree(layout.buildDirectory.dir("intermediates/javac/debug/classes")) {
+            include("**/com/aistudio/clinicsystem/**")
+            exclude("**/R.class", "**/R$*.class", "**/BuildConfig.class", "**/Manifest*.class")
+        }
     sourceDirectories.setFrom(mainSources)
     classDirectories.setFrom(mainClasses)
 
