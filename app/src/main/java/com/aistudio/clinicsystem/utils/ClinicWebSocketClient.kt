@@ -19,22 +19,15 @@ import okio.ByteString
  * It listens for server side socket events (Queue positions, Appointment Status changes,
  * or newly issued Medical Reports), automatically syncs local Room data structures, and
  * launches native push alerts immediately via NotificationHelper.
+ *
+ * Stage 3: now @Singleton + @Inject — no more getInstance() singleton.
+ * Hilt guarantees a single instance for the entire app lifecycle.
  */
-class ClinicWebSocketClient(
-    private val context: Context,
+@javax.inject.Singleton
+class ClinicWebSocketClient @javax.inject.Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
     private val database: ClinicDatabase
 ) {
-    companion object {
-        @Volatile
-        private var instance: ClinicWebSocketClient? = null
-
-        fun getInstance(context: Context, database: ClinicDatabase): ClinicWebSocketClient {
-            return instance ?: synchronized(this) {
-                instance ?: ClinicWebSocketClient(context.applicationContext, database).also { instance = it }
-            }
-        }
-    }
-
     private val client = OkHttpClient.Builder()
         .pingInterval(30, java.util.concurrent.TimeUnit.SECONDS) // Heartbeat (Ping/Pong)
         .build()
