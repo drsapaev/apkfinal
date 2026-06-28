@@ -59,7 +59,7 @@ fun StaffAppointmentCardItem(
     accentColor: Color
 ) {
     val statusColor = when (appt.status) {
-        "PENDING" -> Color(0xFFFBC02D)
+        "PENDING" -> MaterialTheme.colorScheme.tertiary
         "APPROVED" -> MaterialTheme.colorScheme.primary
         "COMPLETED" -> Color(0xFF2196F3)
         "CANCELLED" -> Color(0xFFF44336)
@@ -251,14 +251,14 @@ fun StaffAppointmentCardItem(
 
                     OutlinedButton(
                         onClick = onCancelClick,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Red)
+                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.ui_otklonit), fontSize = 11.sp, color = Color.Red)
+                        Text(stringResource(R.string.ui_otklonit), fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
                     }
                 } else {
                     OutlinedButton(

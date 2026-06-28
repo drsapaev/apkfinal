@@ -198,8 +198,8 @@ fun TelegramBotCard(
 
                         OutlinedButton(
                             onClick = onUnlinkClick,
-                            border = BorderStroke(1.dp, Color(0xFFE74C3C).copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE74C3C)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.testTag("unlink_telegram_button")
                         ) {
