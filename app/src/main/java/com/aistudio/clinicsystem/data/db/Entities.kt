@@ -1,9 +1,27 @@
 package com.aistudio.clinicsystem.data.db
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "users")
+/**
+ * Stage 3.1: Entities use UUID primary keys (already migrated in v5→v6).
+ * Stage 3.1 adds:
+ *   - `@Index` on FK columns and frequently-queried columns (H-8 fix)
+ *   - `version: Int` on mutable entities (H-5 fix — conflict resolution)
+ *   - `etag: String?` on mutable entities (optional, for server cache validation)
+ *
+ * The Migration 6→7 adds the new indices and the `etag` column.
+ */
+
+@Entity(
+    tableName = "users",
+    indices = [
+        Index(value = ["phone"], unique = true),
+        Index(value = ["role"]),
+        Index(value = ["clinicId"]),
+    ],
+)
 data class UserEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val phone: String, // Unique phone number (e.g. +79998887766)
@@ -14,13 +32,23 @@ data class UserEntity(
     val dateOfBirth: String = "1995-05-15",
     val biometricEnabled: Boolean = false,
     val telegramChatId: String? = null,
-    val registeredTimestamp: Long = System.currentTimeMillis()
+    val registeredTimestamp: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "appointments")
+@Entity(
+    tableName = "appointments",
+    indices = [
+        Index(value = ["patientPhone"]),
+        Index(value = ["serverId"]),
+        Index(value = ["clientRequestId"]),
+        Index(value = ["status"]),
+        Index(value = ["clinicId"]),
+        Index(value = ["date", "time"]),
+    ],
+)
 data class AppointmentEntity(
     @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
-    val serverId: Int? = null, // M3B.4: backend-assigned ID, null until synced
+    val serverId: Int? = null, // backend-assigned ID, null until synced
     val patientPhone: String,
     val patientName: String,
     val doctorName: String,
@@ -33,10 +61,18 @@ data class AppointmentEntity(
     val notes: String = "", // Written by doctor/staff
     val updatedAt: Long = System.currentTimeMillis(),
     val clientRequestId: String? = null,
-    val version: Int = 1
+    val version: Int = 1, // increments on every local mutation; used for conflict resolution
+    val etag: String? = null, // server-assigned ETag (optional, for cache validation)
 )
 
-@Entity(tableName = "queue_snapshots")
+@Entity(
+    tableName = "queue_snapshots",
+    indices = [
+        Index(value = ["appointmentId"]),
+        Index(value = ["clinicId"]),
+        Index(value = ["status"]),
+    ],
+)
 data class QueueSnapshotEntity(
     @PrimaryKey val id: Int,
     val patientName: String,
@@ -44,29 +80,48 @@ data class QueueSnapshotEntity(
     val position: Int,
     val clinicId: String = "clinic_base",
     val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "pending_syncs")
+@Entity(
+    tableName = "pending_syncs",
+    indices = [
+        Index(value = ["status"]),
+        Index(value = ["status", "nextRetryAt"]),
+        Index(value = ["clientRequestId"]),
+        Index(value = ["clinicId"]),
+    ],
+)
 data class PendingSyncEntity(
     @PrimaryKey val id: String = com.aistudio.clinicsystem.data.outbox.generateOutboxId(),
-    val type: String, // "CREATE_APPOINTMENT", "UPDATE_APPOINTMENT_STATUS", "CREATE_MEDICAL_RECORD"
+    val type: String, // OutboxOperation.name — see Stage 3.8
     val payload: String, // JSON payload representing the synchronized dto
     val clientRequestId: String,
     val clinicId: String = "clinic_base",
     val timestamp: Long = System.currentTimeMillis(),
     val retryCount: Int = 0,
-    // M3B.3: Outbox fields
+    // Outbox fields (M3B.3)
     val status: String = "PENDING", // OutboxStatus.name
     val lastError: String? = null,
     val nextRetryAt: Long? = null, // epoch millis, null = retry immediately
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    // Stage 3.6: HTTP status code of the last failure — used to distinguish
+    // 4xx (DEAD_LETTER) from 5xx (retry). Null if no failure yet.
+    val lastHttpCode: Int? = null,
 )
 
-@Entity(tableName = "medical_records")
+@Entity(
+    tableName = "medical_records",
+    indices = [
+        Index(value = ["patientPhone"]),
+        Index(value = ["serverId"]),
+        Index(value = ["clinicId"]),
+        Index(value = ["visitDate"]),
+    ],
+)
 data class MedicalRecordEntity(
     @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
-    val serverId: Int? = null, // M3B.4: backend-assigned ID, null until synced
+    val serverId: Int? = null, // backend-assigned ID, null until synced
     val patientPhone: String,
     val doctorName: String,
     val diagnosis: String,
@@ -74,14 +129,18 @@ data class MedicalRecordEntity(
     val visitDate: String, // "2026-06-06"
     val clinicId: String = "clinic_base",
     val recommendations: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    // Stage 3.4: versioning for conflict resolution
+    val updatedAt: Long = System.currentTimeMillis(),
+    val version: Int = 1,
+    val etag: String? = null,
 )
 
-@Entity(tableName = "sync_logs")
+@Entity(tableName = "sync_logs", indices = [Index(value = ["timestamp"])])
 data class SyncLogEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val logMessage: String,
     val clinicId: String = "clinic_base",
     val direction: String, // "PATIENT_TO_STAFF", "STAFF_TO_PATIENT", "CLOUD_SYNC_SIMULATOR"
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )

@@ -1,40 +1,48 @@
 package com.aistudio.clinicsystem.ui.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aistudio.clinicsystem.data.db.*
 import com.aistudio.clinicsystem.data.repository.AuthRepository
 import com.aistudio.clinicsystem.data.repository.ClinicRepository
+import com.aistudio.clinicsystem.data.session.SessionRepository
+import com.aistudio.clinicsystem.data.session.SessionState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import javax.inject.Inject
 
-class StaffViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = ClinicDatabase.getDatabase(application)
-    private val repository = ClinicRepository(database)
+/**
+ * Stage 2.7: StaffViewModel is now @HiltViewModel. Dependencies injected.
+ * Reads session state from [SessionRepository] (SSOT).
+ *
+ * [appContext] is injected for SharedPreferences access — Stage 7 will
+ * migrate the draft fields to DataStore<Preferences> (PERF-7 fix).
+ */
+@HiltViewModel
+class StaffViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
+    private val repository: ClinicRepository,
+    private val authRepository: AuthRepository,
+    private val sessionRepository: SessionRepository,
+) : ViewModel() {
 
-    // M3B.1: SessionRepository as SSOT
-    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
-        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
-    )
+    val currentUser: StateFlow<UserEntity?> = sessionRepository.sessionState
+        .map { (it as? SessionState.Authenticated)?.user }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    private val authRepository = AuthRepository(
-        context = application,
-        database = database,
-        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
-        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
-        sessionRepository = sessionRepository
-    )
-
-    private val _currentUser = MutableStateFlow<UserEntity?>(null)
-    val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
-
-    private val prefs = application.getSharedPreferences("clinic_prefs", android.content.Context.MODE_PRIVATE)
-    private val _themeMode = MutableStateFlow(prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM")
+    // Theme — Stage 6 will move to ThemeRepository.
+    private val _themeMode = MutableStateFlow("SYSTEM")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+
+    // Stage 2.7: prefs kept for backward compat with draft fields.
+    // PERF-7 (Stage 7.4) will migrate to DataStore.
+    private val prefs = appContext.getSharedPreferences("clinic_prefs", Context.MODE_PRIVATE)
 
     // Undo action structures
     sealed class UndoAction {
@@ -60,7 +68,6 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
             when (action) {
                 is UndoAction.RestoreAppointment -> {
                     repository.updateAppointment(action.oldAppt)
-                    com.aistudio.clinicsystem.utils.FirestoreSyncManager.publishAppointment(action.oldAppt)
                     repository.addSyncLog("↩️ Действие отменено (Запись #${action.oldAppt.id} восстановлена).", "SYSTEM_SYNC")
                 }
                 is UndoAction.DeleteAppointment -> {
@@ -186,21 +193,11 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
     var onLogoutSuccess: (() -> Unit)? = null
 
-    init {
-        refreshSession()
-    }
-
-    private fun refreshSession() {
-        viewModelScope.launch {
-            val savedPhone = sessionRepository.phone
-            if (!savedPhone.isNullOrBlank()) {
-                val cached = repository.getUserByPhone(savedPhone)
-                if (cached != null) {
-                    _currentUser.value = cached
-                }
-            }
-        }
-    }
+    /**
+     * Stage 2.7: refreshSession() removed — SessionRepository handles
+     * session restore at app startup (Application.onCreate →
+     * SessionRepository.restoreSession).
+     */
 
     fun setThemeMode(mode: String) {
         if (mode in listOf("SYSTEM", "LIGHT", "DARK")) {
@@ -214,12 +211,14 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logOut() {
         viewModelScope.launch {
-            val user = _currentUser.value
+            val user = currentUser.value
             if (user != null) {
                 repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
             }
             authRepository.logout()
-            _currentUser.value = null
+            // Stage 2.7: clear via SSOT — currentUser is derived from
+            // sessionRepository.sessionState, so we don't write to it directly.
+            sessionRepository.clearSession()
             onLogoutSuccess?.invoke()
         }
     }
@@ -242,7 +241,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                 val patientName = patientUser?.fullName ?: "Пациент"
                 
                 com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
-                    getApplication(), updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "APPROVED", patientName
+                    appContext, updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "APPROVED", patientName
                 )
 
                 if (patientUser?.telegramChatId != null) {
@@ -272,7 +271,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                 val patientName = patientUser?.fullName ?: "Пациент"
 
                 com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
-                    getApplication(), updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
+                    appContext, updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
                 )
 
                 if (patientUser?.telegramChatId != null) {
@@ -289,14 +288,13 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
             if (appointment != null) {
                 val updated = appointment.copy(notes = notes)
                 repository.updateAppointment(updated)
-                com.aistudio.clinicsystem.utils.FirestoreSyncManager.publishAppointment(updated)
             }
         }
     }
 
     fun createMedicalRecord(patientPhone: String, diagnosis: String, prescription: String, recommendations: String) {
         viewModelScope.launch {
-            val activeUser = _currentUser.value
+            val activeUser = currentUser.value
             val doctor = activeUser?.fullName ?: "Дежурный Врач"
             val token = sessionRepository.accessToken
 
@@ -313,7 +311,7 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
             val patientName = patientUser?.fullName ?: "Пациент"
 
             com.aistudio.clinicsystem.utils.NotificationHelper.sendMedicalRecordNotification(
-                getApplication(), saved.serverId ?: 0, doctor, diagnosis, patientName
+                appContext, saved.serverId ?: 0, doctor, diagnosis, patientName
             )
 
             if (patientUser?.telegramChatId != null) {
@@ -383,7 +381,6 @@ class StaffViewModel(application: Application) : AndroidViewModel(application) {
                     updatedAt = System.currentTimeMillis()
                 )
                 repository.updateAppointment(updated)
-                com.aistudio.clinicsystem.utils.FirestoreSyncManager.publishAppointment(updated)
                 repository.addSyncLog("✏️ Запись #${id} отредактирована сотрудником.", "SYSTEM_SYNC")
                 _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
             }

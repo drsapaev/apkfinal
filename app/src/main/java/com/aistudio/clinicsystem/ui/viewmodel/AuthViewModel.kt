@@ -1,37 +1,36 @@
 package com.aistudio.clinicsystem.ui.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.data.repository.AuthError
 import com.aistudio.clinicsystem.data.repository.AuthRepository
 import com.aistudio.clinicsystem.data.repository.ClinicRepository
 import com.aistudio.clinicsystem.data.repository.LoginOutcome
+import com.aistudio.clinicsystem.data.session.SessionRepository
+import com.aistudio.clinicsystem.data.session.SessionState
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = ClinicDatabase.getDatabase(application)
-    private val repository = ClinicRepository(database)
-
-    // M3B.1: SessionRepository as SSOT
-    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
-        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
-    )
-
-    private val authRepository = AuthRepository(
-        context = application,
-        database = database,
-        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
-        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
-        sessionRepository = sessionRepository
-    )
+/**
+ * Stage 2.7: AuthViewModel is now @HiltViewModel. All four dependencies
+ * are injected; no more manual construction of ClinicDatabase / SessionManager /
+ * ApiClient. The ViewModel reads session state from [SessionRepository]
+ * (the SSOT) instead of maintaining its own.
+ */
+@HiltViewModel
+class AuthViewModel @Inject constructor(
+    private val repository: ClinicRepository,
+    private val authRepository: AuthRepository,
+    private val sessionRepository: SessionRepository,
+) : ViewModel() {
 
     private val _phoneInput = MutableStateFlow("+7 ")
     val phoneInput: StateFlow<String> = _phoneInput.asStateFlow()

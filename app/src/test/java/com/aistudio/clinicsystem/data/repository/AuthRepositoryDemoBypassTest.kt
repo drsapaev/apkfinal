@@ -1,14 +1,10 @@
 package com.aistudio.clinicsystem.data.repository
 
 import androidx.test.core.app.ApplicationProvider
-import com.aistudio.clinicsystem.data.api.ApiClient
 import com.aistudio.clinicsystem.data.api.ApiService
 import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
-import io.mockk.every
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -73,10 +69,8 @@ class AuthRepositoryDemoBypassTest {
             .build()
             .create(MobileApiService::class.java)
 
-        // M1: mock mobileService so AuthRepository (which uses mobileService
-        // for login) hits our MockWebServer instead of the real backend.
-        mockkObject(ApiClient)
-        every { ApiClient.mobileService } returns mockApiService
+        // Stage 2.11: ApiClient is no longer an `object`. The MockWebServer-backed
+        // mockApiService is passed directly to AuthRepository via constructor.
 
         // Reset the SessionManagerImpl singleton to a fresh state so the test
         // does not reuse state from previous tests. Under Robolectric the
@@ -91,20 +85,24 @@ class AuthRepositoryDemoBypassTest {
             ClinicDatabase::class.java
         ).allowMainThreadQueries().build()
 
+        // Stage 2.11: SessionRepository now takes (context, sessionManager, database).
+        val sessionRepo = com.aistudio.clinicsystem.data.session.SessionRepository(
+            appContext = context,
+            sessionManager = com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(context),
+            database = db,
+        )
+
         repository = AuthRepository(
             context = context,
             database = db,
             mobileApiService = mockApiService,
             apiService = io.mockk.mockk(relaxed = true),
-            sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
-                com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(context)
-            )
+            sessionRepository = sessionRepo,
         )
     }
 
     @After
     fun tearDown() {
-        unmockkObject(ApiClient)
         mockWebServer.shutdown()
     }
 

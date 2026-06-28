@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".ClinicSystemApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -16,6 +17,33 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication"
         android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- Stage 4.5 (C-8 fix): Privacy Policy URL — used by Play Console
+             Data Safety form and in-app Settings → Privacy screen.
+             The actual URL MUST be set via gradle property `clinic.privacyPolicyUrl`
+             at release build time (CI secret). -->
+        <meta-data
+            android:name="com.aistudio.clinicsystem.PRIVACY_POLICY_URL"
+            android:value="${privacyPolicyUrl}" />
+
+        <!-- Stage 3.12: ClinicSystemApplication implements Configuration.Provider,
+             so WorkManager uses on-demand initialization via HiltWorkerFactory.
+             The default androidx.startup.InitializationProvider (which comes
+             transitively from androidx.work:work-runtime-ktx) MUST be removed
+             to avoid the lint error RemoveWorkManagerInitializer. The
+             tools:node="remove" attribute tells the manifest merger to drop
+             this provider from the final merged manifest. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

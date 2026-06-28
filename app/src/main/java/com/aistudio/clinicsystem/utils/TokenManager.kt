@@ -2,32 +2,27 @@ package com.aistudio.clinicsystem.utils
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+import android.os.Build
+import android.security.keystore.KeyProperties
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import timber.log.Timber
 
 /**
- * TokenManager is a thread-safe helper singleton designed to securely save, retrieve,
- * and clear user authentication tokens using EncryptedSharedPreferences (AES-256).
+ * TokenManager — secure storage for JWT tokens + SQLCipher passphrase.
  *
- * E1.6 (M0): the previous version silently fell back to plain SharedPreferences
- * when the Android Keystore was unavailable (corrupted keystore, factory reset
- * edge cases, etc.). This was a security ship-blocker: JWTs could end up stored
- * in cleartext on disk without the user ever knowing.
+ * Stage 4.2 (M-3, M-4 fix): the master key is now hardware-backed on
+ * devices that support StrongBox (Pixel 3+, Galaxy S20+, etc.). On older
+ * devices it falls back to the TEE-backed keystore. The key is NOT
+ * user-auth-bound by default — that would require the user to authenticate
+ * on every read, which is incompatible with the app's auto-session-restore
+ * flow. Biometric auth is handled separately at the BiometricPrompt layer
+ * (Stage 4.4), where it gates access to a SEPARATE key used only for
+ * refresh-token decryption.
  *
- * The new behavior is fail-closed:
- *  - If EncryptedSharedPreferences cannot be created, [getPrefs] returns null.
- *  - All write operations (saveAuthData, clearAuthData, etc.) become no-ops.
- *  - All read operations return null / default values, which forces the auth
- *    flow to treat the session as invalid → user is prompted to re-login.
- *  - The error is logged to Logcat at ERROR level so it surfaces during
- *    development and in crash reports.
- *
- * This is the correct trade-off for a medical application: an unusable session
- * is far better than a session whose credentials are in cleartext on disk.
- *
- * NOTE: Application code that consumes TokenManager should treat null returns
- * as "no valid session" and route the user to the auth screen.
+ * E1.6 fail-closed behavior is preserved: if EncryptedSharedPreferences
+ * cannot be created (corrupted keystore, factory reset, etc.), all writes
+ * become no-ops and all reads return null. The user is forced to re-login.
  */
 object TokenManager {
     private const val PREF_NAME = "intellect_clinic_secure_prefs"
@@ -47,12 +42,35 @@ object TokenManager {
     /**
      * Returns EncryptedSharedPreferences, or null if the Android Keystore is
      * unavailable / corrupted. Callers MUST handle null gracefully.
+     *
+     * Stage 4.2: master key is hardware-backed (StrongBox if available,
+     * TEE otherwise). This is a defense-in-depth improvement — even on a
+     * rooted device, extracting the master key from the hardware keystore
+     * is significantly harder than from the software keystore.
      */
     private fun getPrefs(context: Context): SharedPreferences? {
         return try {
-            val masterKey = MasterKey.Builder(context)
+            val masterKeyBuilder = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
+
+            // Stage 4.2 (M-3 fix): prefer StrongBox (hardware-backed) on
+            // devices that support it. Fall back silently to TEE-backed
+            // keystore on devices without StrongBox.
+            //
+            // Note: we intentionally do NOT call setUserAuthenticationRequired(true)
+            // here — that would force biometric auth on every read, breaking
+            // auto-session-restore. The biometric-gated key for refresh-token
+            // decryption is a separate key (Stage 4.4).
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    masterKeyBuilder.setIsStrongBoxBacked(true)
+                } catch (e: Exception) {
+                    // StrongBox not available on this device — fall back to TEE.
+                    Timber.w("StrongBox unavailable, falling back to TEE-backed keystore: ${e.message}")
+                }
+            }
+
+            val masterKey = masterKeyBuilder.build()
 
             EncryptedSharedPreferences.create(
                 context,
@@ -65,12 +83,11 @@ object TokenManager {
             // E1.6: FAIL CLOSED. Do NOT fall back to plain SharedPreferences —
             // that would store JWTs in cleartext.
             lastInitError = e
-            Log.e(
-                TAG,
+            Timber.e(
+                e,
                 "EncryptedSharedPreferences initialization failed. " +
                     "Refusing to use plaintext storage. " +
-                    "Session storage is unavailable — user must re-authenticate.",
-                e
+                    "Session storage is unavailable — user must re-authenticate."
             )
             null
         }
@@ -209,5 +226,40 @@ object TokenManager {
      */
     fun setScreenSecureEnabled(context: Context, enabled: Boolean) {
         getPrefs(context)?.edit()?.putBoolean("screen_secure_enabled", enabled)?.apply()
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // Stage 4.4: Biometric-gated refresh token storage.
+    //
+    // The refresh token is encrypted with a keystore key that requires
+    // biometric auth to use. The encrypted blob + IV are stored here.
+    // The plaintext refresh token is NEVER stored — only the ciphertext.
+    // ───────────────────────────────────────────────────────────────────
+
+    private const val KEY_BIOMETRIC_REFRESH_BLOB = "biometric_refresh_blob"
+
+    /**
+     * Stores the biometric-encrypted refresh token blob (ciphertext + IV).
+     * Called after the user enrolls in biometric login and the refresh
+     * token is encrypted with the biometric-gated key.
+     */
+    fun saveEncryptedRefreshTokenBlob(context: Context, blob: String) {
+        getPrefs(context)?.edit()?.putString(KEY_BIOMETRIC_REFRESH_BLOB, blob)?.apply()
+    }
+
+    /**
+     * Retrieves the biometric-encrypted refresh token blob, or null if
+     * the user has not enrolled in biometric login.
+     */
+    fun getEncryptedRefreshTokenBlob(context: Context): String? {
+        return getPrefs(context)?.getString(KEY_BIOMETRIC_REFRESH_BLOB, null)
+    }
+
+    /**
+     * Clears the biometric-encrypted refresh token blob. Called on logout
+     * or when biometric enrollment is disabled.
+     */
+    fun clearEncryptedRefreshTokenBlob(context: Context) {
+        getPrefs(context)?.edit()?.remove(KEY_BIOMETRIC_REFRESH_BLOB)?.apply()
     }
 }

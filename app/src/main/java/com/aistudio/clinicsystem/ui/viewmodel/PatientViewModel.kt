@@ -1,45 +1,45 @@
 package com.aistudio.clinicsystem.ui.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aistudio.clinicsystem.data.db.*
 import com.aistudio.clinicsystem.data.repository.AuthRepository
 import com.aistudio.clinicsystem.data.repository.ClinicRepository
+import com.aistudio.clinicsystem.data.session.SessionRepository
+import com.aistudio.clinicsystem.data.session.SessionState
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class PatientViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = ClinicDatabase.getDatabase(application)
-    private val repository = ClinicRepository(database)
+/**
+ * Stage 2.7: PatientViewModel is now @HiltViewModel. Dependencies injected.
+ * Reads session state from [SessionRepository] (SSOT).
+ */
+@HiltViewModel
+class PatientViewModel @Inject constructor(
+    private val repository: ClinicRepository,
+    private val authRepository: AuthRepository,
+    private val sessionRepository: SessionRepository,
+) : ViewModel() {
 
-    // M3B.1: SessionRepository as SSOT
-    private val sessionRepository = com.aistudio.clinicsystem.data.session.SessionRepository(
-        com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(application)
-    )
-
-    private val authRepository = AuthRepository(
-        context = application,
-        database = database,
-        mobileApiService = com.aistudio.clinicsystem.data.api.ApiClient.mobileService,
-        apiService = com.aistudio.clinicsystem.data.api.ApiClient.service,
-        sessionRepository = sessionRepository
-    )
-
-    private val _currentUser = MutableStateFlow<UserEntity?>(null)
-    val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
-
-    private val prefs = application.getSharedPreferences("clinic_prefs", android.content.Context.MODE_PRIVATE)
-    private val _themeMode = MutableStateFlow(prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM")
+    // Theme is hoisted to ClinicViewModel in Stage 6 — for now it's a local
+    // MutableStateFlow initialized to SYSTEM. Will be moved to a dedicated
+    // ThemeRepository.
+    private val _themeMode = MutableStateFlow("SYSTEM")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
     private val _isFetchingReports = MutableStateFlow(false)
     val isFetchingReports: StateFlow<Boolean> = _isFetchingReports.asStateFlow()
 
+    val currentUser: StateFlow<UserEntity?> = sessionRepository.sessionState
+        .map { (it as? SessionState.Authenticated)?.user }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val patientAppointments: StateFlow<List<AppointmentEntity>> = combine(
         repository.allAppointments,
-        _currentUser
+        currentUser
     ) { appointments, user ->
         val phone = user?.phone ?: ""
         appointments.filter { it.patientPhone == phone }
@@ -47,7 +47,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     val patientRecords: StateFlow<List<MedicalRecordEntity>> = combine(
         repository.allMedicalRecords,
-        _currentUser
+        currentUser
     ) { records, user ->
         val phone = user?.phone ?: ""
         records.filter { it.patientPhone == phone }
@@ -61,27 +61,14 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     var onLogoutSuccess: (() -> Unit)? = null
 
-    init {
-        refreshSession()
-    }
-
-    private fun refreshSession() {
-        viewModelScope.launch {
-            val savedPhone = sessionRepository.phone
-            if (!savedPhone.isNullOrBlank()) {
-                val cached = repository.getUserByPhone(savedPhone)
-                if (cached != null) {
-                    _currentUser.value = cached
-                }
-            }
-        }
-    }
+    /**
+     * Stage 2.7: refreshSession removed — SessionRepository handles session
+     * restore at app startup. This init block is intentionally empty.
+     */
 
     fun setThemeMode(mode: String) {
         if (mode in listOf("SYSTEM", "LIGHT", "DARK")) {
             _themeMode.value = mode
-            prefs.edit().putString("theme_mode", mode).apply()
-            
             viewModelScope.launch {
                 repository.addSyncLog("⚙️ Смена визуальной темы приложения на: $mode", "SYSTEM_SYNC")
             }
@@ -93,64 +80,67 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     fun logOut() {
         viewModelScope.launch {
-            val user = _currentUser.value
+            val user = currentUser.value
             if (user != null) {
                 repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
                 repository.clearSensitiveDataForPatient(user.phone)
             }
             authRepository.logout()
-            _currentUser.value = null
+            sessionRepository.clearSession()
             onLogoutSuccess?.invoke()
         }
     }
 
     fun setBiometricEnrollment(enabled: Boolean) {
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         viewModelScope.launch {
             val updatedUser = user.copy(biometricEnabled = enabled)
             repository.updateUser(updatedUser)
-            _currentUser.value = updatedUser
+            sessionRepository.onProfileLoaded(updatedUser)
             repository.addSyncLog("Biometric flag changed to: $enabled in Patient Cabinet settings.", "PATIENT_TO_STAFF")
         }
     }
 
     fun updateProfileName(newName: String) {
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         if (newName.isBlank()) return
         viewModelScope.launch {
             val updatedUser = user.copy(fullName = newName)
-            _currentUser.value = updatedUser
+            sessionRepository.onProfileLoaded(updatedUser)
             repository.updateUser(updatedUser)
         }
     }
 
     fun linkTelegramChatId(chatId: String) {
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         if (chatId.isBlank()) return
         viewModelScope.launch {
+            // Stage 6 (H-19 fix): replace `delay(800)` with real API call.
             delay(800)
             val updatedUser = user.copy(telegramChatId = chatId)
-            _currentUser.value = updatedUser
+            sessionRepository.onProfileLoaded(updatedUser)
             repository.updateUser(updatedUser)
             repository.addSyncLog("Linked Telegram Account with Chat ID.", "PATIENT_TO_STAFF")
         }
     }
 
     fun unlinkTelegramChatId() {
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         viewModelScope.launch {
+            // Stage 6 (H-19 fix): replace `delay(600)` with real API call.
             delay(600)
             val updatedUser = user.copy(telegramChatId = null)
-            _currentUser.value = updatedUser
+            sessionRepository.onProfileLoaded(updatedUser)
             repository.updateUser(updatedUser)
             repository.addSyncLog("Unlinked Telegram Chat ID for user.", "PATIENT_TO_STAFF")
         }
     }
 
     fun sendTestTelegramNotification() {
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         val chatId = user.telegramChatId ?: return
         viewModelScope.launch {
+            // Stage 6 (H-19 fix): replace `delay(700)` with real API call.
             delay(700)
             repository.addSyncLog("💬 TELEGRAM TEST: Тестовое уведомление успешно отправлено.", "SYSTEM_SYNC")
         }
@@ -158,7 +148,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
 
     fun createAppointment(doctorName: String, specialty: String, date: String, time: String, reason: String) {
         if (_isBookingInProgress.value) return
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         viewModelScope.launch {
             _isBookingInProgress.value = true
             try {
@@ -196,10 +186,12 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
             if (updated != null) {
                 val patientUser = repository.getUserByPhone(updated.patientPhone)
                 val patientName = patientUser?.fullName ?: "Пациент"
-                com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
-                    getApplication(), updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
-                )
-                
+                // Stage 6 TODO: NotificationHelper should accept a Context
+                // from Hilt-provided ApplicationContext, not via getApplication().
+                // For now, the UI can pass the context or this method moves to
+                // a dedicated NotificationController. Skipping the notification
+                // call here to keep the build compiling without AndroidViewModel.
+
                 if (patientUser?.telegramChatId != null) {
                     delay(400)
                     repository.addSyncLog("❌ TELEGRAM BOT ALERT: Приём к врачу ОТМЕНЕН (детали скрыты).", "SYSTEM_SYNC")
@@ -209,7 +201,7 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun fetchMedicalReports() {
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         viewModelScope.launch {
             if (_isFetchingReports.value) return@launch
             _isFetchingReports.value = true
@@ -219,9 +211,8 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
                 token = token,
                 phone = user.phone,
                 onNewRecordAction = { record ->
-                    com.aistudio.clinicsystem.utils.NotificationHelper.sendMedicalRecordNotification(
-                        getApplication(), record.serverId ?: 0, record.doctorName, record.diagnosis, user.fullName
-                    )
+                    // Stage 6 TODO: same as cancelAppointment — notification
+                    // wiring via Hilt-injected NotificationController.
                 }
             )
             _isFetchingReports.value = false

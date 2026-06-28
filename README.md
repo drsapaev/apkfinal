@@ -101,23 +101,41 @@ sdk.dir=/path/to/Android/Sdk
 
 ### 3. Configure backend URL
 
-Backend URL is set per build type in `app/build.gradle.kts`:
+Backend URL is configured via Gradle properties (Stage 1.3):
 
-```kotlin
-// Debug (emulator → host's localhost)
-buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:18000/\"")
-buildConfigField("String", "WEBSOCKET_URL", "\"ws://10.0.2.2:18000/ws/queue\"")
+```bash
+# Debug build (emulator → host's localhost, default)
+./gradlew assembleDebug
 
-// Release (override before release build)
-buildConfigField("String", "BASE_URL", "\"https://api.clinic.example.com/\"")
-buildConfigField("String", "WEBSOCKET_URL", "\"wss://api.clinic.example.com/ws/queue\"")
+# Debug build with custom backend (staging)
+./gradlew assembleDebug \
+    -Pclinic.debugBaseUrl=https://staging.clinic.tld/ \
+    -Pclinic.debugWsUrl=wss://staging.clinic.tld/ws/queue
+
+# Release build — MUST pass production URLs via gradle properties or env vars
+./gradlew assembleRelease \
+    -Pclinic.baseUrl=https://api.clinic.tld/ \
+    -Pclinic.wsUrl=wss://api.clinic.tld/ws/queue
+
+# Release AAB (also needs keystore env vars — see below)
+KEYSTORE_PATH=/path/to/clinic-release.jks \
+STORE_PASSWORD=... \
+KEY_PASSWORD=... \
+./gradlew bundleRelease \
+    -Pclinic.baseUrl=https://api.clinic.tld/ \
+    -Pclinic.wsUrl=wss://api.clinic.tld/ws/queue
 ```
+
+If `clinic.baseUrl` is not provided, the build produces an obviously invalid
+URL (`https://INVALID.unset-base-url.example/`) so the release artifact
+fails at runtime with a clear error rather than silently hitting a parked
+domain.
 
 ### 4. Build
 
 ```bash
 ./gradlew assembleDebug    # Debug APK
-./gradlew bundleRelease    # Release AAB (needs keystore env vars)
+./gradlew bundleRelease    # Release AAB (needs keystore env vars + clinic.baseUrl)
 ```
 
 ### 5. Run

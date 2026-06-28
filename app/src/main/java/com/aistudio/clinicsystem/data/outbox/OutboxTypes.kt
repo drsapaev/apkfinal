@@ -28,15 +28,37 @@ enum class OutboxStatus {
 }
 
 /**
- * M3B.3: Type of outbox operation.
+ * M3B.3 / Stage 3.8 (L-2 fix): Type of outbox operation.
  * Determines how the payload is deserialized and which API endpoint is called.
+ *
+ * Stage 3.8 reactivates this enum — previously it was dead code, with
+ * production using string literals like `"CREATE_APPOINTMENT"` and
+ * `"UPDATE_STATUS"`. The string literals had drifted from the enum
+ * (`UPDATE_APPOINTMENT_STATUS` vs the actual `"UPDATE_STATUS"`).
+ *
+ * Now [PendingSyncEntity.type] is still a String (for Room storage), but
+ * all writes go through [OutboxOperation.code] and all reads go through
+ * [OutboxOperation.fromCode]. This makes the type system enforce consistency.
+ *
+ * The `.code` values match the strings that were already in production —
+ * no migration needed.
  */
-enum class OutboxOperation {
-    CREATE_APPOINTMENT,
-    UPDATE_APPOINTMENT_STATUS,
-    CREATE_MEDICAL_RECORD,
-    CANCEL_APPOINTMENT,
-    RESCHEDULE_APPOINTMENT
+enum class OutboxOperation(val code: String) {
+    CREATE_APPOINTMENT("CREATE_APPOINTMENT"),
+    UPDATE_STATUS("UPDATE_STATUS"),
+    CREATE_MEDICAL_RECORD("CREATE_MEDICAL_RECORD"),
+    ;
+
+    companion object {
+        /**
+         * Parses a stored type string back into the enum. Returns null for
+         * unknown strings (e.g. legacy `CANCEL_APPOINTMENT` rows from an
+         * old build) — the caller should treat null as "payload corrupt"
+         * and move the row to DEAD_LETTER.
+         */
+        fun fromCode(code: String): OutboxOperation? =
+            entries.firstOrNull { it.code == code }
+    }
 }
 
 /**

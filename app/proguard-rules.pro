@@ -87,12 +87,10 @@
 -keep class androidx.compose.runtime.** { *; }
 
 # ====================================
-# Hilt / Dagger (prepared for M2/E5.1)
+# Hilt / Dagger — Stage 2.4 (consolidated)
+# (Old "prepared for M2/E5.1" block removed — superseded by Stage 2.1
+# block below. Hilt is now actively used, not "prepared".)
 # ====================================
--keep class dagger.hilt.** { *; }
--keep class javax.inject.** { *; }
--keep class * extends dagger.hilt.android.internal.managers.* { *; }
--dontwarn dagger.hilt.**
 
 # ====================================
 # Kotlin Metadata (needed for reflection)
@@ -107,10 +105,23 @@
 -dontwarn androidx.security.crypto.**
 
 # ====================================
-# Firebase (kept disabled in M0/E1.7, but rules in place for future)
+# Firebase (Stage 2.4: REMOVED — FirestoreSyncManager deleted,
+# firebase-bom + firebase-firestore deps removed from build.gradle.kts)
 # ====================================
--keep class com.google.firebase.** { *; }
--dontwarn com.google.firebase.**
+# (no keep rules needed — no Firebase code in the APK)
+
+# ====================================
+# Stage 2.1: Hilt / Dagger (generated code)
+# ====================================
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keep class * extends dagger.hilt.android.internal.managers.* { *; }
+-dontwarn dagger.hilt.**
+# Hilt-generated classes (Hilt_$ClassName, etc.) — keep for reflection
+-keep,allowobfuscation,allowshrinking @dagger.hilt.android.HiltAndroidApp class *
+-keep,allowobfuscation,allowshrinking @dagger.hilt.android.lifecycle.HiltViewModel class *
+-keepclassmembers class * { @dagger.assisted.Assisted <methods>; }
+-keepclassmembers class * { @dagger.assisted.AssistedInject <init>(...); }
 
 # ====================================
 # Application-specific: keep DTOs and Entities

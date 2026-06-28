@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -45,7 +46,18 @@ class ClinicRepositoryRoomTest {
             ClinicDatabase::class.java
         ).allowMainThreadQueries().build()
 
-        repository = ClinicRepository(database)
+        // Stage 2.11 + 3.10: ClinicRepository requires mobileApiService,
+        // legacyApiService, and moshi. Tests use relaxed mockk for both
+        // services and a real Moshi instance (lightweight, no IO).
+        val mockMobileApi = io.mockk.mockk<com.aistudio.clinicsystem.data.api.MobileApiService>(relaxed = true)
+        val mockLegacyApi = io.mockk.mockk<com.aistudio.clinicsystem.data.api.ApiService>(relaxed = true)
+        val moshi = com.squareup.moshi.Moshi.Builder().build()
+        repository = ClinicRepository(
+            database = database,
+            mobileApiService = mockMobileApi,
+            legacyApiService = mockLegacyApi,
+            moshi = moshi,
+        )
     }
 
     @After
@@ -65,8 +77,29 @@ class ClinicRepositoryRoomTest {
         repository.insertAppointment(appointment)
 
         val saved = repository.getAppointmentById("1")
+        // Stage 1.1 regression: assert NOT NULL explicitly (was previously
+        // a no-op — `saved` would be null and the assertEquals below
+        // would NPE the test into a failure).
+        assertNotNull("insertAppointment must persist the row to Room", saved)
         assertEquals("Dr. Smith", saved?.doctorName)
         assertEquals("PENDING", saved?.status)
+    }
+
+    @Test
+    fun `insertMedicalRecord saves to Room`() = runBlocking {
+        val record = com.aistudio.clinicsystem.data.db.MedicalRecordEntity(
+            id = "1", patientPhone = "+77771112233", doctorName = "Dr. Smith",
+            diagnosis = "Acute bronchitis", prescription = "Amoxicillin 500mg",
+            visitDate = "2026-07-01"
+        )
+
+        repository.insertMedicalRecord(record)
+
+        val saved = repository.getMedicalRecordById("1")
+        // Stage 1.1 regression: insertMedicalRecord was a no-op (C-1).
+        assertNotNull("insertMedicalRecord must persist the row to Room", saved)
+        assertEquals("Acute bronchitis", saved?.diagnosis)
+        assertEquals("Amoxicillin 500mg", saved?.prescription)
     }
 
     @Test
