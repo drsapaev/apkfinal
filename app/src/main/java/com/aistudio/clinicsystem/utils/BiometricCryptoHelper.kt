@@ -101,10 +101,13 @@ object BiometricCryptoHelper {
         }
 
         // Stage 4.4: require BIOMETRIC_STRONG (Class 3) — not BIOMETRIC_WEAK.
+        // KeyGenParameterSpec.Builder.setUserAuthenticationParameters expects
+        // KeyProperties.AUTH_* constants, NOT BiometricManager.Authenticators.
+        // Both are the same integer value (0x000F), but lint enforces the type.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             builder.setUserAuthenticationParameters(
                 /* timeout = */ 0, // 0 = require auth on every use (no timeout)
-                /* types = */ BiometricManager.Authenticators.BIOMETRIC_STRONG,
+                /* types = */ KeyProperties.AUTH_BIOMETRIC_STRONG,
             )
         }
 
