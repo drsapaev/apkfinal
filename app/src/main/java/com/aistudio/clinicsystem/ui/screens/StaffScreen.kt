@@ -1242,7 +1242,7 @@ private fun StaffScreenContent(
     if (showUnsavedWarningDialog) {
         AlertDialog(
             onDismissRequest = { showUnsavedWarningDialog = false },
-            title = { Text("Выйти из редактора?") },
+            title = { Text(stringResource(R.string.dialog_exit_editor)) },
             text = { Text("Введенная информация будет сохранена в локальный черновик на этом экране, чтобы вы не потеряли данные при случайном клике. Вы хотите закрыть окно создания записи?") },
             confirmButton = {
                 Button(
@@ -1266,7 +1266,7 @@ private fun StaffScreenContent(
     if (showCreateUnsavedWarning) {
         AlertDialog(
             onDismissRequest = { showCreateUnsavedWarning = false },
-            title = { Text("Закрыть форму записи?") },
+            title = { Text(stringResource(R.string.dialog_close_form)) },
             text = { Text("Данные приёма сохранены во временный черновик в целях безопасности. Вы действительно хотите закрыть окно создания записи к врачу?") },
             confirmButton = {
                 Button(
@@ -1293,7 +1293,7 @@ private fun StaffScreenContent(
                 showRemoveQueueConfirmDialog = false
                 targetQueueSnapshotToRemove = null
             },
-            title = { Text("Убрать из живой очереди?") },
+            title = { Text(stringResource(R.string.dialog_remove_from_queue)) },
             text = { Text("Вы хотите исключить из списка ожидания пациента ${targetQueueSnapshotToRemove?.patientName ?: "пациента"}? (Эту операцию можно будет отменить).") },
             confirmButton = {
                 Button(
@@ -1325,7 +1325,7 @@ private fun StaffScreenContent(
     if (showCancelReasonDialog) {
         AlertDialog(
             onDismissRequest = { showCancelReasonDialog = false },
-            title = { Text("Причина отказа в записи") },
+            title = { Text(stringResource(R.string.dialog_cancel_reason)) },
             text = {
                 OutlinedTextField(
                     value = cancelReasonInput,
@@ -1359,7 +1359,7 @@ private fun StaffScreenContent(
     if (showNotesDialog) {
         AlertDialog(
             onDismissRequest = { showNotesDialog = false },
-            title = { Text("Редактировать комментарий к приёму") },
+            title = { Text(stringResource(R.string.dialog_edit_notes)) },
             text = {
                 OutlinedTextField(
                     value = notesInput,

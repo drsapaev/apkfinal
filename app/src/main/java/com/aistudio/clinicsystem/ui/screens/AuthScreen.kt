@@ -318,7 +318,7 @@ private fun AuthScreenContent(
     if (showBiometricSelector) {
         AlertDialog(
             onDismissRequest = { showBiometricSelector = false },
-            title = { Text("Выбор аккаунта для входа") },
+            title = { Text(stringResource(R.string.dialog_select_account)) },
             text = {
                 Column {
                     allUsers.filter { it.biometricEnabled }.forEach { user ->
