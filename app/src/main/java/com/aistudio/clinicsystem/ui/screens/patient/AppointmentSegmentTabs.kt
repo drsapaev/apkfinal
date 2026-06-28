@@ -71,7 +71,7 @@ fun AppointmentSegmentTabs(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (isSelected) Color.White else Color.Transparent)
+                    .background(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent)
                     .clickable { onFilterSelect(filter) }
                     .padding(vertical = 8.dp)
                     .testTag(tag)
@@ -80,7 +80,7 @@ fun AppointmentSegmentTabs(
                     text = title,
                     fontSize = 12.sp,
                     fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                    color = if (isSelected) Color(0xFF00796B) else Color(0xFF556B69)
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF556B69)
                 )
             }
         }

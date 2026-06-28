@@ -54,12 +54,12 @@ fun TelegramBotCard(
     onTestClick: () -> Unit
 ) {
     var chatIdInput by remember { mutableStateOf("") }
-    val telegramBlue = Color(0xFF229ED9)
+    val telegramBlue = MaterialTheme.colorScheme.tertiary
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F7FB)), // Pleasant light ice blue
-        border = BorderStroke(1.dp, Color(0xFFD4E6F1)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), // Pleasant light ice blue
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -77,7 +77,7 @@ fun TelegramBotCard(
                         Icon(
                             imageVector = Icons.Default.Send, // Paper plane
                             contentDescription = "Telegram",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -87,7 +87,7 @@ fun TelegramBotCard(
                     Text(
                         text = "Telegram-Бот Оповещений",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = Color(0xFF1B4F72)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "@IntellectClinicBot",
@@ -105,7 +105,7 @@ fun TelegramBotCard(
                             text = "СВЯЗАНО ✔",
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF155724),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                         )
                     }
@@ -117,7 +117,7 @@ fun TelegramBotCard(
             Text(
                 text = "Бот автоматически информирует об изменениях статуса записей на прием и моментально доставляет назначения врачей.",
                 fontSize = 11.sp,
-                color = Color(0xFF2C3E50),
+                color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 14.sp
             )
 
@@ -145,8 +145,8 @@ fun TelegramBotCard(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = telegramBlue,
                                 unfocusedBorderColor = Color(0xFFBDC3C7),
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
                             ),
                             textStyle = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier
@@ -168,7 +168,7 @@ fun TelegramBotCard(
                                 .weight(0.7f)
                                 .testTag("link_telegram_button")
                         ) {
-                            Text("Связать", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Связать", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -184,13 +184,13 @@ fun TelegramBotCard(
                             Text(
                                 text = "Идентификатор Чата (Chat ID):",
                                 fontSize = 10.sp,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = user.telegramChatId,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF2C3E50)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
@@ -216,11 +216,11 @@ fun TelegramBotCard(
                         Icon(
                             imageVector = Icons.Default.NotificationsActive,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Проверить доставку (Тестовое оповещение)", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Проверить доставку (Тестовое оповещение)", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                     }
                 }
             }

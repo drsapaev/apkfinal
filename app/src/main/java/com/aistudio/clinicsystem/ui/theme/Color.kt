@@ -11,7 +11,7 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 // IntellectClinic Medical Brand Colors - Light Theme
-val MedicalTealLight = Color(0xFF00897B)
+val MedicalTealLight = MaterialTheme.colorScheme.primary
 val MedicalBlueLight = Color(0xFF1E88E5)
 val ClinicBgLight = Color(0xFFF4F6F8)
 val ClincSurfaceLight = Color(0xFFFFFFFF)

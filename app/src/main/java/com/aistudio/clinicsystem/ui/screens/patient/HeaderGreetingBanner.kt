@@ -73,7 +73,7 @@ fun HeaderGreetingBanner(
                 .fillMaxWidth()
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(Color(0xFF00796B), Color(0xFF00BFA5))
+                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary)
                     )
                 )
                 .padding(20.dp)
@@ -87,13 +87,13 @@ fun HeaderGreetingBanner(
                     Column {
                         Text(
                             text = "$greeting,",
-                            color = Color.White.copy(alpha = 0.82f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "$userName!",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.surface,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.ExtraBold,
                             lineHeight = 28.sp
@@ -102,22 +102,22 @@ fun HeaderGreetingBanner(
 
                     Surface(
                         shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.2f),
                         modifier = Modifier.size(50.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.HealthAndSafety,
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
+                                tint = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
                             )
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
@@ -131,14 +131,14 @@ fun HeaderGreetingBanner(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color.White.copy(alpha = 0.18f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Box(modifier = Modifier.padding(5.dp)) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarToday,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.surface,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -147,13 +147,13 @@ fun HeaderGreetingBanner(
                             Text(
                                 text = "Активные записи",
                                 fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )
                             Text(
                                 text = "$activeAppointmentsCount",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.surface
                             )
                         }
                     }
@@ -165,14 +165,14 @@ fun HeaderGreetingBanner(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color.White.copy(alpha = 0.18f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Box(modifier = Modifier.padding(5.dp)) {
                                 Icon(
                                     imageVector = Icons.Default.MenuBook,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.surface,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -181,13 +181,13 @@ fun HeaderGreetingBanner(
                             Text(
                                 text = "Медицинская карта",
                                 fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )
                             Text(
                                 text = "$completedRecordsCount записей",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.surface
                             )
                         }
                     }

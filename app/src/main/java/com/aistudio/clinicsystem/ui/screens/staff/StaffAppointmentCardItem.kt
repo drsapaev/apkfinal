@@ -58,10 +58,10 @@ fun StaffAppointmentCardItem(
 ) {
     val statusColor = when (appt.status) {
         "PENDING" -> Color(0xFFFBC02D)
-        "APPROVED" -> Color(0xFF4CAF50)
+        "APPROVED" -> MaterialTheme.colorScheme.primary
         "COMPLETED" -> Color(0xFF2196F3)
         "CANCELLED" -> Color(0xFFF44336)
-        else -> Color.Gray
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val statusTextRu = when (appt.status) {
@@ -91,12 +91,12 @@ fun StaffAppointmentCardItem(
                         text = appt.patientName,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFF263238)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Телефон: ${appt.patientPhone}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -120,8 +120,8 @@ fun StaffAppointmentCardItem(
                     if (isPendingSync) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFFFB300).copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.4f))
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f))
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -140,7 +140,7 @@ fun StaffAppointmentCardItem(
                                 Icon(
                                     imageVector = Icons.Default.Sync,
                                     contentDescription = "Syncing",
-                                    tint = Color(0xFFFF8F00),
+                                    tint = MaterialTheme.colorScheme.tertiary,
                                     modifier = Modifier
                                         .size(12.dp)
                                         .graphicsLayer { rotationZ = rotation }
@@ -150,7 +150,7 @@ fun StaffAppointmentCardItem(
                                     text = "Ожидает...",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp,
-                                    color = Color(0xFFFF8F00)
+                                    color = MaterialTheme.colorScheme.tertiary
                                 )
                             }
                         }
@@ -164,7 +164,7 @@ fun StaffAppointmentCardItem(
                 text = "Доктор: ${appt.doctorName}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
@@ -179,7 +179,7 @@ fun StaffAppointmentCardItem(
             Text(
                 text = "Жалобы: ${appt.reason}",
                 fontSize = 13.sp,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             if (appt.notes.isNotEmpty()) {
@@ -188,7 +188,7 @@ fun StaffAppointmentCardItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFECEFF1))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(10.dp)
                 ) {
                     Text(
@@ -213,7 +213,7 @@ fun StaffAppointmentCardItem(
                     onClick = onEditClick,
                     modifier = Modifier
                         .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                        .size(36.dp)
+                        
                         .testTag("edit_appt_icon_btn")
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit appointment", tint = accentColor, modifier = Modifier.size(18.dp))
@@ -226,25 +226,25 @@ fun StaffAppointmentCardItem(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1.2f).height(36.dp).testTag("register_queue_btn_appt")
+                        modifier = Modifier.weight(1.2f).heightIn(min = 44.dp).testTag("register_queue_btn_appt")
                     ) {
-                        Icon(Icons.Default.Queue, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                        Icon(Icons.Default.Queue, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("В очередь", fontSize = 11.sp, color = Color.White)
+                        Text("В очередь", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface)
                     }
                 }
 
                 if (appt.status == "PENDING") {
                     Button(
                         onClick = onApprove,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(36.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
-                        Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                        Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Одобрить", fontSize = 11.sp, color = Color.White)
+                        Text("Одобрить", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface)
                     }
 
                     OutlinedButton(
@@ -252,7 +252,7 @@ fun StaffAppointmentCardItem(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f).height(36.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Red)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -263,7 +263,7 @@ fun StaffAppointmentCardItem(
                         onClick = onAddNotesClick,
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp),
-                        modifier = if (appt.status == "APPROVED") Modifier.weight(1f).height(36.dp) else Modifier.fillMaxWidth().height(36.dp)
+                        modifier = if (appt.status == "APPROVED") Modifier.weight(1f).heightIn(min = 44.dp) else Modifier.fillMaxWidth().heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.NoteAlt, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))

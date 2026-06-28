@@ -129,15 +129,15 @@ fun MedicalHistoryCardItem(
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = Color(0xFF2E7D32),
-                    modifier = Modifier.size(32.dp)
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
                 )
             },
             title = {
                 Text(
                     text = "Документ скачан!",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFF1B5E20)
+                    color = MaterialTheme.colorScheme.primary
                 )
             },
             text = {
@@ -154,7 +154,7 @@ fun MedicalHistoryCardItem(
                     Text(
                         text = "Путь: AppData/Downloads/$downloadedFileName",
                         fontSize = 10.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
 
@@ -163,7 +163,7 @@ fun MedicalHistoryCardItem(
                         text = "Превью документа:",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     // Textbox visual card mimicking thermal paper monospace clinic receipt
@@ -178,7 +178,7 @@ fun MedicalHistoryCardItem(
                         Column(
                             modifier = Modifier
                                 .padding(10.dp)
-                                .verticalScroll(rememberScrollState())
+                                .imePadding().verticalScroll(rememberScrollState())
                         ) {
                             Text(
                                 text = documentContentText,
@@ -194,7 +194,7 @@ fun MedicalHistoryCardItem(
             confirmButton = {
                 Button(
                     onClick = { shareFileContent(documentContentText) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -205,7 +205,7 @@ fun MedicalHistoryCardItem(
             dismissButton = {
                 TextButton(
                     onClick = { showSuccessDialog = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
                 ) {
                     Text("Закрыть", fontSize = 12.sp)
                 }
@@ -223,7 +223,7 @@ fun MedicalHistoryCardItem(
             .border(
                 border = BorderStroke(
                     width = if (isExpanded) 1.5.dp else 1.dp,
-                    color = if (isExpanded) Color(0xFF00897B) else Color(0xFFE0F2F1)
+                    color = if (isExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                 ),
                 shape = RoundedCornerShape(16.dp)
             )
@@ -239,13 +239,13 @@ fun MedicalHistoryCardItem(
                     Surface(
                         shape = CircleShape,
                         color = Color(0xFFE8F5E9),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.VerifiedUser,
                                 contentDescription = null,
-                                tint = Color(0xFF2E7D32),
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -256,12 +256,12 @@ fun MedicalHistoryCardItem(
                             text = "Заключение осмотра",
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
-                            color = Color(0xFF2E7D32)
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = "Доктор: ${record.doctorName}",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -276,7 +276,7 @@ fun MedicalHistoryCardItem(
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = Color.Gray,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -290,13 +290,13 @@ fun MedicalHistoryCardItem(
                     text = "Диагноз: ",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
-                    color = Color(0xFF37474F)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = record.diagnosis,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -317,7 +317,7 @@ fun MedicalHistoryCardItem(
                         Icon(
                             imageVector = Icons.Default.Medication,
                             contentDescription = "Prescription",
-                            tint = Color(0xFF00796B),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp).padding(top = 2.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -326,7 +326,7 @@ fun MedicalHistoryCardItem(
                                 text = "Назначенный рецепт & Препараты",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
-                                color = Color(0xFF004D40)
+                                color = MaterialTheme.colorScheme.primaryContainer
                             )
                             Text(
                                 text = record.prescription,
@@ -376,7 +376,7 @@ fun MedicalHistoryCardItem(
                         Button(
                             onClick = { downloadReport(record) },
                             enabled = !isDownloading,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B)),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -386,20 +386,20 @@ fun MedicalHistoryCardItem(
                             if (isDownloading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.surface,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Загрузка документа...", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("Загрузка документа...", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.FileDownload,
                                     contentDescription = "Скачать",
                                     modifier = Modifier.size(16.dp),
-                                    tint = Color.White
+                                    tint = MaterialTheme.colorScheme.surface
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Скачать медицинский отчёт (PDF/TXT)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("Скачать медицинский отчёт (PDF/TXT)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                             }
                         }
                     }
@@ -407,13 +407,13 @@ fun MedicalHistoryCardItem(
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFECEFF1),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = "✓ Электронная подпись подтверждена врачом клиники.",
                             fontSize = 11.sp,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Center
                         )

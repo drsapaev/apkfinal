@@ -67,13 +67,13 @@ fun ProfileCabinetCard(
                     modifier = Modifier
                         .size(50.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFE0F2F1)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.AccountCircle,
                         contentDescription = "Avatar",
-                        tint = Color(0xFF00897B),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(34.dp)
                     )
                 }
@@ -82,12 +82,12 @@ fun ProfileCabinetCard(
                     Text(
                         text = user?.fullName ?: "Пациент",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFF2C3E50)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Тел: ${user?.phone ?: ""}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -100,12 +100,12 @@ fun ProfileCabinetCard(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit name",
-                        tint = Color(0xFF00897B)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFECEFF1))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -119,20 +119,20 @@ fun ProfileCabinetCard(
                     Icon(
                         imageVector = Icons.Default.Fingerprint,
                         contentDescription = null,
-                        tint = if (user?.biometricEnabled == true) Color(0xFF00897B) else Color.Gray,
-                        modifier = Modifier.size(24.dp)
+                        tint = if (user?.biometricEnabled == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
                             text = "Вход по биометрии",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFF2C3E50)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Авторизация по отпечатку пальца",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -140,16 +140,16 @@ fun ProfileCabinetCard(
                     checked = user?.biometricEnabled ?: false,
                     onCheckedChange = onBiometricToggle,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = Color(0xFF00897B),
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color(0xFFE2E8F0)
+                        checkedThumbColor = MaterialTheme.colorScheme.surface,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
                     ),
                     modifier = Modifier.testTag("biometric_switch")
                 )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFECEFF1))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
             val context = LocalContext.current
             var secureScreenEnabled by remember { mutableStateOf(TokenManager.isScreenSecureEnabled(context)) }
@@ -166,20 +166,20 @@ fun ProfileCabinetCard(
                     Icon(
                         imageVector = Icons.Default.Shield,
                         contentDescription = null,
-                        tint = if (secureScreenEnabled) Color(0xFF00897B) else Color.Gray,
-                        modifier = Modifier.size(24.dp)
+                        tint = if (secureScreenEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
                             text = "Защита экрана (FLAG_SECURE)",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFF2C3E50)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Скрытие скриншотов и превью",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -190,10 +190,10 @@ fun ProfileCabinetCard(
                         secureScreenEnabled = isChecked
                     },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = Color(0xFF00897B),
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color(0xFFE2E8F0)
+                        checkedThumbColor = MaterialTheme.colorScheme.surface,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
                     ),
                     modifier = Modifier.testTag("secure_screen_switch")
                 )

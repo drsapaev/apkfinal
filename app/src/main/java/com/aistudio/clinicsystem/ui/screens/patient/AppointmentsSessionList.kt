@@ -58,7 +58,7 @@ fun AppointmentsSessionList(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(16.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
         ) {
             Column(
                 modifier = Modifier
@@ -82,7 +82,7 @@ fun AppointmentsSessionList(
                 Text(
                     text = "Используйте зеленую кнопку '+' для быстрой записи.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 4.dp)
                 )
