@@ -3,7 +3,7 @@ package com.aistudio.clinicsystem.data.session
 import android.content.Context
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.UserEntity
-import com.aistudio.clinicsystem.data.model.UserRole
+import com.aistudio.clinicsystem.domain.model.UserRole
 import com.aistudio.clinicsystem.utils.SessionManager
 import com.aistudio.clinicsystem.utils.TokenManager
 import dagger.hilt.android.qualifiers.ApplicationContext

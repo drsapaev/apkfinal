@@ -27,8 +27,8 @@ class AuthRepository(
     private val database: ClinicDatabase,
     private val mobileApiService: MobileApiService,
     private val apiService: ApiService,
-    private val sessionRepository: SessionRepository
-) {
+    private val sessionRepository: SessionRepository,
+) : com.aistudio.clinicsystem.domain.repository.AuthRepositoryInterface {
     private val userDao = database.userDao()
 
     /**
@@ -40,7 +40,7 @@ class AuthRepository(
      * The caller (AuthViewModel) must then prompt the user for the TOTP code
      * and call [verify2FA].
      */
-    suspend fun login(username: String, password: String): Result<LoginOutcome> = withContext(Dispatchers.IO) {
+    override suspend fun login(username: String, password: String): Result<LoginOutcome> = withContext(Dispatchers.IO) {
         try {
             // Production-only: demo bypass was removed in M0 (E1.1).
             // Any username MUST be authenticated against the backend.
@@ -136,7 +136,7 @@ class AuthRepository(
      * [LoginOutcome.TwoFactorRequired]. On success, the backend returns
      * the real access + refresh tokens and the user is logged in.
      */
-    suspend fun verify2FA(
+    override suspend fun verify2FA(
         challengeToken: String,
         totpCode: String,
         rememberDevice: Boolean
@@ -219,7 +219,7 @@ class AuthRepository(
      * cannot produce a TOTP code. The returned recovery-token must be used
      * with [verify2FARecovery] together with the code from the SMS/email.
      */
-    suspend fun request2FARecovery(
+    override suspend fun request2FARecovery(
         challengeToken: String,
         method: String  // "email" | "sms"
     ): Result<String> = withContext(Dispatchers.IO) {
@@ -245,7 +245,7 @@ class AuthRepository(
     /**
      * M1/E3.4: verifies a recovery code (from SMS/email) and completes login.
      */
-    suspend fun verify2FARecovery(
+    override suspend fun verify2FARecovery(
         recoveryToken: String,
         code: String
     ): Result<LoginOutcome> = withContext(Dispatchers.IO) {
@@ -309,7 +309,7 @@ class AuthRepository(
      * M1/E3.2: 401 handling is now done by TokenAuthenticator (auto-refresh).
      * If we get here with a 401, refresh already failed — clear session.
      */
-    suspend fun verifyCurrentSession(): Result<UserDto> = withContext(Dispatchers.IO) {
+    override suspend fun verifyCurrentSession(): Result<UserDto> = withContext(Dispatchers.IO) {
         try {
             val token = sessionRepository.accessToken
             if (token.isNullOrBlank()) {
@@ -397,7 +397,7 @@ class AuthRepository(
      *  - Other 4xx/5xx → tokens are cleared; server might be in a weird state
      *    but the user wanted to log out, so we honor that locally.
      */
-    suspend fun logout(): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun logout(): Result<Unit> = withContext(Dispatchers.IO) {
         val refreshToken = sessionRepository.refreshToken
 
         // If we have a refresh token, notify the server first

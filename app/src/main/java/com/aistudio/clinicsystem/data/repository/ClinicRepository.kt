@@ -29,12 +29,8 @@ class ClinicRepository @javax.inject.Inject constructor(
     private val mobileApiService: MobileApiService,
     private val legacyApiService: ApiService,
     // Stage 3.10 (PERF-11 fix): single Moshi instance, injected via Hilt
-    // (provided by ApiModule.provideMoshi). Was previously allocated
-    // per-call in retryUnsyncedWrites / createAppointmentOnServerAndLocal /
-    // createMedicalRecordOnServerAndLocal — wasted ~5-10ms per call on
-    // adapter graph construction.
     private val moshi: Moshi,
-) {
+) : com.aistudio.clinicsystem.domain.repository.ClinicRepositoryInterface {
     private val userDao = database.userDao()
     private val appointmentDao = database.appointmentDao()
     private val medicalRecordDao = database.medicalRecordDao()
@@ -43,21 +39,21 @@ class ClinicRepository @javax.inject.Inject constructor(
     private val queueSnapshotDao = database.queueSnapshotDao()
 
     // Expose flows to the ViewModel
-    val allUsers: Flow<List<UserEntity>> = userDao.getAllUsersFlow()
-    val allAppointments: Flow<List<AppointmentEntity>> = appointmentDao.getAllAppointmentsFlow()
-    val allMedicalRecords: Flow<List<MedicalRecordEntity>> = medicalRecordDao.getAllRecordsFlow()
-    val recentLogs: Flow<List<SyncLogEntity>> = syncLogDao.getRecentLogsFlow()
-    val allQueueSnapshots: Flow<List<QueueSnapshotEntity>> = queueSnapshotDao.getAllQueueSnapshotsFlow()
-    val allPendingSyncs: Flow<List<com.aistudio.clinicsystem.data.db.PendingSyncEntity>> = pendingSyncDao.observeAllPendingSyncs()
+    override val allUsers: Flow<List<UserEntity>> = userDao.getAllUsersFlow()
+    override val allAppointments: Flow<List<AppointmentEntity>> = appointmentDao.getAllAppointmentsFlow()
+    override val allMedicalRecords: Flow<List<MedicalRecordEntity>> = medicalRecordDao.getAllRecordsFlow()
+    override val recentLogs: Flow<List<SyncLogEntity>> = syncLogDao.getRecentLogsFlow()
+    override val allQueueSnapshots: Flow<List<QueueSnapshotEntity>> = queueSnapshotDao.getAllQueueSnapshotsFlow()
+    override val allPendingSyncs: Flow<List<com.aistudio.clinicsystem.data.db.PendingSyncEntity>> = pendingSyncDao.observeAllPendingSyncs()
 
     // User Operations
-    suspend fun getUserByPhone(phone: String): UserEntity? = userDao.getUserByPhone(phone)
-    suspend fun insertUser(user: UserEntity): Long {
+    override suspend fun getUserByPhone(phone: String): UserEntity? = userDao.getUserByPhone(phone)
+    override suspend fun insertUser(user: UserEntity): Long {
         val id = userDao.insertUser(user)
         addSyncLog("Registered/updated user: ${user.fullName} (${user.role})", "PATIENT_TO_STAFF")
         return id
     }
-    suspend fun updateUser(user: UserEntity) {
+    override suspend fun updateUser(user: UserEntity) {
         userDao.updateUser(user)
         addSyncLog("Updated profile for: ${user.fullName}", "PATIENT_TO_STAFF")
     }
@@ -66,10 +62,10 @@ class ClinicRepository @javax.inject.Inject constructor(
     fun getAppointmentsForPatient(phone: String): Flow<List<AppointmentEntity>> =
         appointmentDao.getAppointmentsByPatientFlow(phone)
 
-    suspend fun getAppointmentById(id: String): AppointmentEntity? =
+    override suspend fun getAppointmentById(id: String): AppointmentEntity? =
         appointmentDao.getAppointmentById(id)
 
-    suspend fun insertAppointment(appointment: AppointmentEntity): AppointmentEntity {
+    override suspend fun insertAppointment(appointment: AppointmentEntity): AppointmentEntity {
         // Stage 1.1 (Critical fix C-1): Restore the actual DAO call.
         // The previous implementation was a no-op — it only wrote a sync log
         // and returned the input object without persisting. Every offline-first
@@ -83,7 +79,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         return appointment
     }
 
-    suspend fun updateAppointment(appointment: AppointmentEntity) {
+    override suspend fun updateAppointment(appointment: AppointmentEntity) {
         appointmentDao.updateAppointment(appointment)
         addSyncLog(
             logMessage = "Updated appointment ID #${appointment.id} state to: ${appointment.status}",
@@ -91,7 +87,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         )
     }
 
-    suspend fun deleteAppointment(id: String) {
+    override suspend fun deleteAppointment(id: String) {
         appointmentDao.deleteAppointmentById(id)
         addSyncLog("Deleted appointment ID #${id}", "SYSTEM_SYNC")
     }
@@ -100,10 +96,10 @@ class ClinicRepository @javax.inject.Inject constructor(
     fun getRecordsForPatient(phone: String): Flow<List<MedicalRecordEntity>> =
         medicalRecordDao.getRecordsByPatientFlow(phone)
 
-    suspend fun getMedicalRecordById(id: String): MedicalRecordEntity? =
+    override suspend fun getMedicalRecordById(id: String): MedicalRecordEntity? =
         medicalRecordDao.getRecordById(id)
 
-    suspend fun insertMedicalRecord(record: MedicalRecordEntity): MedicalRecordEntity {
+    override suspend fun insertMedicalRecord(record: MedicalRecordEntity): MedicalRecordEntity {
         // Stage 1.1 (Critical fix C-1): Restore the actual DAO call.
         // Same no-op bug as insertAppointment above — offline medical-record
         // writes were silently dropped. See FINAL_RELEASE_AUDIT.md finding C-1.
@@ -115,7 +111,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         return record
     }
 
-    suspend fun clearSensitiveDataForPatient(phone: String) {
+    override suspend fun clearSensitiveDataForPatient(phone: String) {
         // Stage 3.2 (H-2 fix): atomic delete — without a transaction, a
         // crash between the two deletes would leave the user half-logged-out
         // (appointments gone but medical records still on disk).
@@ -127,7 +123,7 @@ class ClinicRepository @javax.inject.Inject constructor(
     }
 
     // Logging & Simulating Sync
-    suspend fun addSyncLog(logMessage: String, direction: String) {
+    override suspend fun addSyncLog(logMessage: String, direction: String) {
         syncLogDao.insertLog(
             SyncLogEntity(
                 logMessage = logMessage,
@@ -137,7 +133,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         )
     }
 
-    suspend fun clearLogs() = syncLogDao.clearLogs()
+    override suspend fun clearLogs() = syncLogDao.clearLogs()
 
     // Database Seeding
     // E1.8 (M0 security audit): prepopulateDatabase() previously seeded the
@@ -260,12 +256,12 @@ class ClinicRepository @javax.inject.Inject constructor(
     }
 
     // API/Web Service Operations (Encapsulated)
-    suspend fun dismissPendingSync(sync: PendingSyncEntity) {
+    override suspend fun dismissPendingSync(sync: PendingSyncEntity) {
         pendingSyncDao.deletePendingSync(sync)
         addSyncLog("🗑️ Отменена отложенная транзакция: ${sync.type} (${sync.clientRequestId})", "SYSTEM_SYNC")
     }
 
-    suspend fun retryUnsyncedWrites(token: String?): Boolean {
+    override suspend fun retryUnsyncedWrites(token: String?): Boolean {
         // Stage 3.2 (H-1 fix): atomic claim — no more concurrent-worker
         // race. The SELECT + UPDATE happens in a single Room transaction
         // (see PendingSyncDao.claimForProcessing).
@@ -475,7 +471,7 @@ class ClinicRepository @javax.inject.Inject constructor(
     // the HTTP status code so that non-retriable 4xx errors can be moved
     // to DEAD_LETTER immediately instead of cycling through 5 retries.
 
-    suspend fun createAppointmentOnServerAndLocal(
+    override suspend fun createAppointmentOnServerAndLocal(
         token: String?,
         patientPhone: String,
         patientName: String,
@@ -545,7 +541,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         return savedApp
     }
 
-    suspend fun updateAppointmentStatusOnServerAndLocal(
+    override suspend fun updateAppointmentStatusOnServerAndLocal(
         token: String?,
         id: String,
         status: String,
@@ -621,7 +617,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         return updated
     }
 
-    suspend fun createMedicalRecordOnServerAndLocal(
+    override suspend fun createMedicalRecordOnServerAndLocal(
         token: String?,
         patientPhone: String,
         doctorName: String,
@@ -666,7 +662,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         return savedRecord
     }
 
-    suspend fun fetchMedicalRecordsFromServer(
+    override suspend fun fetchMedicalRecordsFromServer(
         token: String?,
         phone: String,
         onNewRecordAction: (MedicalRecordEntity) -> Unit = {}
@@ -702,7 +698,7 @@ class ClinicRepository @javax.inject.Inject constructor(
         return emptyList()
     }
 
-    suspend fun syncAllAppointmentsFromServer(token: String?): Boolean {
+    override suspend fun syncAllAppointmentsFromServer(token: String?): Boolean {
         val startTime = System.currentTimeMillis()
         addSyncLog("🟢 ПОДКЛЮЧЕНИЕ к серверу FastAPI 'final'...", "CLOUD_SYNC_SIMULATOR")
         // Stage 3.11 (PERF-5 fix): removed `delay(400)` — added 400ms of
@@ -886,7 +882,7 @@ class ClinicRepository @javax.inject.Inject constructor(
      * M2: registers a patient in the live queue via POST /api/v1/queue/register.
      * Staff-facing operation — uses legacy ApiService (not in the mobile API contract).
      */
-    suspend fun registerInQueue(appointmentId: String): retrofit2.Response<QueueDto> {
+    override suspend fun registerInQueue(appointmentId: String): retrofit2.Response<QueueDto> {
         // M3B.4: look up serverId for API call
         val appointment = getAppointmentById(appointmentId) ?: error("Appointment not found")
         val serverId = appointment.serverId ?: error("Appointment not yet synced with server")

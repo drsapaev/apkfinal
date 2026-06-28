@@ -1,21 +1,15 @@
-package com.aistudio.clinicsystem.data.model
+package com.aistudio.clinicsystem.domain.model
+
+import timber.log.Timber
 
 /**
- * M1/E3.5: enum of all user roles supported by the backend.
+ * Stage 5.1 (C-10 fix): UserRole moved from `data.model` to `domain.model`.
+ *
+ * The domain layer no longer depends on the data layer. This enum is a pure
+ * domain concept — it describes a user's authorization role, independent of
+ * how it's stored or transmitted.
  *
  * Source of truth: backend `app/core/security.py` — `require_roles(*roles)`.
- *
- * The previous mobile client only had `PATIENT` and `STAFF` (a collapsed
- * bucket for everything non-patient). This caused the role-based navigation
- * in `ClinicNavGraph` to route doctors, registrars, lab techs, cashiers,
- * and admins all to the same `StaffScreen` — which then tried to render
- * admin-only UI for a doctor and vice versa.
- *
- * With this enum, `ClinicViewModel.currentRole` is now a [UserRole] and
- * `ClinicNavGraph` can route per role. The actual role-specific screens
- * (DoctorScreen, RegistrarScreen, LabScreen, etc.) are introduced in M2/E5.5;
- * for M1 we keep the existing `StaffScreen` for all non-patient roles and
- * just make the enum explicit so the contract is documented.
  *
  * Backend role string values are CASE-SENSITIVE (they come from the `role`
  * column in the `users` table). The mobile client preserves them verbatim.
@@ -29,7 +23,8 @@ enum class UserRole(val backendValue: String, val displayLabel: String) {
     CARDIO("cardio", "Кардиолог"),
     DERMA("derma", "Дерматолог"),
     DENTIST("dentist", "Стоматолог"),
-    ADMIN("Admin", "Администратор");
+    ADMIN("Admin", "Администратор"),
+    ;
 
     /** True for any role that gives access to the staff dashboard (not a patient). */
     val isStaff: Boolean get() = this != PATIENT
@@ -54,9 +49,9 @@ enum class UserRole(val backendValue: String, val displayLabel: String) {
                 "Admin" -> ADMIN
                 // Legacy mobile client used "PATIENT"/"STAFF" — map them.
                 "PATIENT" -> PATIENT
-                "STAFF" -> DOCTOR  // legacy "STAFF" → default to DOCTOR
+                "STAFF" -> DOCTOR // legacy "STAFF" → default to DOCTOR
                 else -> {
-                    android.util.Log.w("UserRole", "Unknown backend role: '$value', defaulting to PATIENT")
+                    Timber.w("Unknown backend role: '$value', defaulting to PATIENT")
                     PATIENT
                 }
             }
