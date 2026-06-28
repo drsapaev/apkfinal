@@ -50,6 +50,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -446,12 +448,12 @@ private fun PatientScreenContent(
                     colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                     modifier = Modifier.testTag("save_profile_button")
                 ) {
-                    Text("Сохранить", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.ui_sohranit), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditProfile = false }) {
-                    Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -713,7 +715,7 @@ private fun PatientScreenContent(
                             onClick = { showBookDialog = false },
                             modifier = Modifier.minimumInteractiveComponentSize()
                         ) {
-                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -744,7 +746,7 @@ private fun PatientScreenContent(
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Text("Записаться", color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.ui_zapisatsya), color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

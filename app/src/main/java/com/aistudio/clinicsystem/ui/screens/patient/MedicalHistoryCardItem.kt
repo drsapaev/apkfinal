@@ -45,6 +45,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 
 @Composable
 fun MedicalHistoryCardItem(
@@ -199,7 +201,7 @@ fun MedicalHistoryCardItem(
                 ) {
                     Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Поделиться", fontSize = 12.sp)
+                    Text(stringResource(R.string.ui_podelitsya), fontSize = 12.sp)
                 }
             },
             dismissButton = {
@@ -207,7 +209,7 @@ fun MedicalHistoryCardItem(
                     onClick = { showSuccessDialog = false },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
                 ) {
-                    Text("Закрыть", fontSize = 12.sp)
+                    Text(stringResource(R.string.ui_zakryt), fontSize = 12.sp)
                 }
             }
         )

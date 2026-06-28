@@ -29,6 +29,8 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 
 @Composable
 fun AuthScreen(
@@ -165,7 +167,7 @@ private fun AuthScreenContent(
                                     tint = tealPrimary
                                 )
                             },
-                            placeholder = { Text("Логин") },
+                            placeholder = { Text(stringResource(R.string.ui_login)) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = tealPrimary,
@@ -180,7 +182,7 @@ private fun AuthScreenContent(
                         OutlinedTextField(
                             value = password,
                             onValueChange = { viewModel.updatePasswordInput(it) },
-                            label = { Text("Пароль") },
+                            label = { Text(stringResource(R.string.ui_parol)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Lock,
@@ -188,7 +190,7 @@ private fun AuthScreenContent(
                                     tint = tealPrimary
                                 )
                             },
-                            placeholder = { Text("Пароль") },
+                            placeholder = { Text(stringResource(R.string.ui_parol)) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = tealPrimary,
@@ -226,7 +228,7 @@ private fun AuthScreenContent(
                                 .height(50.dp)
                         ) {
                             Text(
-                                text = "Войти",
+                                text = stringResource(R.string.ui_voyti),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.surface
                             )
@@ -348,7 +350,7 @@ private fun AuthScreenContent(
             },
             confirmButton = {
                 TextButton(onClick = { showBiometricSelector = false }) {
-                    Text("Закрыть")
+                    Text(stringResource(R.string.ui_zakryt))
                 }
             }
         )
@@ -417,7 +419,7 @@ private fun AuthScreenContent(
                     // Stage 4.4: BIOMETRIC_STRONG only — Class 3 biometrics
                     // required to unlock the keystore key.
                     .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                    .setNegativeButtonText("Отмена")
+                    .setNegativeButtonText(stringResource(R.string.ui_otmena))
                     .build()
 
                 // Stage 4.4: two-arg authenticate with CryptoObject.

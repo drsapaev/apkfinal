@@ -45,6 +45,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 
 @Composable
 fun TelegramBotCard(
@@ -168,7 +170,7 @@ fun TelegramBotCard(
                                 .weight(0.7f)
                                 .testTag("link_telegram_button")
                         ) {
-                            Text("Связать", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
+                            Text(stringResource(R.string.ui_svyazat), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -201,7 +203,7 @@ fun TelegramBotCard(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.testTag("unlink_telegram_button")
                         ) {
-                            Text("Отвязать", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.ui_otvyazat), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 

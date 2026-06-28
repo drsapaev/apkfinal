@@ -33,6 +33,9 @@ timber = "5.0.1"
 
 # Stage 4.6: Play Integrity API
 playIntegrity = "1.4.0"
+
+# Stage 7.2: Baseline Profile installer
+profileinstaller = "1.4.1"
 navigationCompose = "2.9.0"
 roomRuntime = "2.7.0"
 roomKtx = "2.7.0"
@@ -145,6 +148,9 @@ timber-lib = { group = "com.jakewharton.timber", name = "timber", version.ref = 
 
 # Stage 4.6: Play Integrity API
 play-integrity = { group = "com.google.android.play", name = "integrity", version.ref = "playIntegrity" }
+
+# Stage 7.2: Baseline Profile installer
+profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -44,6 +44,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 
 @Composable
 fun AnalyticsCard(
