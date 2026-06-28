@@ -189,6 +189,8 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // P2: enable pseudo-locale for testing layout overflow and hardcoded strings
+        pseudoLocalesEnabled = true
     }
     testOptions {
         unitTests {

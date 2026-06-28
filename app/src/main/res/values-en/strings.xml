@@ -72,3 +72,30 @@
     <string name="theme_light">Light theme</string>
     <string name="theme_dark">Dark theme</string>
 </resources>
+
+    <!-- Plurals -->
+    <plurals name="appointments_count">
+        <item quantity="one">%d appointment</item>
+        <item quantity="other">%d appointments</item>
+    </plurals>
+
+    <plurals name="patients_count">
+        <item quantity="one">%d patient</item>
+        <item quantity="other">%d patients</item>
+    </plurals>
+
+    <plurals name="pending_operations">
+        <item quantity="one">%d pending operation</item>
+        <item quantity="other">%d pending operations</item>
+    </plurals>
+
+    <plurals name="queue_waiting">
+        <item quantity="one">%d patient waiting</item>
+        <item quantity="other">%d patients waiting</item>
+    </plurals>
+
+    <plurals name="minutes_remaining">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+</resources>
