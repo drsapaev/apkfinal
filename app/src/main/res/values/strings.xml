@@ -140,7 +140,7 @@
     <string name="ui_ili_vvedite_profil_vruchnuyu">Или введите профиль вручную:</string>
     <string name="ui_imya_polzovatelya">Имя пользователя</string>
     <string name="ui_intellekt_klinika">Интеллект-Клиника</string>
-    <string name="ui_ispolzuyte_zelenuyu_knopku_dlya_bystroy_zapisi">Используйте зеленую кнопку '+' для быстрой записи.</string>
+    <string name="ui_ispolzuyte_zelenuyu_knopku_dlya_bystroy_zapisi">Используйте зеленую кнопку \'+\' для быстрой записи.</string>
     <string name="ui_klinicheskiy_diagnoz">Клинический диагноз</string>
     <string name="ui_korotkoe_primechanie_kliniki">Короткое примечание клиники</string>
     <string name="ui_lechaschiy_vrach_i_spetsialnost">Лечащий врач и специальность:</string>
@@ -225,7 +225,7 @@
     <string name="ui_ubrat_iz_zhivoy_ocheredi">Убрать из живой очереди?</string>
     <string name="ui_udalit">Удалить</string>
     <string name="ui_fio_patsienta">ФИО Пациента</string>
-    <string name="ui_fayl_downloadedfilename_uspeshno_sohranen_na_ustro">Файл '$downloadedFileName' успешно сохранен на устройство в каталог Загрузки приложения.</string>
+    <string name="ui_fayl_downloadedfilename_uspeshno_sohranen_na_ustro">Файл \'$downloadedFileName\' успешно сохранен на устройство в каталог Загрузки приложения.</string>
     <string name="ui_filtr_po_vrachu">Фильтр по врачу:</string>
     <string name="ui_filtr_po_statusu">Фильтр по статусу:</string>
     <string name="ui_yavka_cherez_3_dnya">Явка через 3 дня</string>
