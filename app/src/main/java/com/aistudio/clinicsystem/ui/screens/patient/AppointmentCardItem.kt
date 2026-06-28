@@ -58,7 +58,7 @@ fun AppointmentCardItem(
         "PENDING" -> MaterialTheme.colorScheme.tertiary // Beautiful Amber
         "APPROVED" -> MaterialTheme.colorScheme.primary // Soft Forest Green
         "COMPLETED" -> Color(0xFF1565C0) // Ocean Blue
-        "CANCELLED" -> Color(0xFFC62828) // Deep Coral Red
+        "CANCELLED" -> MaterialTheme.colorScheme.error // Deep Coral Red
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -261,7 +261,7 @@ fun AppointmentCardItem(
                                 Text(
                                     text = appointment.notes,
                                     fontSize = 12.sp,
-                                    color = Color(0xFF33691E)
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
@@ -273,7 +273,7 @@ fun AppointmentCardItem(
                     Spacer(modifier = Modifier.height(12.dp))
                     TextButton(
                         onClick = { onCancelClick(appointment.id) },
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFC62828)),
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         modifier = Modifier
                             .fillMaxWidth()
                             .border(1.dp, Color(0xFFFFCDD2), RoundedCornerShape(8.dp))

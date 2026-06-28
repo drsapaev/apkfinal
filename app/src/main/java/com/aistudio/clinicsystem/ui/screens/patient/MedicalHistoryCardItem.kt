@@ -309,7 +309,7 @@ fun MedicalHistoryCardItem(
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Column {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE0ECEB))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
                     // Prescription section
                     Row(
@@ -333,7 +333,7 @@ fun MedicalHistoryCardItem(
                             Text(
                                 text = record.prescription,
                                 fontSize = 13.sp,
-                                color = Color(0xFF006064)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -357,7 +357,7 @@ fun MedicalHistoryCardItem(
                                     text = "Дополнительные рекомендации",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = Color(0xFF33691E)
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
                                     text = record.recommendations,

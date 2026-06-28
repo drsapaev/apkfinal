@@ -229,4 +229,12 @@
     <string name="ui_filtr_po_vrachu">Фильтр по врачу:</string>
     <string name="ui_filtr_po_statusu">Фильтр по статусу:</string>
     <string name="ui_yavka_cherez_3_dnya">Явка через 3 дня</string>
+
+    <!-- Stage 12: AlertDialog titles -->
+    <string name="dialog_exit_editor">Выйти из редактора?</string>
+    <string name="dialog_close_form">Закрыть форму записи?</string>
+    <string name="dialog_remove_from_queue">Убрать из живой очереди?</string>
+    <string name="dialog_cancel_reason">Причина отказа в записи</string>
+    <string name="dialog_edit_notes">Редактировать комментарий к приёму</string>
+    <string name="dialog_select_account">Выбор аккаунта для входа</string>
 </resources>
