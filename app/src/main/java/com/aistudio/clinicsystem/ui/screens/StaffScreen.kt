@@ -956,7 +956,7 @@ private fun StaffScreenContent(
                                 "Избегать поднятия тяжестей, спать на ортопедическом матрасе."
                             )
                         )
-                        items(templatesList) { template ->
+                        items(templatesList, key = { it }) { template ->
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
