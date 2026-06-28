@@ -274,7 +274,7 @@ private fun StaffScreenContent(
                         title = "Заявки",
                         count = "${pendingAppts.size}",
                         icon = Icons.Default.PendingActions,
-                        indicatorColor = Color(0xFFFBC02D),
+                        indicatorColor = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.weight(1f)
                     )
                     AnalyticsCard(
@@ -399,9 +399,9 @@ private fun StaffScreenContent(
                                             }
 
                                             val qStatusColor = when (q.status) {
-                                                "WAITING" -> Color(0xFFEA580C)
-                                                "IN_PROGRESS" -> Color(0xFF2563EB)
-                                                "COMPLETED" -> Color(0xFF16A34A)
+                                                "WAITING" -> MaterialTheme.colorScheme.tertiary
+                                                "IN_PROGRESS" -> MaterialTheme.colorScheme.primary
+                                                "COMPLETED" -> MaterialTheme.colorScheme.primary
                                                 else -> MaterialTheme.colorScheme.onSurfaceVariant
                                             }
                                             val qStatusText = when (q.status) {
@@ -454,7 +454,7 @@ private fun StaffScreenContent(
                                             if (q.status == "WAITING") {
                                                 Button(
                                                     onClick = { viewModel.updateQueueStatus(q.id, "IN_PROGRESS") },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                                     contentPadding = PaddingValues(horizontal = 8.dp),
                                                     modifier = Modifier.heightIn(min = 44.dp)
                                                 ) {
@@ -463,7 +463,7 @@ private fun StaffScreenContent(
                                             } else if (q.status == "IN_PROGRESS") {
                                                 Button(
                                                     onClick = { viewModel.updateQueueStatus(q.id, "COMPLETED") },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                                     contentPadding = PaddingValues(horizontal = 8.dp),
                                                     modifier = Modifier.heightIn(min = 44.dp)
                                                 ) {
@@ -476,7 +476,7 @@ private fun StaffScreenContent(
                                                     targetQueueSnapshotToRemove = q
                                                     showRemoveQueueConfirmDialog = true
                                                 },
-                                                colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
+                                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                                 modifier = Modifier.heightIn(min = 44.dp).testTag("remove_queue_patient_button")
                                             ) {
                                                 Text(stringResource(R.string.ui_ubrat), fontSize = 10.sp)
@@ -881,7 +881,7 @@ private fun StaffScreenContent(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFFEF3C7), RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(12.dp))
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -890,21 +890,21 @@ private fun StaffScreenContent(
                                 Icon(
                                     imageVector = Icons.Default.Warning,
                                     contentDescription = null,
-                                    tint = Color(0xFFD97706),
+                                    tint = MaterialTheme.colorScheme.tertiary,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Активный черновик (защита от потери)",
                                     fontSize = 11.sp,
-                                    color = Color(0xFFB45309),
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             Text(
                                 text = stringResource(R.string.ui_sbrosit),
                                 fontSize = 11.sp,
-                                color = Color.Red,
+                                color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier
                                     .clickable {
@@ -1242,7 +1242,7 @@ private fun StaffScreenContent(
     if (showUnsavedWarningDialog) {
         AlertDialog(
             onDismissRequest = { showUnsavedWarningDialog = false },
-            title = { Text("Выйти из редактора?") },
+            title = { Text(stringResource(R.string.dialog_exit_editor)) },
             text = { Text("Введенная информация будет сохранена в локальный черновик на этом экране, чтобы вы не потеряли данные при случайном клике. Вы хотите закрыть окно создания записи?") },
             confirmButton = {
                 Button(
@@ -1266,7 +1266,7 @@ private fun StaffScreenContent(
     if (showCreateUnsavedWarning) {
         AlertDialog(
             onDismissRequest = { showCreateUnsavedWarning = false },
-            title = { Text("Закрыть форму записи?") },
+            title = { Text(stringResource(R.string.dialog_close_form)) },
             text = { Text("Данные приёма сохранены во временный черновик в целях безопасности. Вы действительно хотите закрыть окно создания записи к врачу?") },
             confirmButton = {
                 Button(
@@ -1293,7 +1293,7 @@ private fun StaffScreenContent(
                 showRemoveQueueConfirmDialog = false
                 targetQueueSnapshotToRemove = null
             },
-            title = { Text("Убрать из живой очереди?") },
+            title = { Text(stringResource(R.string.dialog_remove_from_queue)) },
             text = { Text("Вы хотите исключить из списка ожидания пациента ${targetQueueSnapshotToRemove?.patientName ?: "пациента"}? (Эту операцию можно будет отменить).") },
             confirmButton = {
                 Button(
@@ -1304,7 +1304,7 @@ private fun StaffScreenContent(
                         showRemoveQueueConfirmDialog = false
                         targetQueueSnapshotToRemove = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.testTag("confirm_remove_queue_patient_btn")
                 ) {
                     Text(stringResource(R.string.ui_udalit), color = MaterialTheme.colorScheme.surface)
@@ -1325,7 +1325,7 @@ private fun StaffScreenContent(
     if (showCancelReasonDialog) {
         AlertDialog(
             onDismissRequest = { showCancelReasonDialog = false },
-            title = { Text("Причина отказа в записи") },
+            title = { Text(stringResource(R.string.dialog_cancel_reason)) },
             text = {
                 OutlinedTextField(
                     value = cancelReasonInput,
@@ -1342,7 +1342,7 @@ private fun StaffScreenContent(
                         viewModel.cancelAppointment(targetAppointmentIdToCancel, cancelReasonInput)
                         showCancelReasonDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Отменить запись", color = MaterialTheme.colorScheme.surface)
                 }
@@ -1359,7 +1359,7 @@ private fun StaffScreenContent(
     if (showNotesDialog) {
         AlertDialog(
             onDismissRequest = { showNotesDialog = false },
-            title = { Text("Редактировать комментарий к приёму") },
+            title = { Text(stringResource(R.string.dialog_edit_notes)) },
             text = {
                 OutlinedTextField(
                     value = notesInput,
@@ -1415,7 +1415,7 @@ private fun StaffScreenContent(
 
                     Text("Пациент в базе клиники:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     if (patientRoleUsers.isEmpty()) {
-                        Text("Нет зарегистрированных пациентов", fontSize = 12.sp, color = Color.Red)
+                        Text("Нет зарегистрированных пациентов", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                     } else {
                         var expandedPatientSpinner by remember { mutableStateOf(false) }
                         Box(modifier = Modifier.fillMaxWidth()) {

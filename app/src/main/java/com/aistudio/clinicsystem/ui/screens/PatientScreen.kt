@@ -576,7 +576,7 @@ private fun PatientScreenContent(
                                     .weight(1f)
                                     .aspectRatio(0.95f)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) tealPrimary else Color(0xFFFFFEFE))
+                                    .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surface)
                                     .border(
                                         border = BorderStroke(1.dp, if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant),
                                         shape = RoundedCornerShape(12.dp)
@@ -640,7 +640,7 @@ private fun PatientScreenContent(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) tealPrimary else Color(0xFFF0F3F2))
+                                        .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { selectedTimeSlot = slot }
                                         .padding(vertical = 8.dp)
                                 ) {
@@ -665,7 +665,7 @@ private fun PatientScreenContent(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) tealPrimary else Color(0xFFF0F3F2))
+                                        .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { selectedTimeSlot = slot }
                                         .padding(vertical = 8.dp)
                                 ) {

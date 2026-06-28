@@ -245,7 +245,7 @@ private fun AuthScreenContent(
             if (usersWithBio.isNotEmpty()) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -279,7 +279,7 @@ private fun AuthScreenContent(
                             Text(
                                 text = "Войти по биометрии",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFF006064)
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Text(
                                 text = "Быстрый отпечаток / Face ID",
@@ -318,7 +318,7 @@ private fun AuthScreenContent(
     if (showBiometricSelector) {
         AlertDialog(
             onDismissRequest = { showBiometricSelector = false },
-            title = { Text("Выбор аккаунта для входа") },
+            title = { Text(stringResource(R.string.dialog_select_account)) },
             text = {
                 Column {
                     allUsers.filter { it.biometricEnabled }.forEach { user ->
