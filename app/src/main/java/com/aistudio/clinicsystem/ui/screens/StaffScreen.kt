@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -1236,6 +1237,16 @@ private fun StaffScreenContent(
                 }
             }
         }
+    }
+
+    // Stage 13 (UI-17 fix): BackHandler intercepts back press when a dialog
+    // with unsaved changes is open — shows the warning dialog instead of
+    // silently closing and losing the draft.
+    BackHandler(enabled = showAddRecordDialog && !showUnsavedWarningDialog) {
+        showUnsavedWarningDialog = true
+    }
+    BackHandler(enabled = showCreateAppointmentDialog && !showUnsavedWarningDialog) {
+        showUnsavedWarningDialog = true
     }
 
     // Modal dialogue popup for Unsaved draft protection warning
