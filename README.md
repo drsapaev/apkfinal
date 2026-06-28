@@ -1,6 +1,7 @@
 # 🏥 Clinic Management System — Android App
 
 ![CI](https://github.com/drsapaev/apkfinal/actions/workflows/android.yml/badge.svg)
+![Release](https://github.com/drsapaev/apkfinal/actions/workflows/release.yml/badge.svg)
 
 Mobile client for the [Clinic Management System](https://github.com/drsapaev/final) backend.
 Built with **Kotlin** and **Jetpack Compose**.
@@ -26,6 +27,7 @@ Built with **Kotlin** and **Jetpack Compose**.
 | Language | Kotlin 2.2.10 |
 | UI | Jetpack Compose (BOM 2025.04.00), Material 3 |
 | Architecture | Clean Architecture (data / domain / ui) |
+| DI | Hilt 2.51.1 (KSP) |
 | Networking | Retrofit 2.12 + OkHttp 4.12 + Moshi 1.15 |
 | Database | Room 2.7 + SQLCipher 4.5.4 (encrypted) |
 | Real-time | OkHttp WebSocket via RealtimeManager |
@@ -33,46 +35,49 @@ Built with **Kotlin** and **Jetpack Compose**.
 | Security | EncryptedSharedPreferences, FLAG_SECURE, HTTPS-only |
 | Testing | JUnit 4, Robolectric 4.14, mockk, MockWebServer |
 | Static Analysis | ktlint 12.1, detekt 1.23 |
-| CI | GitHub Actions |
+| CI/CD | GitHub Actions (CI + Release) |
 
 ### Key Architectural Decisions
 
-- **SessionRepository** — Single Source of Truth for auth state (StateFlow\<SessionState\>)
-- **RealtimeManager** — Unified WebSocket management (SharedFlow\<RealtimeEvent\>)
-- **Outbox Pattern** — UUID primary keys, PENDING→PROCESSING→COMPLETED/FAILED→DEAD_LETTER state machine, exponential backoff with jitter
+- **SessionRepository** — Single Source of Truth for auth state (`StateFlow<SessionState>`)
+- **RealtimeManager** — Unified WebSocket management (`SharedFlow<RealtimeEvent>`), `ClinicWebSocketClient` via `@Inject`
+- **Outbox Pattern** — UUID primary keys, `PENDING→PROCESSING→COMPLETED/FAILED→DEAD_LETTER` state machine, exponential backoff with jitter, `lastHttpCode` for 4xx vs 5xx handling
 - **NetworkBoundResource** — Offline-first sync (cache → network → cache)
-- **UUID IDs** — All entities use UUID local PKs + optional `serverId` (Int) for backend compatibility
+- **UUID IDs** — All business entities use UUID local PKs + optional `serverId` (Int) for backend compatibility
 - **TokenAuthenticator** — Auto-refresh on 401 with Mutex for concurrent request coalescing
+- **Hilt DI** — All dependencies injected via `@Inject` / `@Singleton`, no manual singletons or `getInstance()`
 
 ### Project Structure
 
 ```
 app/src/main/java/com/aistudio/clinicsystem/
 ├── data/
-│   ├── api/                  # MobileApiService, ApiService, TokenAuthenticator
-│   ├── db/                   # ClinicDatabase, DAOs, Entities, Migrations
+│   ├── api/                  # MobileApiService, ApiService, TokenAuthenticator, ApiClient
+│   ├── db/                   # ClinicDatabase, DAOs, Entities, Migrations (v4→v7)
 │   ├── outbox/               # OutboxStatus, OutboxRetryPolicy, UUID generator
 │   ├── realtime/             # RealtimeManager, RealtimeEvent
 │   ├── repository/           # AuthRepository, ClinicRepository, NetworkBoundResource
-│   ├── session/              # SessionRepository (SSOT)
+│   ├── session/              # SessionRepository (SSOT), SessionState
 │   └── model/                # UserRole enum
 ├── domain/
 │   ├── model/                # Pure Kotlin domain models
 │   ├── repository/           # Repository interfaces
 │   ├── usecase/              # 11 UseCases (auth, appointment, queue, medical, sync)
 │   └── mapper/               # Entity↔Domain mappers
+├── di/                       # Hilt modules (AppModule, etc.)
 ├── ui/
 │   ├── screens/
 │   │   ├── patient/          # 9 decomposed composables
 │   │   ├── staff/            # 3 decomposed composables
 │   │   ├── AuthScreen.kt
-│   │   ├── PatientScreen.kt  # thin shell (733 LOC)
-│   │   └── StaffScreen.kt    # thin shell (1746 LOC)
+│   │   ├── PatientScreen.kt  # thin shell
+│   │   └── StaffScreen.kt    # thin shell
 │   ├── components/           # SecureScreen (FLAG_SECURE)
 │   ├── navigation/           # ClinicNavGraph
 │   ├── viewmodel/            # ClinicViewModel, AuthViewModel, PatientViewModel, StaffViewModel
 │   └── theme/                # Material 3 theme
-├── utils/                    # TokenManager, SessionManager, SyncWorker, WebSocketClient, etc.
+├── utils/                    # TokenManager, SessionManager, SyncWorker, NetworkMonitor, etc.
+├── ClinicSystemApplication.kt
 └── MainActivity.kt
 ```
 
@@ -101,7 +106,7 @@ sdk.dir=/path/to/Android/Sdk
 
 ### 3. Configure backend URL
 
-Backend URL is configured via Gradle properties (Stage 1.3):
+Backend URL is configured via Gradle properties:
 
 ```bash
 # Debug build (emulator → host's localhost, default)
@@ -154,9 +159,11 @@ domain.
 - **2FA tokens** — sent in request body, not query string
 - **allowBackup=false** — no cloud backup of app data
 
+See [Security Audit](#) (PR #8) for full audit results (8/8 checks passed).
+
 ## 🧪 Testing
 
-### Unit Tests (92 tests)
+### Unit Tests (92+ tests)
 
 ```bash
 ./gradlew testDebugUnitTest
@@ -169,8 +176,8 @@ Test coverage:
 - 13 WebSocket tests (event handling, reconciliation guard, error resilience)
 - 14 AuthViewModel tests (login flow, 2FA, state management)
 - 6 SyncWorker tests (background sync, retry, error handling)
-- 4 Room migration tests
-- 2 Example tests
+- 4 Room migration tests (v4→v7)
+- Additional tests (TokenAuthenticator, ClinicRepositorySync, PatientViewModel, StaffViewModel)
 
 ### Static Analysis
 
@@ -179,17 +186,37 @@ Test coverage:
 ./gradlew detekt         # Code smell detection
 ```
 
+### Smoke Testing
+
+See [SMOKE_TEST_PROTOCOL.md](SMOKE_TEST_PROTOCOL.md) for the 29-scenario
+pre-release verification protocol (authentication, offline-first, realtime,
+database security, UI/UX, compatibility, background, localization).
+
 ## 🔄 CI/CD
 
-GitHub Actions pipeline runs on every push/PR to `main`:
+### CI Pipeline (every push/PR to `main`)
+
+[![CI](https://github.com/drsapaev/apkfinal/actions/workflows/android.yml/badge.svg)](https://github.com/drsapaev/apkfinal/actions)
 
 1. ktlint check
 2. detekt
-3. Unit tests (92 tests)
+3. Unit tests
 4. Assemble debug APK
 5. Upload APK + test reports as artifacts
 
-**Status**: [![CI](https://github.com/drsapaev/apkfinal/actions/workflows/android.yml/badge.svg)](https://github.com/drsapaev/apkfinal/actions)
+### Release Pipeline (on tag `v*.*.*`)
+
+[![Release](https://github.com/drsapaev/apkfinal/actions/workflows/release.yml/badge.svg)](https://github.com/drsapaev/apkfinal/actions)
+
+1. ktlint → detekt → unit tests
+2. Assemble release APK + bundle release AAB
+3. Upload artifacts (APK, AAB, mapping.txt — 90-day retention)
+4. Create GitHub Release with auto-generated notes
+
+### Branch Protection
+
+- `main` branch: PR required + CI must pass + linear history (squash-merge)
+- No force pushes, no deletions
 
 ## 📊 API Integration
 
@@ -251,16 +278,31 @@ export STORE_PASSWORD=your_store_password
 export KEY_PASSWORD=your_key_password
 
 # Build
-./gradlew bundleRelease
+./gradlew bundleRelease \
+    -Pclinic.baseUrl=https://api.clinic.tld/ \
+    -Pclinic.wsUrl=wss://api.clinic.tld/ws/queue
+```
+
+### Create a Release
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+# → Release workflow triggers automatically
 ```
 
 ## 🤝 Contributing
 
-1. Create a feature branch (`git checkout -b feature/amazing-feature`)
-2. Ensure `./gradlew ktlintCheck detekt testDebugUnitTest` passes
-3. Commit changes following conventional commits
-4. Open a Pull Request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style,
+testing guidelines, and PR process.
 
 ## 👥 Related Projects
 
 - [**Clinic Management System (Backend)**](https://github.com/drsapaev/final) — FastAPI backend
+
+## 📄 Documentation
+
+- [Refactoring Roadmap](docs/REFACTORING_ROADMAP.md) — 16-week plan (M0–M5)
+- [Smoke Test Protocol](SMOKE_TEST_PROTOCOL.md) — 29-scenario pre-release checklist
+- [Release Notes](RELEASE_NOTES.md) — Version history
+- [Contributing Guide](CONTRIBUTING.md) — Development guidelines
