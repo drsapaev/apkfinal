@@ -15,8 +15,8 @@ private val DarkColorScheme =
   darkColorScheme(
     primary = MedicalTealDark,
     onPrimary = Color(0xFF003730),
-    primaryContainer = Color(0xFF004D40),
-    onPrimaryContainer = Color(0xFFE0F2F1),
+    primaryContainer = MaterialTheme.colorScheme.primaryContainer,
+    onPrimaryContainer = MaterialTheme.colorScheme.surfaceVariant,
     secondary = MedicalBlueDark,
     onSecondary = Color(0xFF0D47A1),
     secondaryContainer = Color(0xFF1565C0),
@@ -31,11 +31,11 @@ private val DarkColorScheme =
 private val LightColorScheme =
   lightColorScheme(
     primary = MedicalTealLight,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFE0F2F1),
-    onPrimaryContainer = Color(0xFF004D40),
+    onPrimary = MaterialTheme.colorScheme.surface,
+    primaryContainer = MaterialTheme.colorScheme.surfaceVariant,
+    onPrimaryContainer = MaterialTheme.colorScheme.primaryContainer,
     secondary = MedicalBlueLight,
-    onSecondary = Color.White,
+    onSecondary = MaterialTheme.colorScheme.surface,
     secondaryContainer = Color(0xFFE3F2FD),
     onSecondaryContainer = Color(0xFF0D47A1),
     background = ClinicBgLight,

@@ -67,34 +67,34 @@ fun MedicalReportsSection(
                 Icon(
                     imageVector = Icons.Default.LibraryBooks,
                     contentDescription = null,
-                    tint = Color(0xFF00897B),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Документы и мед. отчёты",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFF37474F)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             if (isFetching) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = Color(0xFF00897B),
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 2.dp
                 )
             } else {
                 IconButton(
                     onClick = onFetchClick,
                     modifier = Modifier
-                        .size(32.dp)
+                        
                         .testTag("fetch_reports_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Скачать мед. отчеты",
-                        tint = Color(0xFF00897B)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -105,14 +105,14 @@ fun MedicalReportsSection(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             placeholder = { Text("Поиск диагнозов, врачей, рецептов...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(
                         onClick = { onSearchQueryChange("") },
                         modifier = Modifier.minimumInteractiveComponentSize()
                     ) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear research", tint = Color.Gray)
+                        Icon(Icons.Default.Clear, contentDescription = "Clear research", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             },
@@ -121,10 +121,10 @@ fun MedicalReportsSection(
                 .fillMaxWidth()
                 .testTag("search_records_input"),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF00897B),
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = Color(0xFFCFD8DC),
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
             ),
             shape = RoundedCornerShape(12.dp)
         )
@@ -136,7 +136,7 @@ fun MedicalReportsSection(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(16.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             ) {
                 Column(
                     modifier = Modifier
@@ -160,7 +160,7 @@ fun MedicalReportsSection(
                     Text(
                         text = "После приёма врачи внесут результаты в карту, результаты отобразятся тут.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 4.dp)
                     )

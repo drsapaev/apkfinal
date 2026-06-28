@@ -53,11 +53,11 @@ fun AppointmentCardItem(
     onCancelClick: (String) -> Unit
 ) {
     val statusColor = when (appointment.status) {
-        "PENDING" -> Color(0xFFFF8F00) // Beautiful Amber
-        "APPROVED" -> Color(0xFF2E7D32) // Soft Forest Green
+        "PENDING" -> MaterialTheme.colorScheme.tertiary // Beautiful Amber
+        "APPROVED" -> MaterialTheme.colorScheme.primary // Soft Forest Green
         "COMPLETED" -> Color(0xFF1565C0) // Ocean Blue
         "CANCELLED" -> Color(0xFFC62828) // Deep Coral Red
-        else -> Color.Gray
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val statusText = when (appointment.status) {
@@ -82,7 +82,7 @@ fun AppointmentCardItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFECEFF1), RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
     ) {
         // Stripe design layout
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -107,12 +107,12 @@ fun AppointmentCardItem(
                             text = appointment.doctorName,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = Color(0xFF263238)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = appointment.specialty,
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -149,8 +149,8 @@ fun AppointmentCardItem(
                         if (isPendingSync) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFFFFB300).copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.4f))
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f))
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -169,7 +169,7 @@ fun AppointmentCardItem(
                                     Icon(
                                         imageVector = Icons.Default.Sync,
                                         contentDescription = "Syncing",
-                                        tint = Color(0xFFFF8F00),
+                                        tint = MaterialTheme.colorScheme.tertiary,
                                         modifier = Modifier
                                             .size(12.dp)
                                             .graphicsLayer { rotationZ = rotation }
@@ -179,7 +179,7 @@ fun AppointmentCardItem(
                                         text = "Ожидает...",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
-                                        color = Color(0xFFFF8F00)
+                                        color = MaterialTheme.colorScheme.tertiary
                                     )
                                 }
                             }
@@ -197,7 +197,7 @@ fun AppointmentCardItem(
                     Icon(
                         imageVector = Icons.Default.CalendarToday,
                         contentDescription = "Date",
-                        tint = Color.Gray,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -205,7 +205,7 @@ fun AppointmentCardItem(
                         text = "${appointment.date}  в  ${appointment.time}",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 13.sp,
-                        color = Color(0xFF37474F)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -245,7 +245,7 @@ fun AppointmentCardItem(
                             Icon(
                                 imageVector = Icons.Default.Notes,
                                 contentDescription = null,
-                                tint = Color(0xFF2E7D32),
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp).padding(top = 2.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -254,7 +254,7 @@ fun AppointmentCardItem(
                                     text = "Ответ клиники:",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1B5E20)
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
                                     text = appointment.notes,

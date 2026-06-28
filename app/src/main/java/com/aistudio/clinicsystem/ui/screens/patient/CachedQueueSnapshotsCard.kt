@@ -67,7 +67,7 @@ fun CachedQueueSnapshotsCard(
                         imageVector = Icons.Default.People,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -83,7 +83,7 @@ fun CachedQueueSnapshotsCard(
                 ) {
                     Text(
                         text = "${snapshots.size} чел",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.surface,
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -107,7 +107,7 @@ fun CachedQueueSnapshotsCard(
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(

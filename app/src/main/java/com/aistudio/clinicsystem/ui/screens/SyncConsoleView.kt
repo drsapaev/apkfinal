@@ -55,13 +55,13 @@ fun SyncConsoleView(
 
     Card(
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), // Deep slate terminal black
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), // Deep slate terminal black
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         modifier = modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = Color(0xFF334155),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
             )
     ) {
@@ -79,7 +79,7 @@ fun SyncConsoleView(
                     Icon(
                         imageVector = Icons.Default.Sync,
                         contentDescription = "Syncing logs",
-                        tint = if (isSyncing) Color(0xFF38BDF8) else Color(0xFF34D399),
+                        tint = if (isSyncing) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -87,20 +87,20 @@ fun SyncConsoleView(
                         text = "САНДБОКС СИНХРОНИЗАЦИИ И БЕЗОПАСНОСТИ",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFCBD5E1),
+                        color = MaterialTheme.colorScheme.outlineVariant,
                         fontFamily = FontFamily.Monospace,
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = if (isSyncing) Color(0xFF38BDF8).copy(alpha = 0.2f) else Color(0xFF34D399).copy(alpha = 0.2f)
+                        color = if (isSyncing) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                     ) {
                         Text(
                             text = if (isSyncing) "SYNCING..." else "SECURE ✔",
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isSyncing) Color(0xFF38BDF8) else Color(0xFF34D399),
+                            color = if (isSyncing) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             fontFamily = FontFamily.Monospace
                         )
@@ -110,7 +110,7 @@ fun SyncConsoleView(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                     contentDescription = "Toggle Expand",
-                    tint = Color(0xFF94A3B8)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -121,7 +121,7 @@ fun SyncConsoleView(
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    HorizontalDivider(color = Color(0xFF334155), modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // Tab selector row
                     Row(
@@ -133,8 +133,8 @@ fun SyncConsoleView(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (syncTabActive) Color(0xFF334155) else Color.Transparent)
-                                .border(1.dp, if (syncTabActive) Color(0xFF475569) else Color(0xFF334155), RoundedCornerShape(6.dp))
+                                .background(if (syncTabActive) MaterialTheme.colorScheme.onSurfaceVariant else Color.Transparent)
+                                .border(1.dp, if (syncTabActive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(6.dp))
                                 .clickable { activeTab = "SYNC" }
                                 .padding(vertical = 6.dp),
                             contentAlignment = Alignment.Center
@@ -143,7 +143,7 @@ fun SyncConsoleView(
                                 text = "СИНХРОНИЗАЦИЯ ЛОГОВ",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (syncTabActive) Color.White else Color(0xFF64748B),
+                                color = if (syncTabActive) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -153,8 +153,8 @@ fun SyncConsoleView(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (securityTabActive) Color(0xFF0F766E).copy(alpha = 0.2f) else Color.Transparent)
-                                .border(1.dp, if (securityTabActive) Color(0xFF095D56) else Color(0xFF334155), RoundedCornerShape(6.dp))
+                                .background(if (securityTabActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent)
+                                .border(1.dp, if (securityTabActive) Color(0xFF095D56) else MaterialTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(6.dp))
                                 .clickable { activeTab = "SECURITY" }
                                 .padding(vertical = 6.dp),
                             contentAlignment = Alignment.Center
@@ -163,7 +163,7 @@ fun SyncConsoleView(
                                 text = "SECURITY REVIEW & PENTEST",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (securityTabActive) Color(0xFF2DD4BF) else Color(0xFF64748B),
+                                color = if (securityTabActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -179,27 +179,27 @@ fun SyncConsoleView(
                             ) {
                                 Button(
                                     onClick = { viewModel.triggerCloudSynchronization() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.weight(1.5f),
                                     contentPadding = PaddingValues(0.dp)
                                 ) {
-                                    Icon(Icons.Default.CloudSync, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.CloudSync, contentDescription = null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Синхронизировать Облако", fontSize = 11.sp, color = Color.White)
+                                    Text("Синхронизировать Облако", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface)
                                 }
 
                                 OutlinedButton(
                                     onClick = { viewModel.clearAllLogs() },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.weight(1f),
-                                    border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
                                     contentPadding = PaddingValues(0.dp)
                                 ) {
-                                    Icon(Icons.Default.DeleteSweep, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.DeleteSweep, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Очистить Логи", fontSize = 11.sp, color = Color(0xFFEF4444))
+                                    Text("Очистить Логи", fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
                                 }
                             }
 
@@ -224,7 +224,7 @@ fun SyncConsoleView(
                             Text(
                                 text = "Внутренний SQL реестр транзакций:",
                                 fontSize = 10.sp,
-                                color = Color(0xFF64748B),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace
                             )
 
@@ -236,13 +236,13 @@ fun SyncConsoleView(
                                     .fillMaxWidth()
                                     .height(200.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF0F172A)) // Pure deep black terminal
+                                    .background(MaterialTheme.colorScheme.onSurface) // Pure deep black terminal
                                     .padding(8.dp)
                             ) {
                                 if (logs.isEmpty()) {
                                     Text(
                                         text = "Транзакции пока пусты. Все действия синхронизации отображаются здесь.",
-                                        color = Color(0xFF475569),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 11.sp,
                                         fontFamily = FontFamily.Monospace,
                                         modifier = Modifier.fillMaxWidth().align(Alignment.Center),
@@ -254,15 +254,15 @@ fun SyncConsoleView(
                                             val logColor = when (log.direction) {
                                                 "PATIENT_TO_STAFF" -> Color(0xFFFB7185) // Rose (from patient)
                                                 "STAFF_TO_PATIENT" -> Color(0xFF60A5FA) // Blue (from staff)
-                                                "CLOUD_SYNC_SIMULATOR" -> Color(0xFFFBBF24) // Gold (Sim HTTP requests)
-                                                else -> Color(0xFF34D399) // Mint Green (System)
+                                                "CLOUD_SYNC_SIMULATOR" -> MaterialTheme.colorScheme.tertiary // Gold (Sim HTTP requests)
+                                                else -> MaterialTheme.colorScheme.primary // Mint Green (System)
                                             }
 
                                             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                                 Row {
                                                     Text(
                                                         text = "[${formatter.format(Date(log.timestamp))}] ",
-                                                        color = Color(0xFF94A3B8),
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                         fontSize = 11.sp,
                                                         fontFamily = FontFamily.Monospace
                                                     )
@@ -287,7 +287,7 @@ fun SyncConsoleView(
                                 text = "🛡️ ОТЧЁТ SECURITY AUDIT (РЕАЛЬНОЕ ВРЕМЯ):",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF94A3B8),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace,
                                 modifier = Modifier.padding(vertical = 2.dp)
                             )
@@ -301,28 +301,28 @@ fun SyncConsoleView(
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color(0xFF0F172A), RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.onSurface, RoundedCornerShape(8.dp))
                                     .padding(8.dp)
                             ) {
                                 SecurityStatusRow(
                                     label = "Шифрование БД SQLite",
                                     statusText = "✅ АКТИВНО (SQLCipher AES-256)",
-                                    statusColor = Color(0xFF34D399)
+                                    statusColor = MaterialTheme.colorScheme.primary
                                 )
                                 SecurityStatusRow(
                                     label = "Защита экрана (FLAG_SECURE)",
                                     statusText = if (secureDisplay) "✅ АКТИВНО (Превью скрыто)" else "⚠️ ОТКЛЮЧЕНО (Функция выключена)",
-                                    statusColor = if (secureDisplay) Color(0xFF34D399) else Color(0xFFFBBF24)
+                                    statusColor = if (secureDisplay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                                 )
                                 SecurityStatusRow(
                                     label = "adb backup (Защита бэкапа)",
                                     statusText = "✅ ЗАБЛОКИРОВАНО (allowBackup=false)",
-                                    statusColor = Color(0xFF34D399)
+                                    statusColor = MaterialTheme.colorScheme.primary
                                 )
                                 SecurityStatusRow(
                                     label = "Secure Preferences Storage",
                                     statusText = "✅ БЕЗОПАСНО (AES-256-GCM SIV)",
-                                    statusColor = Color(0xFF34D399)
+                                    statusColor = MaterialTheme.colorScheme.primary
                                 )
                             }
 
@@ -332,7 +332,7 @@ fun SyncConsoleView(
                                 text = "🎯 АКТИВНЫЕ ТЕСТЫ НА ПРОНИКНОВЕНИЕ (PENTESTER SUITE):",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF94A3B8),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace,
                                 modifier = Modifier.padding(bottom = 6.dp)
                             )
@@ -347,7 +347,7 @@ fun SyncConsoleView(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFF0F766E))
+                                        .background(MaterialTheme.colorScheme.primary)
                                         .clickable {
                                             pentestLog = "[PENTEST - SQL Injection Test]\n" +
                                                     "⚙️ Внедрение вредоносного SQL: \"' OR 1=1 --\" в форму телефона...\n" +
@@ -358,14 +358,14 @@ fun SyncConsoleView(
                                         .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("SQL Inject", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("SQL Inject", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                                 }
 
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFF0F766E))
+                                        .background(MaterialTheme.colorScheme.primary)
                                         .clickable {
                                             pentestLog = "[PENTEST - Screen Snooping Capture]\n" +
                                                     "⚙️ Инициализация daemon фонового захвата экрана...\n" +
@@ -380,14 +380,14 @@ fun SyncConsoleView(
                                         .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Scr Snoop", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("Scr Snoop", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                                 }
 
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFF0F766E))
+                                        .background(MaterialTheme.colorScheme.primary)
                                         .clickable {
                                             pentestLog = "[PENTEST - DB Dump Decryption]\n" +
                                                     "⚙️ Попытка несанкционированного прямого чтения базы /databases/clinic_database...\n" +
@@ -398,14 +398,14 @@ fun SyncConsoleView(
                                         .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("DB Dump", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("DB Dump", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                                 }
 
                                 Box(
                                     modifier = Modifier
                                         .weight(1.1f)
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFF0F766E))
+                                        .background(MaterialTheme.colorScheme.primary)
                                         .clickable {
                                             pentestLog = "[PENTEST - MITM Privilege TAMPERING]\n" +
                                                     "⚙️ Симуляция Man-in-the-Middle роутера...\n" +
@@ -417,7 +417,7 @@ fun SyncConsoleView(
                                         .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("MITM Tamper", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("MITM Tamper", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                                 }
                             }
 
@@ -427,14 +427,14 @@ fun SyncConsoleView(
                                     .height(130.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color(0xFF020617)) // Deep dark cyber console
-                                    .border(1.dp, Color(0xFF0F766E).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                                     .padding(8.dp)
                             ) {
                                 LazyColumn {
                                     item {
                                         Text(
                                             text = pentestLog,
-                                            color = if (pentestLog.contains("❌")) Color(0xFFFDA4AF) else Color(0xFF2DD4BF),
+                                            color = if (pentestLog.contains("❌")) Color(0xFFFDA4AF) else MaterialTheme.colorScheme.primary,
                                             fontSize = 11.sp,
                                             fontFamily = FontFamily.Monospace,
                                             lineHeight = 14.sp
@@ -463,11 +463,11 @@ fun SyncMetricsDashboard(
     }
     
     val netLabel = if (isOnline) "ОНЛАЙН ✅" else "ОФФЛАЙН 🚫"
-    val netColor = if (isOnline) Color(0xFF34D399) else Color(0xFFFBBF24)
+    val netColor = if (isOnline) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
     val wsColor = when (metrics.wsState) {
-        "CONNECTED" -> Color(0xFF34D399)
-        "RECONNECTING" -> Color(0xFFFBBF24)
-        else -> Color(0xFFF87171)
+        "CONNECTED" -> MaterialTheme.colorScheme.primary
+        "RECONNECTING" -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.error
     }
 
     Row(
@@ -479,19 +479,19 @@ fun SyncMetricsDashboard(
         // Left Column: Network & WS status
         Card(
             modifier = Modifier.weight(1f),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-            border = BorderStroke(1.dp, Color(0xFF334155))
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onSurface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
-                Text("СВЯЗЬ & ВЕБСОКЕТ", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Text("СВЯЗЬ & ВЕБСОКЕТ", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Сеть: ", fontSize = 11.sp, color = Color(0xFF94A3B8), fontFamily = FontFamily.Monospace)
+                    Text("Сеть: ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = FontFamily.Monospace)
                     Text(netLabel, fontSize = 11.sp, color = netColor, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("WS: ", fontSize = 11.sp, color = Color(0xFF94A3B8), fontFamily = FontFamily.Monospace)
+                    Text("WS: ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = FontFamily.Monospace)
                     Text(wsLabel, fontSize = 11.sp, color = wsColor, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
             }
@@ -500,26 +500,26 @@ fun SyncMetricsDashboard(
         // Right Column: Latency & Pending writes queue count
         Card(
             modifier = Modifier.weight(1.5f),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-            border = BorderStroke(1.dp, Color(0xFF334155))
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onSurface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
-                Text("ПОКАЗАТЕЛИ СИНХРОНИЗАЦИИ", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                Text("ПОКАЗАТЕЛИ СИНХРОНИЗАЦИИ", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Успешно: ${metrics.successCount}", fontSize = 11.sp, color = Color(0xFF34D399), fontFamily = FontFamily.Monospace)
-                    Text("Ошибки: ${metrics.failureCount}", fontSize = 11.sp, color = Color(0xFFF87171), fontFamily = FontFamily.Monospace)
+                    Text("Успешно: ${metrics.successCount}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontFamily = FontFamily.Monospace)
+                    Text("Ошибки: ${metrics.failureCount}", fontSize = 11.sp, color = MaterialTheme.colorScheme.error, fontFamily = FontFamily.Monospace)
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Задержка: ${metrics.lastLatencyMs}мс", fontSize = 11.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
-                    Text("В очереди: $pendingCount", fontSize = 11.sp, color = if (pendingCount > 0) Color(0xFFFBBF24) else Color(0xFF94A3B8), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Text("Задержка: ${metrics.lastLatencyMs}мс", fontSize = 11.sp, color = MaterialTheme.colorScheme.tertiary, fontFamily = FontFamily.Monospace)
+                    Text("В очереди: $pendingCount", fontSize = 11.sp, color = if (pendingCount > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
             }
         }
@@ -547,7 +547,7 @@ fun SecurityStatusRow(
             Text(
                 text = label,
                 fontSize = 11.sp,
-                color = Color(0xFFCBD5E1),
+                color = MaterialTheme.colorScheme.outlineVariant,
                 fontFamily = FontFamily.Monospace
             )
         }
@@ -571,8 +571,8 @@ fun PendingSyncQueueList(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-        border = BorderStroke(1.dp, Color(0xFF334155))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onSurface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
@@ -584,7 +584,7 @@ fun PendingSyncQueueList(
                     text = "ОЧЕРЕДЬ ОТЛОЖЕННЫХ ТРАНЗАКЦИЙ (${pendingSyncs.size})",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF94A3B8),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 0.5.sp
                 )
@@ -592,7 +592,7 @@ fun PendingSyncQueueList(
                     Text(
                         text = "повторить все",
                         fontSize = 10.sp,
-                        color = Color(0xFF38BDF8),
+                        color = MaterialTheme.colorScheme.tertiary,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier
@@ -618,7 +618,7 @@ fun PendingSyncQueueList(
                         Text(
                             text = "✓ Все локальные изменения успешно синхронизированы с сервером.",
                             fontSize = 10.sp,
-                            color = Color(0xFF34D399),
+                            color = MaterialTheme.colorScheme.primary,
                             fontFamily = FontFamily.Monospace
                         )
                     }
@@ -630,10 +630,10 @@ fun PendingSyncQueueList(
                 ) {
                     items(pendingSyncs, key = { it.id }) { sync ->
                         val badgeColor = when (sync.type) {
-                            "CREATE_APPOINTMENT" -> Color(0xFFFBBF24) // Gold
+                            "CREATE_APPOINTMENT" -> MaterialTheme.colorScheme.tertiary // Gold
                             "UPDATE_STATUS" -> Color(0xFF60A5FA) // Blue
-                            "CREATE_MEDICAL_RECORD" -> Color(0xFF2DD4BF) // Teal
-                            else -> Color(0xFF94A3B8)
+                            "CREATE_MEDICAL_RECORD" -> MaterialTheme.colorScheme.primary // Teal
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                         
                         val labelRu = when (sync.type) {
@@ -675,8 +675,8 @@ fun PendingSyncQueueList(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF1E293B), RoundedCornerShape(6.dp))
-                                .border(1.dp, Color(0xFF334155), RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(6.dp))
                                 .padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -701,7 +701,7 @@ fun PendingSyncQueueList(
                                     Text(
                                         text = "Попыток: ${sync.retryCount}",
                                         fontSize = 9.sp,
-                                        color = if (sync.retryCount > 0) Color(0xFFF87171) else Color(0xFF64748B),
+                                        color = if (sync.retryCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontFamily = FontFamily.Monospace
                                     )
                                 }
@@ -709,25 +709,25 @@ fun PendingSyncQueueList(
                                 Text(
                                     text = previewText,
                                     fontSize = 10.sp,
-                                    color = Color(0xFFCBD5E1),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Text(
                                     text = "clientReqId: ${sync.clientRequestId.take(8)}...",
                                     fontSize = 8.sp,
-                                    color = Color(0xFF475569),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontFamily = FontFamily.Monospace
                                 )
                             }
                             
                             IconButton(
                                 onClick = { onDismissSync(sync) },
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.DeleteSweep,
                                     contentDescription = "Dismiss Sync Item",
-                                    tint = Color(0xFFEF4444).copy(alpha = 0.7f),
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }

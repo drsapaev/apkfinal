@@ -173,7 +173,7 @@ private fun StaffScreenContent(
                         Text(
                             text = "Панель управления персоналом",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.surface
                         )
                         Text(
                             text = "Сотрудник: ${currentUser?.fullName ?: "Доктор"}",
@@ -211,7 +211,7 @@ private fun StaffScreenContent(
                         Icon(
                             imageVector = themeIcon,
                             contentDescription = themeDescription,
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.surface
                         )
                     }
 
@@ -226,7 +226,7 @@ private fun StaffScreenContent(
                         Icon(
                             imageVector = Icons.Default.Logout,
                             contentDescription = "Logout",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.surface
                         )
                     }
                 },
@@ -244,7 +244,7 @@ private fun StaffScreenContent(
                 icon = { Icon(Icons.Default.PostAdd, contentDescription = "Add Medical Record") },
                 text = { Text("Заполнить медкарту") },
                 containerColor = adminColor,
-                contentColor = Color.White
+                contentColor = MaterialTheme.colorScheme.surface
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -279,7 +279,7 @@ private fun StaffScreenContent(
                         title = "Одобрено",
                         count = "${approvedAppts.size}",
                         icon = Icons.Default.CheckCircle,
-                        indicatorColor = Color(0xFF4CAF50),
+                        indicatorColor = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f)
                     )
                     AnalyticsCard(
@@ -297,8 +297,8 @@ private fun StaffScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF1F5F9), RoundedCornerShape(16.dp))
-                        .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -318,7 +318,7 @@ private fun StaffScreenContent(
                             Text(
                                 text = "Живая очередь в клинике",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFF1E293B)
+                                color = MaterialTheme.colorScheme.surface
                             )
                         }
                         Box(
@@ -340,13 +340,13 @@ private fun StaffScreenContent(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color.White, RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "В коридоре ожидания пока никого нет.\nЗарегистрируйте подтвержденного пациента ниже.",
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -356,7 +356,7 @@ private fun StaffScreenContent(
                             cachedQueueSnapshots.sortedBy { it.position }.forEach { q ->
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
@@ -375,7 +375,7 @@ private fun StaffScreenContent(
                                                 ) {
                                                     Text(
                                                         text = "${q.position}",
-                                                        color = Color.White,
+                                                        color = MaterialTheme.colorScheme.surface,
                                                         fontSize = 11.sp,
                                                         fontWeight = FontWeight.Bold
                                                     )
@@ -386,12 +386,12 @@ private fun StaffScreenContent(
                                                         text = q.patientName,
                                                         fontWeight = FontWeight.Bold,
                                                         fontSize = 13.sp,
-                                                        color = Color(0xFF0F172A)
+                                                        color = MaterialTheme.colorScheme.onSurface
                                                     )
                                                     Text(
                                                         text = "Приём #${q.appointmentId}",
                                                         fontSize = 10.sp,
-                                                        color = Color.Gray
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
                                             }
@@ -400,7 +400,7 @@ private fun StaffScreenContent(
                                                 "WAITING" -> Color(0xFFEA580C)
                                                 "IN_PROGRESS" -> Color(0xFF2563EB)
                                                 "COMPLETED" -> Color(0xFF16A34A)
-                                                else -> Color.Gray
+                                                else -> MaterialTheme.colorScheme.onSurfaceVariant
                                             }
                                             val qStatusText = when (q.status) {
                                                 "WAITING" -> "Ожидает"
@@ -433,16 +433,16 @@ private fun StaffScreenContent(
                                             IconButton(
                                                 onClick = { viewModel.shiftQueuePosition(q.id, up = true) },
                                                 modifier = Modifier
-                                                    .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
-                                                    .size(32.dp)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                                    
                                             ) {
                                                 Icon(Icons.Default.ArrowUpward, contentDescription = "Вверх", modifier = Modifier.size(16.dp))
                                             }
                                             IconButton(
                                                 onClick = { viewModel.shiftQueuePosition(q.id, up = false) },
                                                 modifier = Modifier
-                                                    .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
-                                                    .size(32.dp)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                                    
                                             ) {
                                                 Icon(Icons.Default.ArrowDownward, contentDescription = "Вниз", modifier = Modifier.size(16.dp))
                                             }
@@ -454,18 +454,18 @@ private fun StaffScreenContent(
                                                     onClick = { viewModel.updateQueueStatus(q.id, "IN_PROGRESS") },
                                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
                                                     contentPadding = PaddingValues(horizontal = 8.dp),
-                                                    modifier = Modifier.height(28.dp)
+                                                    modifier = Modifier.heightIn(min = 44.dp)
                                                 ) {
-                                                    Text("Вызвать к врачу", fontSize = 10.sp, color = Color.White)
+                                                    Text("Вызвать к врачу", fontSize = 10.sp, color = MaterialTheme.colorScheme.surface)
                                                 }
                                             } else if (q.status == "IN_PROGRESS") {
                                                 Button(
                                                     onClick = { viewModel.updateQueueStatus(q.id, "COMPLETED") },
                                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
                                                     contentPadding = PaddingValues(horizontal = 8.dp),
-                                                    modifier = Modifier.height(28.dp)
+                                                    modifier = Modifier.heightIn(min = 44.dp)
                                                 ) {
-                                                    Text("Завершить прием", fontSize = 10.sp, color = Color.White)
+                                                    Text("Завершить прием", fontSize = 10.sp, color = MaterialTheme.colorScheme.surface)
                                                 }
                                             }
 
@@ -475,7 +475,7 @@ private fun StaffScreenContent(
                                                     showRemoveQueueConfirmDialog = true
                                                 },
                                                 colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
-                                                modifier = Modifier.height(28.dp).testTag("remove_queue_patient_button")
+                                                modifier = Modifier.heightIn(min = 44.dp).testTag("remove_queue_patient_button")
                                             ) {
                                                 Text("Убрать", fontSize = 10.sp)
                                             }
@@ -510,7 +510,7 @@ private fun StaffScreenContent(
                             Text(
                                 text = "Очередь приёма и одобрение записей",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFF263238)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
@@ -529,11 +529,11 @@ private fun StaffScreenContent(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                            modifier = Modifier.height(32.dp).testTag("create_appointment_btn")
+                            modifier = Modifier.heightIn(min = 44.dp).testTag("create_appointment_btn")
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Приём", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("Приём", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -542,7 +542,7 @@ private fun StaffScreenContent(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         placeholder = { Text("Поиск по ФИО или номеру телефона...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
@@ -553,8 +553,8 @@ private fun StaffScreenContent(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = adminColor,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
                         ),
                         modifier = Modifier.fillMaxWidth().testTag("appointment_search_field")
                     )
@@ -568,8 +568,8 @@ private fun StaffScreenContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (!filterTodayOnly) adminColor else Color.White)
-                                .border(1.dp, if (!filterTodayOnly) Color.Transparent else Color(0xFFE0E6ED), RoundedCornerShape(12.dp))
+                                .background(if (!filterTodayOnly) adminColor else MaterialTheme.colorScheme.surface)
+                                .border(1.dp, if (!filterTodayOnly) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                                 .clickable { filterTodayOnly = false }
                                 .padding(vertical = 10.dp)
                                 .testTag("all_appointments_tab"),
@@ -577,7 +577,7 @@ private fun StaffScreenContent(
                         ) {
                             Text(
                                 text = "Все записи (${allAppointments.size})",
-                                color = if (!filterTodayOnly) Color.White else Color.DarkGray,
+                                color = if (!filterTodayOnly) MaterialTheme.colorScheme.surface else Color.DarkGray,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
@@ -586,8 +586,8 @@ private fun StaffScreenContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (filterTodayOnly) adminColor else Color.White)
-                                .border(1.dp, if (filterTodayOnly) Color.Transparent else Color(0xFFE0E6ED), RoundedCornerShape(12.dp))
+                                .background(if (filterTodayOnly) adminColor else MaterialTheme.colorScheme.surface)
+                                .border(1.dp, if (filterTodayOnly) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                                 .clickable { filterTodayOnly = true }
                                 .padding(vertical = 10.dp)
                                 .testTag("today_appointments_tab"),
@@ -600,13 +600,13 @@ private fun StaffScreenContent(
                                 Icon(
                                     imageVector = Icons.Default.Event,
                                     contentDescription = null,
-                                    tint = if (filterTodayOnly) Color.White else Color.Gray,
+                                    tint = if (filterTodayOnly) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "На Сегодня (${allAppointments.count { it.date == todayDateStr }})",
-                                    color = if (filterTodayOnly) Color.White else Color.DarkGray,
+                                    color = if (filterTodayOnly) MaterialTheme.colorScheme.surface else Color.DarkGray,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp
                                 )
@@ -615,7 +615,7 @@ private fun StaffScreenContent(
                     }
 
                     // DOCTOR FILTER CHIPS
-                    Text("Фильтр по врачу:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("Фильтр по врачу:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     
                     val allDoctorsInSystem = remember(allAppointments) {
                         allAppointments.map { it.doctorName }.distinct().filter { it.isNotBlank() }
@@ -645,14 +645,14 @@ private fun StaffScreenContent(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) adminColor else Color(0xFFE2E8F0))
+                                    .background(if (isSelected) adminColor else MaterialTheme.colorScheme.outlineVariant)
                                     .clickable { selectedDoctorFilter = doc }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = doc,
                                     fontSize = 10.sp,
-                                    color = if (isSelected) Color.White else Color.DarkGray,
+                                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -660,7 +660,7 @@ private fun StaffScreenContent(
                     }
 
                     // STATUS FILTER CHIPS
-                    Text("Фильтр по статусу:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("Фильтр по статусу:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val statusesList = listOf(
                         "Все статусы",
                         "PENDING",
@@ -685,14 +685,14 @@ private fun StaffScreenContent(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) adminColor else Color(0xFFE2E8F0))
+                                    .background(if (isSelected) adminColor else MaterialTheme.colorScheme.outlineVariant)
                                     .clickable { selectedStatusFilter = status }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = labelText,
                                     fontSize = 10.sp,
-                                    color = if (isSelected) Color.White else Color.DarkGray,
+                                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -725,14 +725,14 @@ private fun StaffScreenContent(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color.White, RoundedCornerShape(16.dp))
-                            .border(1.dp, Color(0xFFE0E6ED), RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Подходящих сеансов или записей не найдено.",
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -793,7 +793,7 @@ private fun StaffScreenContent(
                     Text(
                         text = "Справочник пациентов и медкарты",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFF263238)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -810,14 +810,14 @@ private fun StaffScreenContent(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color.White, RoundedCornerShape(16.dp))
-                            .border(1.dp, Color(0xFFE0E6ED), RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Пациенты не найдены.",
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -863,7 +863,7 @@ private fun StaffScreenContent(
                 Column(
                     modifier = Modifier
                         .padding(24.dp)
-                        .verticalScroll(rememberScrollState())
+                        .imePadding().verticalScroll(rememberScrollState())
                 ) {
                     Text(
                         text = "Внести запись в медицинскую карту",
@@ -1010,7 +1010,7 @@ private fun StaffScreenContent(
                             Spacer(modifier = Modifier.width(6.dp))
                             Column {
                                 Text(text = pat.fullName, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text(text = pat.phone, fontSize = 11.sp, color = Color.Gray)
+                                Text(text = pat.phone, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -1084,7 +1084,7 @@ private fun StaffScreenContent(
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Рекомендованные диагнозы (ICD-10):", fontSize = 10.sp, color = Color.Gray)
+                    Text(text = "Рекомендованные диагнозы (ICD-10):", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1097,7 +1097,7 @@ private fun StaffScreenContent(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFE2E8F0))
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
                                     .clickable {
                                         val nextDiag = if (diagnosisInput.isBlank()) diag else "$diagnosisInput, $diag"
                                         diagnosisInput = nextDiag
@@ -1105,7 +1105,7 @@ private fun StaffScreenContent(
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(text = diag, fontSize = 10.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.Bold)
+                                Text(text = diag, fontSize = 10.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1138,7 +1138,7 @@ private fun StaffScreenContent(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFF1F5F9))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable {
                                         val nextPresc = if (prescriptionInput.isBlank()) phrase else "$prescriptionInput, $phrase"
                                         prescriptionInput = nextPresc
@@ -1179,7 +1179,7 @@ private fun StaffScreenContent(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFF1F5F9))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable {
                                         val nextRec = if (recommendationsInput.isBlank()) phrase else "$recommendationsInput, $phrase"
                                         recommendationsInput = nextRec
@@ -1205,7 +1205,7 @@ private fun StaffScreenContent(
                                 showAddRecordDialog = false
                             }
                         }) {
-                            Text("Отмена", color = Color.Gray)
+                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -1228,7 +1228,7 @@ private fun StaffScreenContent(
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             modifier = Modifier.testTag("save_medical_record_button")
                         ) {
-                            Text("Сохранить в базу", color = Color.White)
+                            Text("Сохранить в базу", color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -1250,7 +1250,7 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Да, закрыть", color = Color.White)
+                    Text("Да, закрыть", color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
@@ -1274,7 +1274,7 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Да, закрыть", color = Color.White)
+                    Text("Да, закрыть", color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
@@ -1305,7 +1305,7 @@ private fun StaffScreenContent(
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                     modifier = Modifier.testTag("confirm_remove_queue_patient_btn")
                 ) {
-                    Text("Удалить", color = Color.White)
+                    Text("Удалить", color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
@@ -1342,7 +1342,7 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {
-                    Text("Отменить запись", color = Color.White)
+                    Text("Отменить запись", color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
@@ -1375,7 +1375,7 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Внести", color = Color.White)
+                    Text("Внести", color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
@@ -1402,7 +1402,7 @@ private fun StaffScreenContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
+                    modifier = Modifier.padding(24.dp).imePadding().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
@@ -1443,7 +1443,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Text("Или введите профиль вручную:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Или введите профиль вручную:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = createPatientName,
                         onValueChange = {
@@ -1551,7 +1551,7 @@ private fun StaffScreenContent(
                                 showCreateAppointmentDialog = false
                             }
                         }) {
-                            Text("Отмена", color = Color.Gray)
+                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -1573,7 +1573,7 @@ private fun StaffScreenContent(
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             modifier = Modifier.testTag("submit_create_appointment_btn")
                         ) {
-                            Text("Создать приём", color = Color.White)
+                            Text("Создать приём", color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -1590,7 +1590,7 @@ private fun StaffScreenContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
+                    modifier = Modifier.padding(24.dp).imePadding().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
@@ -1692,14 +1692,14 @@ private fun StaffScreenContent(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) adminColor else Color(0xFFF1F5F9))
+                                    .background(if (isSelected) adminColor else MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable { editStatusSelected = status }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = label,
                                     fontSize = 11.sp,
-                                    color = if (isSelected) Color.White else Color.DarkGray,
+                                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -1713,7 +1713,7 @@ private fun StaffScreenContent(
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { showEditAppointmentDialog = false }) {
-                            Text("Отмена", color = Color.Gray)
+                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -1736,7 +1736,7 @@ private fun StaffScreenContent(
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             modifier = Modifier.testTag("submit_edit_appointment_btn")
                         ) {
-                            Text("Применить изменения", color = Color.White)
+                            Text("Применить изменения", color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }

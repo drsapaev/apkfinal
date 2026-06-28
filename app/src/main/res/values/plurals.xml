@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stage 6.2 (UI-28 fix): Russian plural forms for dynamic counts.
+         Russian plural rules: one (1, 21, 31...), few (2-4, 22-24...),
+         many (5-20, 25-30...), other (fallback). -->
+    <plurals name="record_count">
+        <item quantity="one">%d запись</item>
+        <item quantity="few">%d записи</item>
+        <item quantity="many">%d записей</item>
+        <item quantity="other">%d записей</item>
+    </plurals>
+    <plurals name="appointment_count">
+        <item quantity="one">%d запись</item>
+        <item quantity="few">%d записи</item>
+        <item quantity="many">%d записей</item>
+        <item quantity="other">%d записей</item>
+    </plurals>
+    <plurals name="patient_count">
+        <item quantity="one">%d пациент</item>
+        <item quantity="few">%d пациента</item>
+        <item quantity="many">%d пациентов</item>
+        <item quantity="other">%d пациентов</item>
+    </plurals>
+    <plurals name="people_count">
+        <item quantity="one">%d чел</item>
+        <item quantity="few">%d чел</item>
+        <item quantity="many">%d чел</item>
+        <item quantity="other">%d чел</item>
+    </plurals>
+</resources>

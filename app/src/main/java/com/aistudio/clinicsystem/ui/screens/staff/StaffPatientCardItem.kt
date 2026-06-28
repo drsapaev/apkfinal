@@ -58,7 +58,7 @@ fun StaffPatientCardItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFECEFF1), RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
     ) {
         Row(
             modifier = Modifier
@@ -87,17 +87,17 @@ fun StaffPatientCardItem(
                     text = patient.fullName,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = Color(0xFF37474F)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Тел: ${patient.phone}",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Записей в медкарте: $recordsCount",
                     fontSize = 11.sp,
-                    color = Color(0xFF2E7D32),
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -107,7 +107,7 @@ fun StaffPatientCardItem(
                     imageVector = Icons.Default.AddBox,
                     contentDescription = "New Record entry",
                     tint = accentColor,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier
                 )
             }
         }

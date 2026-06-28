@@ -152,14 +152,14 @@ private fun PatientScreenContent(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.25f),
-                            modifier = Modifier.size(36.dp)
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.25f),
+                            modifier = Modifier
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.MedicalServices,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.surface,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -169,12 +169,12 @@ private fun PatientScreenContent(
                             Text(
                                 text = "Интеллект-Клиника",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.surface
                             )
                             Text(
                                 text = "Личный Кабинет Пациента",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -208,7 +208,7 @@ private fun PatientScreenContent(
                         Icon(
                             imageVector = themeIcon,
                             contentDescription = themeDescription,
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.surface
                         )
                     }
 
@@ -223,7 +223,7 @@ private fun PatientScreenContent(
                         Icon(
                             imageVector = Icons.Default.Logout,
                             contentDescription = "Log out",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.surface
                         )
                     }
                 },
@@ -235,8 +235,8 @@ private fun PatientScreenContent(
                 onClick = { showBookDialog = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = "Book Appointment") },
                 text = { Text("Запись на приём", fontWeight = FontWeight.Bold) },
-                containerColor = Color(0xFF00BFA5),
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.surface,
                 modifier = Modifier
                     .testTag("book_appointment_fab")
                     .padding(bottom = 12.dp)
@@ -265,7 +265,7 @@ private fun PatientScreenContent(
                         modifier = Modifier
                             .weight(1.2f)
                             .fillMaxHeight()
-                            .verticalScroll(rememberScrollState()),
+                            .imePadding().verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         HeaderGreetingBanner(
@@ -292,7 +292,7 @@ private fun PatientScreenContent(
                         modifier = Modifier
                             .weight(0.8f)
                             .fillMaxHeight()
-                            .verticalScroll(rememberScrollState()),
+                            .imePadding().verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         ProfileCabinetCard(
@@ -337,7 +337,7 @@ private fun PatientScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+                        .imePadding().verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -419,7 +419,7 @@ private fun PatientScreenContent(
                     Text(
                         text = "Пожалуйста, введите ваше настоящее ФИО для корректного ведения электронной медицинской карты.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                     OutlinedTextField(
@@ -446,12 +446,12 @@ private fun PatientScreenContent(
                     colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                     modifier = Modifier.testTag("save_profile_button")
                 ) {
-                    Text("Сохранить", color = Color.White)
+                    Text("Сохранить", color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditProfile = false }) {
-                    Text("Отмена", color = Color.Gray)
+                    Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -471,7 +471,7 @@ private fun PatientScreenContent(
                 Column(
                     modifier = Modifier
                         .padding(20.dp)
-                        .verticalScroll(rememberScrollState())
+                        .imePadding().verticalScroll(rememberScrollState())
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -510,7 +510,7 @@ private fun PatientScreenContent(
                                 .border(
                                     border = BorderStroke(
                                         width = if (isSelected) 1.5.dp else 1.dp,
-                                        color = if (isSelected) tealPrimary else Color(0xFFE0E0E0)
+                                        color = if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant
                                     ),
                                     shape = RoundedCornerShape(12.dp)
                                 )
@@ -540,7 +540,7 @@ private fun PatientScreenContent(
                                     Text(
                                         text = spec,
                                         fontSize = 11.sp,
-                                        color = Color.Gray
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -576,7 +576,7 @@ private fun PatientScreenContent(
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(if (isSelected) tealPrimary else Color(0xFFFFFEFE))
                                     .border(
-                                        border = BorderStroke(1.dp, if (isSelected) tealPrimary else Color(0xFFE0E0E0)),
+                                        border = BorderStroke(1.dp, if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant),
                                         shape = RoundedCornerShape(12.dp)
                                     )
                                     .clickable { selectedDateIdx = idx }
@@ -586,7 +586,7 @@ private fun PatientScreenContent(
                                         text = day,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
-                                        color = if (isSelected) Color.White else accentNavy
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface else accentNavy
                                     )
                                     Text(
                                         text = when(month) {
@@ -605,7 +605,7 @@ private fun PatientScreenContent(
                                             else -> month
                                         },
                                         fontSize = 10.sp,
-                                        color = if (isSelected) Color.White.copy(alpha = 0.8f) else Color.Gray
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -646,7 +646,7 @@ private fun PatientScreenContent(
                                         text = slot,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else Color.DarkGray
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray
                                     )
                                 }
                             }
@@ -671,7 +671,7 @@ private fun PatientScreenContent(
                                         text = slot,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else Color.DarkGray
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray
                                     )
                                 }
                             }
@@ -713,7 +713,7 @@ private fun PatientScreenContent(
                             onClick = { showBookDialog = false },
                             modifier = Modifier.minimumInteractiveComponentSize()
                         ) {
-                            Text("Отмена", color = Color.Gray)
+                            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -739,12 +739,12 @@ private fun PatientScreenContent(
                         ) {
                             if (isBookingInProgress) {
                                 CircularProgressIndicator(
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.surface,
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Text("Записаться", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text("Записаться", color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

@@ -83,12 +83,12 @@ fun AnalyticsCard(
                 text = count,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF263238)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = title,
                 fontSize = 11.sp,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
         }

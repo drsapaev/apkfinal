@@ -61,11 +61,11 @@ private fun AuthScreenContent(
     var showVerificationDialog by remember { mutableStateOf(false) }
 
     // Dark slate teal color scheme matching an elegant clinical dashboard
-    val tealPrimary = Color(0xFF00897B)
-    val tealLight = Color(0xFFE0F2F1)
-    val tealAccent = Color(0xFF00B0FF)
+    val tealPrimary = MaterialTheme.colorScheme.primary
+    val tealLight = MaterialTheme.colorScheme.surfaceVariant
+    val tealAccent = MaterialTheme.colorScheme.tertiary
     val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(Color(0xFFF2F9F9), Color(0xFFE5F3F2))
+        colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surfaceVariant)
     )
 
     LaunchedEffect(Unit) {
@@ -75,6 +75,7 @@ private fun AuthScreenContent(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .imePadding()
             .background(backgroundBrush)
             .padding(24.dp),
         contentAlignment = Alignment.Center
@@ -108,7 +109,7 @@ private fun AuthScreenContent(
                 text = "MyClinic System",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B5E20)
+                    color = MaterialTheme.colorScheme.primary
                 ),
                 textAlign = TextAlign.Center
             )
@@ -116,16 +117,16 @@ private fun AuthScreenContent(
             Text(
                 text = "Система управления клиникой и взаимодействия с пациентами",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.heightIn(min = 44.dp))
 
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -137,7 +138,7 @@ private fun AuthScreenContent(
                         text = "Вход в систему",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2C3E50)
+                            color = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
@@ -149,7 +150,7 @@ private fun AuthScreenContent(
                         Text(
                             text = "Введите ваши учетные данные:",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
 
@@ -227,7 +228,7 @@ private fun AuthScreenContent(
                             Text(
                                 text = "Войти",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.surface
                             )
                         }
                     }
@@ -268,7 +269,7 @@ private fun AuthScreenContent(
                             Icon(
                                 imageVector = Icons.Default.Fingerprint,
                                 contentDescription = "Biometric Login",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.surface
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
@@ -297,7 +298,7 @@ private fun AuthScreenContent(
                 Text(
                     text = "Подсказка: Войдите по логину и паролю\nи активируйте Биометрический вход в личном кабинете.",
                     style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(12.dp)
                 )
@@ -338,7 +339,7 @@ private fun AuthScreenContent(
                             )
                             Column {
                                 Text(text = user.fullName, fontWeight = FontWeight.Bold)
-                                Text(text = "${user.role} • ${user.phone}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Text(text = "${user.role} • ${user.phone}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         HorizontalDivider()
