@@ -33,6 +33,12 @@ complexity:
     constructorThreshold: 8
     # Allow default values to mitigate long parameter lists (idiomatic Kotlin)
     ignoreDefaultParameters: true
+    # Stage 14: Compose state-hoisting composables legitimately need many
+    # parameters (visible + onDismiss + each state field + its callback).
+    # These are idiomatic Compose — not a code smell.
+    excludes:
+      - '**/ui/screens/staff/StaffCreateAppointmentDialog.kt'
+      - '**/ui/screens/staff/StaffMedicalRecordDialog.kt'
   ComplexCondition:
     active: true
     threshold: 5
@@ -126,7 +132,10 @@ naming:
     active: true
     # Compose @Composable functions are PascalCase — this is the official
     # convention. Excluded from FunctionNaming to avoid false positives.
+    # Test functions use backtick names (idiomatic Kotlin test style).
     functionPattern: '[a-z][a-zA-Z0-9]*'
     excludes:
       - '**/ui/**'
       - '**/ui/theme/**'
+      - '**/test/**'
+      - '**/androidTest/**'

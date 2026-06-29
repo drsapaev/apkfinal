@@ -82,7 +82,7 @@ fun AppointmentSegmentTabs(
                     text = title,
                     fontSize = 12.sp,
                     fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF556B69)
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

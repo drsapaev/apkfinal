@@ -100,8 +100,8 @@ fun TelegramBotCard(
                 if (user?.telegramChatId != null) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFD4EDDA),
-                        border = BorderStroke(1.dp, Color(0xFFC3E6CB))
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Text(
                             text = "СВЯЗАНО ✔",
@@ -123,7 +123,7 @@ fun TelegramBotCard(
                 lineHeight = 14.sp
             )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE5EEF4))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
             if (user?.telegramChatId == null) {
                 // Unlinked state UI
@@ -146,7 +146,7 @@ fun TelegramBotCard(
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = telegramBlue,
-                                unfocusedBorderColor = Color(0xFFBDC3C7),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface
                             ),
@@ -209,7 +209,7 @@ fun TelegramBotCard(
 
                     Button(
                         onClick = onTestClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF34495E)),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurfaceVariant),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()

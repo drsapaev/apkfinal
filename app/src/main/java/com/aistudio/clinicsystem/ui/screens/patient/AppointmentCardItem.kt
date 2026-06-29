@@ -57,7 +57,7 @@ fun AppointmentCardItem(
     val statusColor = when (appointment.status) {
         "PENDING" -> MaterialTheme.colorScheme.tertiary // Beautiful Amber
         "APPROVED" -> MaterialTheme.colorScheme.primary // Soft Forest Green
-        "COMPLETED" -> Color(0xFF1565C0) // Ocean Blue
+        "COMPLETED" -> MaterialTheme.colorScheme.primary // Ocean Blue
         "CANCELLED" -> MaterialTheme.colorScheme.error // Deep Coral Red
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -239,8 +239,8 @@ fun AppointmentCardItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF1F8F6))
-                            .border(1.dp, Color(0xFFC8E6C9), RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
                             .padding(8.dp)
                     ) {
                         Row {
@@ -276,7 +276,7 @@ fun AppointmentCardItem(
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color(0xFFFFCDD2), RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))
                             .minimumInteractiveComponentSize()
                             .testTag("cancel_booking_button_${appointment.id}")
                     ) {

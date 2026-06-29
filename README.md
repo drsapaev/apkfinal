@@ -153,8 +153,14 @@ domain.
 
 - **SQLCipher** — local database encrypted with AES-256, passphrase from EncryptedSharedPreferences
 - **EncryptedSharedPreferences** — JWT tokens stored encrypted, fail-closed (no plaintext fallback)
+- **Hardware-backed Keystore** — master key uses StrongBox (API 28+) with TEE fallback
+- **BiometricPrompt with CryptoObject** — refresh token encrypted with biometric-gated key (AES/GCM)
 - **FLAG_SECURE** — screenshots/screen recording blocked on all PHI screens
+- **Timber + ReleaseTree** — PHI redacted from Logcat in release builds (phone, JWT, diagnosis, prescription)
 - **Network Security Config** — release builds: HTTPS only, no cleartext
+- **Certificate Pinning** — SHA-256 public key pins on all OkHttp clients (release builds)
+- **Play Integrity API** — device integrity attestation at login + sensitive operations
+- **Idempotency-Key** — all POST/PUT/PATCH requests carry UUID for server-side dedup
 - **HttpLoggingInterceptor** — disabled in release builds
 - **2FA tokens** — sent in request body, not query string
 - **allowBackup=false** — no cloud backup of app data
@@ -164,6 +170,20 @@ See [Security Audit](#) (PR #8) for full audit results (8/8 checks passed).
 ## 🧪 Testing
 
 ### Unit Tests (166+ tests)
+
+Test coverage areas:
+- TokenAuthenticator (8 tests) — refresh, session clear, retry loop, Mutex coalescing
+- MigrationTest (8 tests) — migration registration, data persistence, new column verification
+- PatientViewModel (9 tests) — create/cancel appointment, logout, biometric, theme
+- StaffViewModel (9 tests) — approve/cancel, undo, draft management, theme
+- ClinicRepositorySyncTest (8 tests) — outbox retry, 4xx→DEAD_LETTER, 5xx→retry, claimForProcessing
+- OutboxRetryPolicy (12 tests) — exponential backoff, jitter, capping, enum round-trip
+- RealtimeManager (7 tests) — start/stop, idempotency, reconnectNow, emitEvent
+- NetworkMonitor (5 tests) — isOnline, start/stop monitoring, idempotency
+- WebSocketConnection (8 tests) — connect, subscribe, close, reconnect, malformed JSON
+- AuthViewModel (14 tests) — login flow, 2FA, state management
+- AuthRepository (8 tests) — 2FA challenge, logout, network errors
+- ClinicRepository Room (10 tests) — CRUD, patient-scoped queries
 
 ```bash
 ./gradlew testDebugUnitTest
