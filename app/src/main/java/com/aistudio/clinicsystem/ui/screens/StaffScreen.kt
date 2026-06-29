@@ -181,7 +181,7 @@ private fun StaffScreenContent(
                         Text(
                             text = "Сотрудник: ${currentUser?.fullName ?: "Доктор"}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.LightGray
+                            color = MaterialTheme.colorScheme.outline
                         )
                     }
                 },
@@ -580,7 +580,7 @@ private fun StaffScreenContent(
                         ) {
                             Text(
                                 text = "Все записи (${allAppointments.size})",
-                                color = if (!filterTodayOnly) MaterialTheme.colorScheme.surface else Color.DarkGray,
+                                color = if (!filterTodayOnly) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
@@ -609,7 +609,7 @@ private fun StaffScreenContent(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "На Сегодня (${allAppointments.count { it.date == todayDateStr }})",
-                                    color = if (filterTodayOnly) MaterialTheme.colorScheme.surface else Color.DarkGray,
+                                    color = if (filterTodayOnly) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp
                                 )
@@ -655,7 +655,7 @@ private fun StaffScreenContent(
                                 Text(
                                     text = doc,
                                     fontSize = 10.sp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray,
+                                    color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -695,7 +695,7 @@ private fun StaffScreenContent(
                                 Text(
                                     text = labelText,
                                     fontSize = 10.sp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray,
+                                    color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -1061,7 +1061,7 @@ private fun StaffScreenContent(
                                         Text(
                                             text = "Диагноз: ${lastRecord.diagnosis}",
                                             fontSize = 11.sp,
-                                            color = Color.DarkGray,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
@@ -1149,7 +1149,7 @@ private fun StaffScreenContent(
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(text = phrase, fontSize = 10.sp, color = Color.DarkGray)
+                                Text(text = phrase, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -1190,7 +1190,7 @@ private fun StaffScreenContent(
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(text = phrase, fontSize = 10.sp, color = Color.DarkGray)
+                                Text(text = phrase, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -1712,7 +1712,7 @@ private fun StaffScreenContent(
                                 Text(
                                     text = label,
                                     fontSize = 11.sp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray,
+                                    color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold
                                 )
                             }

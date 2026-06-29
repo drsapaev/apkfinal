@@ -221,14 +221,14 @@ fun AppointmentCardItem(
                     Icon(
                         imageVector = Icons.Default.HistoryEdu,
                         contentDescription = "Reason",
-                        tint = Color.LightGray,
+                        tint = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(16.dp).padding(top = 2.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Симптомы: ${appointment.reason}",
                         fontSize = 13.sp,
-                        color = Color.DarkGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 

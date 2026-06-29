@@ -2,16 +2,12 @@ package com.aistudio.clinicsystem.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
-
 // IntellectClinic Medical Brand Colors - Light Theme
-val MedicalTealLight = MaterialTheme.colorScheme.primary
+// P-01 fix: replaced MaterialTheme.colorScheme.primary (non-composable scope) with HEX.
+// Previous code: `val MedicalTealLight = MaterialTheme.colorScheme.primary` — failed to
+// compile because MaterialTheme.colorScheme is a @Composable extension property and cannot
+// be referenced at top-level. App fell back to default Material 3 purple palette.
+val MedicalTealLight = Color(0xFF4DB6AC)
 val MedicalBlueLight = Color(0xFF1E88E5)
 val ClinicBgLight = Color(0xFFF4F6F8)
 val ClincSurfaceLight = Color(0xFFFFFFFF)

@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,8 +52,8 @@ private fun AuthScreenContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val username by viewModel.phoneInput.collectAsStateWithLifecycle()
-    val password by viewModel.otpInput.collectAsStateWithLifecycle()
+    val username by viewModel.usernameInput.collectAsStateWithLifecycle()
+    val password by viewModel.passwordInput.collectAsStateWithLifecycle()
     val isOtpSent by viewModel.isOtpSent.collectAsStateWithLifecycle()
     val timer by viewModel.timerSeconds.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
@@ -61,6 +63,7 @@ private fun AuthScreenContent(
     var showBiometricSelector by remember { mutableStateOf(false) }
     var selectedBioUserPhone by remember { mutableStateOf("") }
     var showVerificationDialog by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     // Dark slate teal color scheme matching an elegant clinical dashboard
     val tealPrimary = MaterialTheme.colorScheme.primary
@@ -169,9 +172,10 @@ private fun AuthScreenContent(
                             },
                             placeholder = { Text(stringResource(R.string.ui_login)) },
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = tealPrimary,
-                                unfocusedBorderColor = Color.LightGray,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                 focusedLabelColor = tealPrimary
                             ),
                             modifier = Modifier.fillMaxWidth()
@@ -192,9 +196,20 @@ private fun AuthScreenContent(
                             },
                             placeholder = { Text(stringResource(R.string.ui_parol)) },
                             singleLine = true,
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль",
+                                        tint = tealPrimary
+                                    )
+                                }
+                            },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = tealPrimary,
-                                unfocusedBorderColor = Color.LightGray,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                                 focusedLabelColor = tealPrimary
                             ),
                             modifier = Modifier.fillMaxWidth()
