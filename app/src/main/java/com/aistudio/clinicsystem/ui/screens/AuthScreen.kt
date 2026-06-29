@@ -60,6 +60,8 @@ private fun AuthScreenContent(
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val authError by viewModel.authError.collectAsStateWithLifecycle()
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
+    // P-16 fix: subscribe to 2FA challenge state
+    val pending2FAChallenge by viewModel.pending2FAChallenge.collectAsStateWithLifecycle()
 
     var showBiometricSelector by remember { mutableStateOf(false) }
     var selectedBioUserPhone by remember { mutableStateOf("") }
@@ -76,6 +78,12 @@ private fun AuthScreenContent(
 
     LaunchedEffect(Unit) {
         com.aistudio.clinicsystem.utils.AnalyticsManager.trackScreen("AuthScreen")
+    }
+
+    // P-16 fix: if 2FA challenge is pending, render 2FA UI instead of login form
+    if (pending2FAChallenge != null) {
+        TwoFactorAuthContent(viewModel = viewModel, modifier = modifier)
+        return
     }
 
     Box(
