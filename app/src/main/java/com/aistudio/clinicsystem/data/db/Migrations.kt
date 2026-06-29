@@ -179,9 +179,39 @@ object Migrations {
         }
     }
 
+    /**
+     * P-04: MIGRATION_7_8 — adds doctors table for backend-synced doctor directory.
+     *
+     * Replaces the hardcoded 3-doctor list in PatientScreen.kt with a proper
+     * Room-backed cache that syncs from GET /api/v1/mobile/doctors endpoint.
+     */
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS doctors (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    serverId INTEGER,
+                    fullName TEXT NOT NULL,
+                    specialty TEXT NOT NULL,
+                    phone TEXT NOT NULL DEFAULT '',
+                    email TEXT NOT NULL DEFAULT '',
+                    avatarUrl TEXT,
+                    isActive INTEGER NOT NULL DEFAULT 1,
+                    clinicId TEXT NOT NULL DEFAULT 'clinic_base',
+                    updatedAt INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_doctors_serverId ON doctors(serverId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_doctors_specialty ON doctors(specialty)")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_4_5,
         MIGRATION_5_6,
         MIGRATION_6_7,
+        MIGRATION_7_8,
     )
 }

@@ -238,6 +238,18 @@ interface MobileApiService {
 
     @GET("api/v1/mobile/health")
     suspend fun healthCheck(): Response<Unit>
+
+    // P-04: doctor directory endpoints
+    @GET("api/v1/mobile/doctors")
+    suspend fun getDoctors(
+        @Header("If-None-Match") etag: String? = null
+    ): Response<List<DoctorDto>>
+
+    @GET("api/v1/mobile/doctors/{id}/slots")
+    suspend fun getDoctorTimeSlots(
+        @Path("id") doctorId: Int,
+        @Query("date") date: String // "2026-06-29"
+    ): Response<List<TimeSlotDto>>
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -605,4 +617,39 @@ data class ApiVersionOut(
     @Json(name = "version") val version: String,
     @Json(name = "api_version") val apiVersion: String? = null,
     @Json(name = "build_date") val buildDate: String? = null
+)
+
+// ═══════════════════════════════════════════════════════════════════════
+// P-04: DTOs — Doctor directory
+// ═══════════════════════════════════════════════════════════════════════
+
+@JsonClass(generateAdapter = true)
+data class DoctorDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "full_name") val fullName: String,
+    @Json(name = "specialty") val specialty: String,
+    @Json(name = "phone") val phone: String? = null,
+    @Json(name = "email") val email: String? = null,
+    @Json(name = "avatar_url") val avatarUrl: String? = null,
+    @Json(name = "is_active") val isActive: Boolean = true
+) {
+    fun toEntity(): com.aistudio.clinicsystem.data.db.DoctorEntity {
+        return com.aistudio.clinicsystem.data.db.DoctorEntity(
+            serverId = id,
+            fullName = fullName,
+            specialty = specialty,
+            phone = phone ?: "",
+            email = email ?: "",
+            avatarUrl = avatarUrl,
+            isActive = isActive,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+}
+
+@JsonClass(generateAdapter = true)
+data class TimeSlotDto(
+    @Json(name = "time") val time: String, // "09:00"
+    @Json(name = "available") val available: Boolean,
+    @Json(name = "appointment_id") val appointmentId: String? = null // if booked
 )

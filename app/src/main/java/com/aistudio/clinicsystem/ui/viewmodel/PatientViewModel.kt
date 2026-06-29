@@ -22,7 +22,23 @@ class PatientViewModel @Inject constructor(
     private val repository: ClinicRepository,
     private val authRepository: AuthRepository,
     private val sessionRepository: SessionRepository,
+    private val doctorRepository: com.aistudio.clinicsystem.data.repository.DoctorRepository,
 ) : ViewModel() {
+
+    // P-04: doctors loaded from backend (with offline cache) instead of hardcoded list
+    val doctors: StateFlow<List<com.aistudio.clinicsystem.data.db.DoctorEntity>> =
+        doctorRepository.allDoctors
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        // P-04: seed fallback doctors if cache is empty, then sync from backend
+        viewModelScope.launch {
+            doctorRepository.seedFallbackDoctorsIfEmpty()
+            if (doctorRepository.shouldRefresh()) {
+                doctorRepository.syncDoctors()
+            }
+        }
+    }
 
     // Theme is hoisted to ClinicViewModel in Stage 6 — for now it's a local
     // MutableStateFlow initialized to SYSTEM. Will be moved to a dedicated

@@ -122,11 +122,9 @@ private fun PatientScreenContent(
         list
     }
 
-    val doctors = listOf(
-        Pair("Dr. Rustam Sapaev", "Стоматолог-Хирург (Dentist-Surgeon)"),
-        Pair("Dr. Elena Petrova", "Кардиолог (Cardiologist)"),
-        Pair("Dr. Alexander Smirnov", "Невролог (Neurologist)")
-    )
+    // P-04: doctors loaded from DoctorRepository (backend-synced, offline-cached)
+    val doctors by viewModel.doctors.collectAsStateWithLifecycle()
+    val doctorsList = doctors.map { Pair(it.fullName, it.specialty) }
     val timeSlots = listOf("09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00")
 
     // P-03 refactor: filteredAppointments and filteredRecords moved into
@@ -382,7 +380,7 @@ private fun PatientScreenContent(
     // P-07 refactor: extracted to BookAppointmentDialog.kt
     if (showBookDialog) {
         BookAppointmentDialog(
-            doctors = doctors,
+            doctors = doctorsList,
             bookingDatesList = bookingDatesList,
             timeSlots = timeSlots,
             selectedDoctor = selectedDoctor,
