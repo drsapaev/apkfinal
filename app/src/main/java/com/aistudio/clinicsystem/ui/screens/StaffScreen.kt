@@ -43,6 +43,8 @@ import com.aistudio.clinicsystem.utils.TokenManager
 import com.aistudio.clinicsystem.ui.screens.staff.AnalyticsCard
 import com.aistudio.clinicsystem.ui.screens.staff.StaffAppointmentCardItem
 import com.aistudio.clinicsystem.ui.screens.staff.StaffPatientCardItem
+import com.aistudio.clinicsystem.ui.screens.staff.StaffPatientsSection
+import com.aistudio.clinicsystem.ui.screens.staff.StaffQueueSection
 import androidx.compose.ui.res.stringResource
 import com.aistudio.clinicsystem.R
 
@@ -296,199 +298,18 @@ private fun StaffScreenContent(
             }
 
             // Section 0: Live Waiting Room Queue
+            // P-02 refactor: extracted to StaffQueueSection.kt
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.QueuePlayNext,
-                                contentDescription = null,
-                                tint = adminColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Живая очередь в клинике",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.surface
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(adminColor.copy(alpha = 0.15f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "Пациентов: ${cachedQueueSnapshots.size}",
-                                fontSize = 11.sp,
-                                color = adminColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                StaffQueueSection(
+                    cachedQueueSnapshots = cachedQueueSnapshots,
+                    adminColor = adminColor,
+                    onShiftQueuePosition = { id, up -> viewModel.shiftQueuePosition(id, up) },
+                    onUpdateQueueStatus = { id, status -> viewModel.updateQueueStatus(id, status) },
+                    onRemoveQueuePatient = { q ->
+                        targetQueueSnapshotToRemove = q
+                        showRemoveQueueConfirmDialog = true
                     }
-
-                    if (cachedQueueSnapshots.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "В коридоре ожидания пока никого нет.\nЗарегистрируйте подтвержденного пациента ниже.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            cachedQueueSnapshots.sortedBy { it.position }.forEach { q ->
-                                Card(
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(22.dp)
-                                                        .clip(CircleShape)
-                                                        .background(adminColor),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text(
-                                                        text = "${q.position}",
-                                                        color = MaterialTheme.colorScheme.surface,
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Column {
-                                                    Text(
-                                                        text = q.patientName,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 13.sp,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                    Text(
-                                                        text = "Приём #${q.appointmentId}",
-                                                        fontSize = 10.sp,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
-                                            }
-
-                                            val qStatusColor = when (q.status) {
-                                                "WAITING" -> MaterialTheme.colorScheme.tertiary
-                                                "IN_PROGRESS" -> MaterialTheme.colorScheme.primary
-                                                "COMPLETED" -> MaterialTheme.colorScheme.primary
-                                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                            }
-                                            val qStatusText = when (q.status) {
-                                                "WAITING" -> "Ожидает"
-                                                "IN_PROGRESS" -> "На приёме"
-                                                "COMPLETED" -> "Осмотрен"
-                                                else -> q.status
-                                            }
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(qStatusColor.copy(alpha = 0.12f))
-                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                            ) {
-                                                Text(
-                                                    text = qStatusText,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = qStatusColor
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            IconButton(
-                                                onClick = { viewModel.shiftQueuePosition(q.id, up = true) },
-                                                modifier = Modifier
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                                                    
-                                            ) {
-                                                Icon(Icons.Default.ArrowUpward, contentDescription = "Вверх", modifier = Modifier.size(16.dp))
-                                            }
-                                            IconButton(
-                                                onClick = { viewModel.shiftQueuePosition(q.id, up = false) },
-                                                modifier = Modifier
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                                                    
-                                            ) {
-                                                Icon(Icons.Default.ArrowDownward, contentDescription = "Вниз", modifier = Modifier.size(16.dp))
-                                            }
-
-                                            Spacer(modifier = Modifier.weight(1f))
-
-                                            if (q.status == "WAITING") {
-                                                Button(
-                                                    onClick = { viewModel.updateQueueStatus(q.id, "IN_PROGRESS") },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                                    contentPadding = PaddingValues(horizontal = 8.dp),
-                                                    modifier = Modifier.heightIn(min = 44.dp)
-                                                ) {
-                                                    Text("Вызвать к врачу", fontSize = 10.sp, color = MaterialTheme.colorScheme.surface)
-                                                }
-                                            } else if (q.status == "IN_PROGRESS") {
-                                                Button(
-                                                    onClick = { viewModel.updateQueueStatus(q.id, "COMPLETED") },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                                    contentPadding = PaddingValues(horizontal = 8.dp),
-                                                    modifier = Modifier.heightIn(min = 44.dp)
-                                                ) {
-                                                    Text("Завершить прием", fontSize = 10.sp, color = MaterialTheme.colorScheme.surface)
-                                                }
-                                            }
-
-                                            TextButton(
-                                                onClick = {
-                                                    targetQueueSnapshotToRemove = q
-                                                    showRemoveQueueConfirmDialog = true
-                                                },
-                                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                                modifier = Modifier.heightIn(min = 44.dp).testTag("remove_queue_patient_button")
-                                            ) {
-                                                Text(stringResource(R.string.ui_ubrat), fontSize = 10.sp)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                )
             }
 
             // Section 1: Scheduler Approvals queue
@@ -781,67 +602,20 @@ private fun StaffScreenContent(
             }
 
             // Section 2: Patients Directory
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FolderShared,
-                        contentDescription = null,
-                        tint = adminColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Справочник пациентов и медкарты",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+            // P-02 refactor: extracted to StaffPatientsSection.kt
+            staffPatientsSection(
+                patientRoleUsers = patientRoleUsers,
+                allRecords = allRecords,
+                searchQuery = searchQuery,
+                adminColor = adminColor,
+                onWriteRecord = { phone ->
+                    selectedPatientPhone = phone
+                    diagnosisInput = ""
+                    prescriptionInput = ""
+                    recommendationsInput = ""
+                    showAddRecordDialog = true
                 }
-            }
-
-            val displayPatients = patientRoleUsers.filter {
-                if (searchQuery.isNotBlank()) {
-                    it.fullName.contains(searchQuery, ignoreCase = true) ||
-                    it.phone.contains(searchQuery)
-                } else true
-            }
-
-            if (displayPatients.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Пациенты не найдены.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            } else {
-                items(displayPatients, key = { it.id }) { patient ->
-                    val patientRecords = allRecords.filter { it.patientPhone == patient.phone }
-                    StaffPatientCardItem(
-                        patient = patient,
-                        recordsCount = patientRecords.size,
-                        onWriteRecord = {
-                            selectedPatientPhone = patient.phone
-                            diagnosisInput = ""
-                            prescriptionInput = ""
-                            recommendationsInput = ""
-                            showAddRecordDialog = true
-                        },
-                        accentColor = adminColor
-                    )
-                }
-            }
+            )
         }
         }
     }
