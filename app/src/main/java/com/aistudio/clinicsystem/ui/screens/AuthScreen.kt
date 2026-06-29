@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -91,7 +92,7 @@ private fun AuthScreenContent(
             .fillMaxSize()
             .imePadding()
             .background(backgroundBrush)
-            .padding(24.dp),
+            .padding(Spacing.xl),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -117,7 +118,7 @@ private fun AuthScreenContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             Text(
                 text = stringResource(R.string.ui_myclinic_system),
@@ -145,7 +146,7 @@ private fun AuthScreenContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(Spacing.xl),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -158,7 +159,7 @@ private fun AuthScreenContent(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Spacing.l))
 
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -190,7 +191,7 @@ private fun AuthScreenContent(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.m))
 
                         OutlinedTextField(
                             value = password,
@@ -226,7 +227,7 @@ private fun AuthScreenContent(
                     }
 
                     authError?.let { error ->
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.m))
                         Text(
                             text = error,
                             color = MaterialTheme.colorScheme.error,
@@ -236,7 +237,7 @@ private fun AuthScreenContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(Spacing.l))
 
                     if (isSyncing) {
                         CircularProgressIndicator(color = tealPrimary)
@@ -261,7 +262,7 @@ private fun AuthScreenContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             // Biometric Auth Access Section
             val usersWithBio = allUsers.filter { it.biometricEnabled }
@@ -282,7 +283,7 @@ private fun AuthScreenContent(
                         }
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(Spacing.l),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -298,7 +299,7 @@ private fun AuthScreenContent(
                                 tint = MaterialTheme.colorScheme.surface
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Spacing.m))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(R.string.ui_enter_by_biometrics),
@@ -326,11 +327,11 @@ private fun AuthScreenContent(
                     style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(12.dp)
+                    modifier = Modifier.padding(Spacing.m)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.xl))
 
             // E1.2: The "🚀 Тестовые аккаунты:" demo-login card with quick-login chips
             // for "patient" and "admin" accounts was removed in M0 for production safety.

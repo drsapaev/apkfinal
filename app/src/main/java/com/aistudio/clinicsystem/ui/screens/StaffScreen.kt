@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.activity.compose.BackHandler
@@ -85,7 +86,7 @@ private fun StaffScreenContent(
         val currentUndo = undoState
         if (currentUndo != null) {
             val result = snackbarHostState.showSnackbar(
-                message = "Действие успешно выполнено",
+                message = stringResource(R.string.ui_action_completed),
                 actionLabel = "Отменить",
                 duration = SnackbarDuration.Short
             )
@@ -133,8 +134,8 @@ private fun StaffScreenContent(
     val cachedQueueSnapshots by viewModel.cachedQueueSnapshots.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
-    var selectedDoctorFilter by remember { mutableStateOf("Все врачи") }
-    var selectedStatusFilter by remember { mutableStateOf("Все статусы") }
+    var selectedDoctorFilter by remember { mutableStateOf(stringResource(R.string.ui_all_doctors)) }
+    var selectedStatusFilter by remember { mutableStateOf(stringResource(R.string.ui_all_statuses)) }
 
     // Create Appointment Dialog state & Flows
     val draftCreatePatientPhoneVal by viewModel.draftCreatePatientPhone.collectAsStateWithLifecycle()
@@ -210,9 +211,9 @@ private fun StaffScreenContent(
                         else -> Icons.Default.BrightnessAuto
                     }
                     val themeDescription = when (themeMode) {
-                        "LIGHT" -> "Светлая тема"
-                        "DARK" -> "Темная тема"
-                        else -> "Системная тема"
+                        "LIGHT" -> stringResource(R.string.ui_theme_light)
+                        "DARK" -> stringResource(R.string.ui_theme_dark)
+                        else -> stringResource(R.string.ui_theme_system)
                     }
 
                     IconButton(
@@ -235,7 +236,7 @@ private fun StaffScreenContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(Spacing.xs))
 
                     IconButton(
                         onClick = { viewModel.logOut() },
@@ -279,7 +280,7 @@ private fun StaffScreenContent(
                     .fillMaxHeight()
                     .widthIn(max = 840.dp)
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.l),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
             ) {
                 // Analytics Micro-cards today dashboard
@@ -343,7 +344,7 @@ private fun StaffScreenContent(
                                 tint = adminColor,
                                 modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Spacing.s))
                             Text(
                                 text = "Очередь приёма и одобрение записей",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -369,7 +370,7 @@ private fun StaffScreenContent(
                             modifier = Modifier.heightIn(min = 44.dp).testTag("create_appointment_btn")
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(Spacing.xs))
                             Text(stringResource(R.string.ui_priem), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -398,7 +399,7 @@ private fun StaffScreenContent(
 
                     // TIMED TODAY ONLY FILTER
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Box(
@@ -466,7 +467,7 @@ private fun StaffScreenContent(
                     }
 
                     val doctorsList = buildList {
-                        add("Все врачи")
+                        add(stringResource(R.string.ui_all_doctors))
                         if (isCurrentUserDoctor && currentUser != null) {
                             if (!contains(currentUser!!.fullName)) add(currentUser!!.fullName)
                         }
@@ -475,7 +476,7 @@ private fun StaffScreenContent(
 
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s)
                     ) {
                         doctorsList.forEach { doc ->
                             val isSelected = selectedDoctorFilter == doc
@@ -499,7 +500,7 @@ private fun StaffScreenContent(
                     // STATUS FILTER CHIPS
                     Text("Фильтр по статусу:", fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val statusesList = listOf(
-                        "Все статусы",
+                        stringResource(R.string.ui_all_statuses),
                         "PENDING",
                         "APPROVED",
                         "COMPLETED",
@@ -507,13 +508,13 @@ private fun StaffScreenContent(
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s)
                     ) {
                         statusesList.forEach { status ->
                             val labelText = when (status) {
-                                "Все статусы" -> "Все статусы"
+                                stringResource(R.string.ui_all_statuses) -> stringResource(R.string.ui_all_statuses)
                                 "PENDING" -> "На рассмотрении"
-                                "APPROVED" -> "Подтверждено"
+                                "APPROVED" -> stringResource(R.string.ui_approved)
                                 "COMPLETED" -> "Осмотр завершен"
                                 "CANCELLED" -> "Отклонено"
                                 else -> status
@@ -546,11 +547,11 @@ private fun StaffScreenContent(
                     appt.patientPhone.contains(searchQuery)
                 } else true
                 
-                val matchesDoctor = if (selectedDoctorFilter != "Все врачи") {
+                val matchesDoctor = if (selectedDoctorFilter != stringResource(R.string.ui_all_doctors)) {
                     appt.doctorName == selectedDoctorFilter
                 } else true
                 
-                val matchesStatus = if (selectedStatusFilter != "Все статусы") {
+                val matchesStatus = if (selectedStatusFilter != stringResource(R.string.ui_all_statuses)) {
                     appt.status == selectedStatusFilter
                 } else true
                 
@@ -564,7 +565,7 @@ private fun StaffScreenContent(
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.large))
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
-                            .padding(24.dp),
+                            .padding(Spacing.xl),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -652,7 +653,7 @@ private fun StaffScreenContent(
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(24.dp)
+                        .padding(Spacing.xl)
                         .imePadding().verticalScroll(rememberScrollState())
                 ) {
                     Text(
@@ -661,7 +662,7 @@ private fun StaffScreenContent(
                         color = adminColor
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Spacing.l))
 
                     // Draft auto-save status indicator with dynamic dismiss button
                     val hasDraftText = diagnosisInput.isNotBlank() || prescriptionInput.isNotBlank() || recommendationsInput.isNotBlank()
@@ -701,10 +702,10 @@ private fun StaffScreenContent(
                                         prescriptionInput = ""
                                         recommendationsInput = ""
                                     }
-                                    .padding(4.dp)
+                                    .padding(Spacing.xs)
                             )
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Spacing.m))
                     }
 
                     // 1. One-tap templates
@@ -713,9 +714,9 @@ private fun StaffScreenContent(
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                         color = adminColor
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                         modifier = Modifier.fillMaxWidth().testTag("templates_row")
                     ) {
                         val templatesList = listOf(
@@ -770,10 +771,10 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Spacing.l))
 
                     Text(text = "Выберите пациента:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
 
                     // Patient Selector Spinner layout
                     patientRoleUsers.forEach { pat ->
@@ -787,7 +788,7 @@ private fun StaffScreenContent(
                                     selectedPatientPhone = pat.phone 
                                     viewModel.setDraftSelectedPatientPhone(pat.phone)
                                 }
-                                .padding(8.dp)
+                                .padding(Spacing.s)
                         ) {
                             RadioButton(
                                 selected = selectedPatientPhone == pat.phone,
@@ -805,7 +806,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Spacing.m))
 
                     // 2. Copy previous visit feature
                     if (selectedPatientPhone.isNotEmpty()) {
@@ -831,7 +832,7 @@ private fun StaffScreenContent(
                                 // P-26 fix: more prominent copy-previous-visit card with badge
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(12.dp)
+                                    modifier = Modifier.padding(Spacing.m)
                                 ) {
                                     Box(
                                         modifier = Modifier
@@ -847,7 +848,7 @@ private fun StaffScreenContent(
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
-                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Spacer(modifier = Modifier.width(Spacing.m))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = "Скопировать данные визита от ${lastRecord.visitDate}",
@@ -864,7 +865,7 @@ private fun StaffScreenContent(
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Spacing.m))
                         }
                     }
 
@@ -882,7 +883,7 @@ private fun StaffScreenContent(
                         modifier = Modifier.fillMaxWidth().testTag("diagnosis_input_field")
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(text = "Рекомендованные диагнозы (ICD-10):", fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(
@@ -909,7 +910,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Spacing.m))
 
                     // 4. Prescriptions and Recipes + Favorite phrases
                     OutlinedTextField(
@@ -925,7 +926,7 @@ private fun StaffScreenContent(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier
@@ -950,7 +951,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Spacing.m))
 
                     // 5. Recommendations and Advice + Favorite phrases
                     OutlinedTextField(
@@ -959,14 +960,14 @@ private fun StaffScreenContent(
                             recommendationsInput = it 
                             viewModel.setDraftRecommendations(it)
                         },
-                        label = { Text("Советы и рекомендации") },
+                        label = { Text(stringResource(R.string.ui_recommendations)) },
                         placeholder = { Text("Повторный визит через две недели.") },
                         singleLine = false,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier
@@ -991,7 +992,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xl))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1006,7 +1007,7 @@ private fun StaffScreenContent(
                         }) {
                             Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Spacing.s))
                         Button(
                             onClick = {
                                 if (selectedPatientPhone.isNotEmpty() && diagnosisInput.isNotBlank()) {
@@ -1027,7 +1028,7 @@ private fun StaffScreenContent(
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             modifier = Modifier.testTag("save_medical_record_button")
                         ) {
-                            Text("Сохранить в базу", color = MaterialTheme.colorScheme.surface)
+                            Text(stringResource(R.string.ui_save_to_db), color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -1059,12 +1060,12 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Да, закрыть", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.ui_yes_close), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showUnsavedWarningDialog = false }) {
-                    Text("Продолжить редактирование")
+                    Text(stringResource(R.string.ui_continue_editing))
                 }
             }
         )
@@ -1083,12 +1084,12 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Да, закрыть", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.ui_yes_close), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCreateUnsavedWarning = false }) {
-                    Text("Продолжить редактирование")
+                    Text(stringResource(R.string.ui_continue_editing))
                 }
             }
         )
@@ -1181,8 +1182,8 @@ private fun StaffScreenContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp).imePadding().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(Spacing.xl).imePadding().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.m)
                 ) {
                     Text(
                         text = "Записать на приём (Регистратор)",
@@ -1229,7 +1230,7 @@ private fun StaffScreenContent(
                             createPatientName = it
                             viewModel.setDraftCreatePatientName(it)
                         },
-                        label = { Text("ФИО Пациента") },
+                        label = { Text(stringResource(R.string.ui_patient_full_name)) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                         modifier = Modifier.fillMaxWidth().testTag("manual_patient_name")
@@ -1282,7 +1283,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                         OutlinedTextField(
                             value = createDate,
                             onValueChange = {
@@ -1299,7 +1300,7 @@ private fun StaffScreenContent(
                                 createTime = it
                                 viewModel.setDraftCreateTime(it)
                             },
-                            label = { Text("Время (ЧЧ:ММ)") },
+                            label = { Text(stringResource(R.string.ui_time_hhmm)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f).testTag("create_time_field")
                         )
@@ -1316,7 +1317,7 @@ private fun StaffScreenContent(
                         modifier = Modifier.fillMaxWidth().testTag("create_reason_field")
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.s))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1332,7 +1333,7 @@ private fun StaffScreenContent(
                         }) {
                             Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Spacing.s))
                         Button(
                             onClick = {
                                 if (createPatientPhone.isNotBlank() && createPatientName.isNotBlank()) {
@@ -1369,8 +1370,8 @@ private fun StaffScreenContent(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp).imePadding().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(Spacing.xl).imePadding().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.m)
                 ) {
                     Text(
                         text = "Редактировать приём #${editAppointmentId}",
@@ -1381,7 +1382,7 @@ private fun StaffScreenContent(
                     OutlinedTextField(
                         value = editPatientName,
                         onValueChange = { editPatientName = it },
-                        label = { Text("ФИО Пациента") },
+                        label = { Text(stringResource(R.string.ui_patient_full_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("edit_patient_name")
                     )
@@ -1428,7 +1429,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                         OutlinedTextField(
                             value = editDate,
                             onValueChange = { editDate = it },
@@ -1457,13 +1458,13 @@ private fun StaffScreenContent(
                     val statusList = listOf("PENDING", "APPROVED", "COMPLETED", "CANCELLED")
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s)
                     ) {
                         statusList.forEach { status ->
                             val label = when (status) {
                                 "PENDING" -> "Ожидает"
                                 "APPROVED" -> "Подтвержден"
-                                "COMPLETED" -> "Выполнен"
+                                "COMPLETED" -> stringResource(R.string.ui_completed)
                                 "CANCELLED" -> "Отменен"
                                 else -> status
                             }
@@ -1485,7 +1486,7 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.s))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1494,7 +1495,7 @@ private fun StaffScreenContent(
                         TextButton(onClick = { showEditAppointmentDialog = false }) {
                             Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Spacing.s))
                         Button(
                             onClick = {
                                 if (editPatientPhone.isNotBlank() && editPatientName.isNotBlank()) {

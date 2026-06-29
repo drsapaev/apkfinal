@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
@@ -66,7 +67,7 @@ fun TelegramBotCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.l)) {
             // Header with custom styled paper plane icon
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -129,7 +130,7 @@ fun TelegramBotCard(
 
             if (user?.telegramChatId == null) {
                 // Unlinked state UI
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
                     Text(
                         text = "Для подключения бота запустите @IntellectClinicBot в Telegram и введите ваш Chat ID сюда:",
                         fontSize = AppFontSize.caption,
@@ -139,7 +140,7 @@ fun TelegramBotCard(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s)
                     ) {
                         OutlinedTextField(
                             value = chatIdInput,
@@ -178,7 +179,7 @@ fun TelegramBotCard(
                 }
             } else {
                 // Linked state UI
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

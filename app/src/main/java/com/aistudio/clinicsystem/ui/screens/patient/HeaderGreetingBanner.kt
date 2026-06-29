@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
@@ -80,7 +81,7 @@ fun HeaderGreetingBanner(
                         colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary)
                     )
                 )
-                .padding(20.dp)
+                .padding(Spacing.l)
         ) {
             Column {
                 Row(
@@ -120,13 +121,13 @@ fun HeaderGreetingBanner(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.l))
                 HorizontalDivider(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.2f))
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.m))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.l)
                 ) {
                     // Item 1: Upcoming appointments
                     Row(

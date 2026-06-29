@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -36,10 +38,10 @@ fun PatientHomeTab(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.l)
     ) {
         HeaderGreetingBanner(
-            userName = currentUser?.fullName ?: "Пациент",
+            userName = currentUser?.fullName ?: stringResource(R.string.ui_patient),
             activeAppointmentsCount = appointments.count { it.status == "PENDING" || it.status == "APPROVED" },
             completedRecordsCount = records.size
         )

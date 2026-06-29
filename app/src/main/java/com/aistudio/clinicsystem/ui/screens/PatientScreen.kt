@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -130,6 +131,9 @@ private fun PatientScreenContent(
     // P-03 refactor: filteredAppointments and filteredRecords moved into
     // PatientAppointmentsTab and PatientMedicalTab respectively.
 
+    // P-17 fix: scrollState for auto-scroll to new appointment after creation
+    val appointmentsScrollState = rememberScrollState()
+
     LaunchedEffect(Unit) {
         com.aistudio.clinicsystem.utils.AnalyticsManager.trackScreen("PatientScreen")
     }
@@ -187,9 +191,9 @@ private fun PatientScreenContent(
                         else -> Icons.Default.BrightnessAuto
                     }
                     val themeDescription = when (themeMode) {
-                        "LIGHT" -> "Светлая тема"
-                        "DARK" -> "Темная тема"
-                        else -> "Системная тема"
+                        "LIGHT" -> stringResource(R.string.ui_theme_light)
+                        "DARK" -> stringResource(R.string.ui_theme_dark)
+                        else -> stringResource(R.string.ui_theme_system)
                     }
 
                     IconButton(
@@ -212,7 +216,7 @@ private fun PatientScreenContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(Spacing.xs))
 
                     IconButton(
                         onClick = { viewModel.logOut() },
@@ -246,13 +250,15 @@ private fun PatientScreenContent(
         snackbarHost = {
             val snackbarHostState = remember { SnackbarHostState() }
             val undoAction by viewModel.undoAction.collectAsStateWithLifecycle()
-            // P-17 fix: listen for appointmentCreatedEvent from ViewModel
+            // P-17 fix: listen for appointmentCreatedEvent from ViewModel — show Snackbar + auto-scroll
             LaunchedEffect(Unit) {
                 viewModel.appointmentCreatedEvent.collect { message ->
                     snackbarHostState.showSnackbar(
                         message = message,
                         duration = SnackbarDuration.Long
                     )
+                    // P-17 fix: auto-scroll to top so user sees the new appointment
+                    appointmentsScrollState.animateScrollTo(0)
                 }
             }
             // P-18 fix: listen for undoAction (cancel appointment) — show Snackbar with Undo button
@@ -326,7 +332,8 @@ private fun PatientScreenContent(
                         pendingSyncs = allPendingSyncs,
                         selectedFilter = selectedAppFilter,
                         onFilterSelect = { selectedAppFilter = it },
-                        onCancelClick = { id -> viewModel.cancelAppointment(id, "Отменено пациентом в кабинете") }
+                        onCancelClick = { id -> viewModel.cancelAppointment(id, "Отменено пациентом в кабинете") },
+                        scrollState = appointmentsScrollState
                     )
                     2 -> PatientMedicalTab(
                         records = records,

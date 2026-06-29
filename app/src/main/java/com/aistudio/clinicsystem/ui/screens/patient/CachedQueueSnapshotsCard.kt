@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -59,7 +60,7 @@ fun CachedQueueSnapshotsCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = modifier.fillMaxWidth().testTag("cached_queue_card")
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.l)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -72,9 +73,9 @@ fun CachedQueueSnapshotsCard(
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.s))
                     Text(
-                        text = "Живая Очередь (Кэш)",
+                        text = stringResource(R.string.ui_live_queue_cache),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -98,7 +99,7 @@ fun CachedQueueSnapshotsCard(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.m))
             if (snapshots.isEmpty()) {
                 Text(
                     text = "Нет данных об очереди в кэше устройства. Выполните синхронизацию.",
@@ -127,7 +128,7 @@ fun CachedQueueSnapshotsCard(
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Spacing.m))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = item.patientName,
