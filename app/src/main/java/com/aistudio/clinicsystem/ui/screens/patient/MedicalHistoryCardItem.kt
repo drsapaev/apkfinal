@@ -401,7 +401,12 @@ fun MedicalHistoryCardItem(
                                     tint = MaterialTheme.colorScheme.surface
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Скачать медицинский отчёт (TXT)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
+                                Text(
+                                    "Скачать медицинский отчёт (TXT)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.surface,
+                                )
                             }
                         }
                     }
