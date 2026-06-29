@@ -237,4 +237,40 @@
     <string name="dialog_cancel_reason">Причина отказа в записи</string>
     <string name="dialog_edit_notes">Редактировать комментарий к приёму</string>
     <string name="dialog_select_account">Выбор аккаунта для входа</string>
+
+    <!-- Plurals -->
+    <plurals name="appointments_count">
+        <item quantity="one">%d запись</item>
+        <item quantity="few">%d записи</item>
+        <item quantity="many">%d записей</item>
+        <item quantity="other">%d записей</item>
+    </plurals>
+
+    <plurals name="patients_count">
+        <item quantity="one">%d пациент</item>
+        <item quantity="few">%d пациента</item>
+        <item quantity="many">%d пациентов</item>
+        <item quantity="other">%d пациентов</item>
+    </plurals>
+
+    <plurals name="pending_operations">
+        <item quantity="one">%d отложенная операция</item>
+        <item quantity="few">%d отложенные операции</item>
+        <item quantity="many">%d отложенных операций</item>
+        <item quantity="other">%d отложенных операций</item>
+    </plurals>
+
+    <plurals name="queue_waiting">
+        <item quantity="one">%d пациент ожидает</item>
+        <item quantity="few">%d пациента ожидают</item>
+        <item quantity="many">%d пациентов ожидают</item>
+        <item quantity="other">%d пациентов ожидают</item>
+    </plurals>
+
+    <plurals name="minutes_remaining">
+        <item quantity="one">%d минута</item>
+        <item quantity="few">%d минуты</item>
+        <item quantity="many">%d минут</item>
+        <item quantity="other">%d минут</item>
+    </plurals>
 </resources>

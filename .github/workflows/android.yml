@@ -122,6 +122,18 @@ jobs:
           files: app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
           fail_ci_if_error: false
 
+      - name: Run Roborazzi screenshot tests
+        run: ./gradlew verifyRoborazziDebug --max-workers=2
+        continue-on-error: true
+
+      - name: Upload screenshot diff on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-diff
+          path: app/build/outputs/roborazzi/
+          retention-days: 14
+
       - name: Upload test results on failure
         if: always()
         uses: actions/upload-artifact@v4

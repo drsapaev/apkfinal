@@ -71,4 +71,31 @@
     <string name="theme_system">Tizim mavzusi</string>
     <string name="theme_light">Ochiq mavzu</string>
     <string name="theme_dark">Qorong\'i mavzu</string>
+
+
+    <!-- Plurals -->
+    <plurals name="appointments_count">
+        <item quantity="one">%d qabul</item>
+        <item quantity="other">%d qabul</item>
+    </plurals>
+
+    <plurals name="patients_count">
+        <item quantity="one">%d bemor</item>
+        <item quantity="other">%d bemor</item>
+    </plurals>
+
+    <plurals name="pending_operations">
+        <item quantity="one">%d kutilayotgan operatsiya</item>
+        <item quantity="other">%d kutilayotgan operatsiya</item>
+    </plurals>
+
+    <plurals name="queue_waiting">
+        <item quantity="one">%d bemor kutmoqda</item>
+        <item quantity="other">%d bemor kutmoqda</item>
+    </plurals>
+
+    <plurals name="minutes_remaining">
+        <item quantity="one">%d daqiqa</item>
+        <item quantity="other">%d daqiqa</item>
+    </plurals>
 </resources>
