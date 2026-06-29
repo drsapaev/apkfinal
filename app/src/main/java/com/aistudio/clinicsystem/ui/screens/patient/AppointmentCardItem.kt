@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -79,12 +81,12 @@ fun AppointmentCardItem(
     }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
     ) {
         // Stripe design layout
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -108,12 +110,12 @@ fun AppointmentCardItem(
                         Text(
                             text = appointment.doctorName,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = AppFontSize.titleLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = appointment.specialty,
-                            fontSize = 12.sp,
+                            fontSize = AppFontSize.body,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -124,7 +126,7 @@ fun AppointmentCardItem(
                     ) {
                         // Badge layout
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(Radius.medium),
                             color = statusColor.copy(alpha = 0.1f),
                             border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
                         ) {
@@ -142,7 +144,7 @@ fun AppointmentCardItem(
                                 Text(
                                     text = statusText,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
+                                    fontSize = AppFontSize.caption,
                                     color = statusColor
                                 )
                             }
@@ -150,7 +152,7 @@ fun AppointmentCardItem(
 
                         if (isPendingSync) {
                             Surface(
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(Radius.medium),
                                 color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f))
                             ) {
@@ -180,7 +182,7 @@ fun AppointmentCardItem(
                                     Text(
                                         text = "Ожидает...",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
+                                        fontSize = AppFontSize.caption,
                                         color = MaterialTheme.colorScheme.tertiary
                                     )
                                 }
@@ -206,7 +208,7 @@ fun AppointmentCardItem(
                     Text(
                         text = "${appointment.date}  в  ${appointment.time}",
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp,
+                        fontSize = AppFontSize.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -227,7 +229,7 @@ fun AppointmentCardItem(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Симптомы: ${appointment.reason}",
-                        fontSize = 13.sp,
+                        fontSize = AppFontSize.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -238,9 +240,9 @@ fun AppointmentCardItem(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(Radius.small))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .border(1.dp, MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(Radius.small))
                             .padding(8.dp)
                     ) {
                         Row {
@@ -254,13 +256,13 @@ fun AppointmentCardItem(
                             Column {
                                 Text(
                                     text = "Ответ клиники:",
-                                    fontSize = 10.sp,
+                                    fontSize = AppFontSize.caption,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
                                     text = appointment.notes,
-                                    fontSize = 12.sp,
+                                    fontSize = AppFontSize.body,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
@@ -276,13 +278,13 @@ fun AppointmentCardItem(
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(Radius.small))
                             .minimumInteractiveComponentSize()
                             .testTag("cancel_booking_button_${appointment.id}")
                     ) {
                         Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Отменить запись на приём", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("Отменить запись на приём", fontSize = AppFontSize.body, fontWeight = FontWeight.Bold)
                     }
                 }
             }

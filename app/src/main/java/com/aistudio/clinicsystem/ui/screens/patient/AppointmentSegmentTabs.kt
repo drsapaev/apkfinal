@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -57,7 +59,7 @@ fun AppointmentSegmentTabs(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radius.medium))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -72,7 +74,7 @@ fun AppointmentSegmentTabs(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(Radius.small))
                     .background(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent)
                     .clickable { onFilterSelect(filter) }
                     .padding(vertical = 8.dp)
@@ -80,7 +82,7 @@ fun AppointmentSegmentTabs(
             ) {
                 Text(
                     text = title,
-                    fontSize = 12.sp,
+                    fontSize = AppFontSize.body,
                     fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )

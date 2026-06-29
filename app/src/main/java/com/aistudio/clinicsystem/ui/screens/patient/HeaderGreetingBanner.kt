@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -64,10 +66,10 @@ fun HeaderGreetingBanner(
     }
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(Radius.large),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp)),
+            .clip(RoundedCornerShape(Radius.large)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(
@@ -90,13 +92,13 @@ fun HeaderGreetingBanner(
                         Text(
                             text = "$greeting,",
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
-                            fontSize = 14.sp,
+                            fontSize = AppFontSize.title,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "$userName!",
                             color = MaterialTheme.colorScheme.surface,
-                            fontSize = 24.sp,
+                            fontSize = AppFontSize.display,
                             fontWeight = FontWeight.ExtraBold,
                             lineHeight = 28.sp
                         )
@@ -132,7 +134,7 @@ fun HeaderGreetingBanner(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(Radius.small),
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
@@ -148,12 +150,12 @@ fun HeaderGreetingBanner(
                         Column {
                             Text(
                                 text = "Активные записи",
-                                fontSize = 10.sp,
+                                fontSize = AppFontSize.caption,
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )
                             Text(
                                 text = "$activeAppointmentsCount",
-                                fontSize = 15.sp,
+                                fontSize = AppFontSize.title,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.surface
                             )
@@ -166,7 +168,7 @@ fun HeaderGreetingBanner(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(Radius.small),
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
@@ -182,12 +184,12 @@ fun HeaderGreetingBanner(
                         Column {
                             Text(
                                 text = "Медицинская карта",
-                                fontSize = 10.sp,
+                                fontSize = AppFontSize.caption,
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )
                             Text(
                                 text = "$completedRecordsCount записей",
-                                fontSize = 15.sp,
+                                fontSize = AppFontSize.title,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.surface
                             )

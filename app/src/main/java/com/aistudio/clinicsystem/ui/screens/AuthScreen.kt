@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -130,7 +131,7 @@ private fun AuthScreenContent(
             Spacer(modifier = Modifier.heightIn(min = 44.dp))
 
             Card(
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(Radius.xl),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -237,7 +238,7 @@ private fun AuthScreenContent(
                                 viewModel.login()
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(Radius.medium),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp)
@@ -259,7 +260,7 @@ private fun AuthScreenContent(
 
             if (usersWithBio.isNotEmpty()) {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(Radius.large),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     modifier = Modifier
                         .fillMaxWidth()

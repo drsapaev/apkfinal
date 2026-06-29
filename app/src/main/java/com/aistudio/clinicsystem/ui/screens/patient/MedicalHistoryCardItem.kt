@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -149,13 +151,13 @@ fun MedicalHistoryCardItem(
                 ) {
                     Text(
                         text = "Файл '$downloadedFileName' успешно сохранен на устройство в каталог Загрузки приложения.",
-                        fontSize = 12.sp,
+                        fontSize = AppFontSize.body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
                     Text(
                         text = "Путь: AppData/Downloads/$downloadedFileName",
-                        fontSize = 10.sp,
+                        fontSize = AppFontSize.caption,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
@@ -163,7 +165,7 @@ fun MedicalHistoryCardItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Превью документа:",
-                        fontSize = 11.sp,
+                        fontSize = AppFontSize.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -173,7 +175,7 @@ fun MedicalHistoryCardItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 160.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         color = MaterialTheme.colorScheme.surface,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
                     ) {
@@ -184,7 +186,7 @@ fun MedicalHistoryCardItem(
                         ) {
                             Text(
                                 text = documentContentText,
-                                fontSize = 10.sp,
+                                fontSize = AppFontSize.caption,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 11.sp
@@ -197,11 +199,11 @@ fun MedicalHistoryCardItem(
                 Button(
                     onClick = { shareFileContent(documentContentText) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(Radius.small)
                 ) {
                     Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(stringResource(R.string.ui_podelitsya), fontSize = 12.sp)
+                    Text(stringResource(R.string.ui_podelitsya), fontSize = AppFontSize.body)
                 }
             },
             dismissButton = {
@@ -209,14 +211,14 @@ fun MedicalHistoryCardItem(
                     onClick = { showSuccessDialog = false },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
                 ) {
-                    Text(stringResource(R.string.ui_zakryt), fontSize = 12.sp)
+                    Text(stringResource(R.string.ui_zakryt), fontSize = AppFontSize.body)
                 }
             }
         )
     }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
@@ -227,7 +229,7 @@ fun MedicalHistoryCardItem(
                     width = if (isExpanded) 1.5.dp else 1.dp,
                     color = if (isExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                 ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(Radius.large)
             )
             .testTag("medical_record_card_${record.id}")
     ) {
@@ -257,12 +259,12 @@ fun MedicalHistoryCardItem(
                         Text(
                             text = "Заключение осмотра",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = AppFontSize.title,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = "Доктор: ${record.doctorName}",
-                            fontSize = 12.sp,
+                            fontSize = AppFontSize.body,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -271,7 +273,7 @@ fun MedicalHistoryCardItem(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = record.visitDate,
-                        fontSize = 11.sp,
+                        fontSize = AppFontSize.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
                     )
@@ -291,12 +293,12 @@ fun MedicalHistoryCardItem(
                 Text(
                     text = "Диагноз: ",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    fontSize = AppFontSize.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = record.diagnosis,
-                    fontSize = 13.sp,
+                    fontSize = AppFontSize.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -327,12 +329,12 @@ fun MedicalHistoryCardItem(
                             Text(
                                 text = "Назначенный рецепт & Препараты",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
+                                fontSize = AppFontSize.bodySmall,
                                 color = MaterialTheme.colorScheme.primaryContainer
                             )
                             Text(
                                 text = record.prescription,
-                                fontSize = 13.sp,
+                                fontSize = AppFontSize.bodyLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -356,12 +358,12 @@ fun MedicalHistoryCardItem(
                                 Text(
                                     text = "Дополнительные рекомендации",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
+                                    fontSize = AppFontSize.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
                                     text = record.recommendations,
-                                    fontSize = 13.sp,
+                                    fontSize = AppFontSize.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
@@ -379,7 +381,7 @@ fun MedicalHistoryCardItem(
                             onClick = { downloadReport(record) },
                             enabled = !isDownloading,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(Radius.small),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("download_report_button_${record.id}"),
@@ -392,7 +394,7 @@ fun MedicalHistoryCardItem(
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Загрузка документа...", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
+                                Text("Загрузка документа...", fontSize = AppFontSize.body, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.FileDownload,
@@ -403,7 +405,7 @@ fun MedicalHistoryCardItem(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     "Скачать медицинский отчёт (TXT)",
-                                    fontSize = 12.sp,
+                                    fontSize = AppFontSize.body,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.surface,
                                 )
@@ -413,13 +415,13 @@ fun MedicalHistoryCardItem(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = "✓ Электронная подпись подтверждена врачом клиники.",
-                            fontSize = 11.sp,
+                            fontSize = AppFontSize.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Center

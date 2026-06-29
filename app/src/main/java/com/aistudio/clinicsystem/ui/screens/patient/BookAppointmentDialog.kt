@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -86,7 +88,7 @@ fun BookAppointmentDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(Radius.xl),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             modifier = Modifier
@@ -129,14 +131,14 @@ fun BookAppointmentDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(Radius.medium))
                             .background(if (isSelected) tealLight.copy(alpha = 0.6f) else Color.Transparent)
                             .border(
                                 border = BorderStroke(
                                     width = if (isSelected) 1.5.dp else 1.dp,
                                     color = if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(Radius.medium)
                             )
                             .clickable { onSelectDoctor(doc, spec.substringBefore(" (")) }
                             .padding(10.dp)
@@ -152,12 +154,12 @@ fun BookAppointmentDialog(
                                 Text(
                                     text = doc,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
+                                    fontSize = AppFontSize.title,
                                     color = accentNavy
                                 )
                                 Text(
                                     text = spec,
-                                    fontSize = 11.sp,
+                                    fontSize = AppFontSize.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -190,11 +192,11 @@ fun BookAppointmentDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .aspectRatio(0.95f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(Radius.medium))
                                 .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surface)
                                 .border(
                                     border = BorderStroke(1.dp, if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant),
-                                    shape = RoundedCornerShape(12.dp)
+                                    shape = RoundedCornerShape(Radius.medium)
                                 )
                                 .clickable { onSelectDateIdx(idx) }
                         ) {
@@ -202,7 +204,7 @@ fun BookAppointmentDialog(
                                 Text(
                                     text = day,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
+                                    fontSize = AppFontSize.titleLarge,
                                     color = if (isSelected) MaterialTheme.colorScheme.surface else accentNavy
                                 )
                                 Text(
@@ -217,7 +219,7 @@ fun BookAppointmentDialog(
                                             } else month
                                         } catch (e: Exception) { month }
                                     },
-                                    fontSize = 10.sp,
+                                    fontSize = AppFontSize.caption,
                                     color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -308,7 +310,7 @@ fun BookAppointmentDialog(
                         onClick = onConfirm,
                         enabled = !isBookingInProgress,
                         colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(Radius.medium),
                         modifier = Modifier
                             .testTag("confirm_booking_button")
                             .minimumInteractiveComponentSize()
@@ -340,14 +342,14 @@ private fun TimeSlotButton(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .weight(1f)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(Radius.small))
             .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surfaceVariant)
             .clickable { onSelect(slot) }
             .padding(vertical = 8.dp)
     ) {
         Text(
             text = slot,
-            fontSize = 12.sp,
+            fontSize = AppFontSize.body,
             fontWeight = FontWeight.Bold,
             color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant
         )
