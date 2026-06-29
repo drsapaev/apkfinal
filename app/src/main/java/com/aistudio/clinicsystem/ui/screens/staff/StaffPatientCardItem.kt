@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -55,12 +57,12 @@ fun StaffPatientCardItem(
     accentColor: Color
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
     ) {
         Row(
             modifier = Modifier
@@ -88,17 +90,17 @@ fun StaffPatientCardItem(
                 Text(
                     text = patient.fullName,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = AppFontSize.title,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Тел: ${patient.phone}",
-                    fontSize = 12.sp,
+                    fontSize = AppFontSize.body,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Записей в медкарте: $recordsCount",
-                    fontSize = 11.sp,
+                    fontSize = AppFontSize.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
                 )

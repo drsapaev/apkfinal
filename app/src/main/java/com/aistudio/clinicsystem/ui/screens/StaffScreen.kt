@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -357,7 +359,7 @@ private fun StaffScreenContent(
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.ui_priem), fontSize = 11.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.ui_priem), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -391,9 +393,9 @@ private fun StaffScreenContent(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(Radius.medium))
                                 .background(if (!filterTodayOnly) adminColor else MaterialTheme.colorScheme.surface)
-                                .border(1.dp, if (!filterTodayOnly) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                                .border(1.dp, if (!filterTodayOnly) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.medium))
                                 .clickable { filterTodayOnly = false }
                                 .padding(vertical = 10.dp)
                                 .testTag("all_appointments_tab"),
@@ -403,15 +405,15 @@ private fun StaffScreenContent(
                                 text = "Все записи (${allAppointments.size})",
                                 color = if (!filterTodayOnly) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                fontSize = AppFontSize.body
                             )
                         }
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(Radius.medium))
                                 .background(if (filterTodayOnly) adminColor else MaterialTheme.colorScheme.surface)
-                                .border(1.dp, if (filterTodayOnly) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                                .border(1.dp, if (filterTodayOnly) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.medium))
                                 .clickable { filterTodayOnly = true }
                                 .padding(vertical = 10.dp)
                                 .testTag("today_appointments_tab"),
@@ -432,14 +434,14 @@ private fun StaffScreenContent(
                                     text = "На Сегодня (${allAppointments.count { it.date == todayDateStr }})",
                                     color = if (filterTodayOnly) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    fontSize = AppFontSize.body
                                 )
                             }
                         }
                     }
 
                     // DOCTOR FILTER CHIPS
-                    Text("Фильтр по врачу:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Фильтр по врачу:", fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     
                     val allDoctorsInSystem = remember(allAppointments) {
                         allAppointments.map { it.doctorName }.distinct().filter { it.isNotBlank() }
@@ -468,14 +470,14 @@ private fun StaffScreenContent(
                             val isSelected = selectedDoctorFilter == doc
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(Radius.medium))
                                     .background(if (isSelected) adminColor else MaterialTheme.colorScheme.outlineVariant)
                                     .clickable { selectedDoctorFilter = doc }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = doc,
-                                    fontSize = 10.sp,
+                                    fontSize = AppFontSize.caption,
                                     color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -484,7 +486,7 @@ private fun StaffScreenContent(
                     }
 
                     // STATUS FILTER CHIPS
-                    Text("Фильтр по статусу:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Фильтр по статусу:", fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val statusesList = listOf(
                         "Все статусы",
                         "PENDING",
@@ -508,14 +510,14 @@ private fun StaffScreenContent(
                             val isSelected = selectedStatusFilter == status
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(Radius.medium))
                                     .background(if (isSelected) adminColor else MaterialTheme.colorScheme.outlineVariant)
                                     .clickable { selectedStatusFilter = status }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = labelText,
-                                    fontSize = 10.sp,
+                                    fontSize = AppFontSize.caption,
                                     color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -549,8 +551,8 @@ private fun StaffScreenContent(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.large))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -631,7 +633,7 @@ private fun StaffScreenContent(
             }
         }) {
             Card(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(Radius.large),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -656,7 +658,7 @@ private fun StaffScreenContent(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(Radius.medium))
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -671,14 +673,14 @@ private fun StaffScreenContent(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Активный черновик (защита от потери)",
-                                    fontSize = 11.sp,
+                                    fontSize = AppFontSize.bodySmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                             Text(
                                 text = stringResource(R.string.ui_sbrosit),
-                                fontSize = 11.sp,
+                                fontSize = AppFontSize.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier
@@ -734,9 +736,9 @@ private fun StaffScreenContent(
                         items(templatesList, key = { it }) { template ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(Radius.medium))
                                     .background(adminLight.copy(alpha = 0.5f))
-                                    .border(1.dp, adminColor.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                    .border(1.dp, adminColor.copy(alpha = 0.3f), RoundedCornerShape(Radius.medium))
                                     .clickable {
                                         diagnosisInput = template[1]
                                         prescriptionInput = template[2]
@@ -749,7 +751,7 @@ private fun StaffScreenContent(
                             ) {
                                 Text(
                                     text = template[0],
-                                    fontSize = 11.sp,
+                                    fontSize = AppFontSize.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = adminColor
                                 )
@@ -768,7 +770,7 @@ private fun StaffScreenContent(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(Radius.small))
                                 .background(if (selectedPatientPhone == pat.phone) adminLight else Color.Transparent)
                                 .clickable { 
                                     selectedPatientPhone = pat.phone 
@@ -786,8 +788,8 @@ private fun StaffScreenContent(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Column {
-                                Text(text = pat.fullName, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text(text = pat.phone, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = pat.fullName, fontSize = AppFontSize.bodyLarge, fontWeight = FontWeight.SemiBold)
+                                Text(text = pat.phone, fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -800,7 +802,7 @@ private fun StaffScreenContent(
                         val lastRecord = remember(selectedPatientPhone, allRecords) { patientRecords.maxByOrNull { it.timestamp } }
                         if (lastRecord != null) {
                             Card(
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(Radius.medium),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -834,7 +836,7 @@ private fun StaffScreenContent(
                                         )
                                         Text(
                                             text = "Диагноз: ${lastRecord.diagnosis}",
-                                            fontSize = 11.sp,
+                                            fontSize = AppFontSize.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -861,7 +863,7 @@ private fun StaffScreenContent(
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Рекомендованные диагнозы (ICD-10):", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = "Рекомендованные диагнозы (ICD-10):", fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -873,7 +875,7 @@ private fun StaffScreenContent(
                         icdDiagnoses.forEach { diag ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(Radius.small))
                                     .background(MaterialTheme.colorScheme.outlineVariant)
                                     .clickable {
                                         val nextDiag = if (diagnosisInput.isBlank()) diag else "$diagnosisInput, $diag"
@@ -882,7 +884,7 @@ private fun StaffScreenContent(
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(text = diag, fontSize = 10.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+                                Text(text = diag, fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -914,7 +916,7 @@ private fun StaffScreenContent(
                         rxPhrases.forEach { phrase ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(Radius.small))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable {
                                         val nextPresc = if (prescriptionInput.isBlank()) phrase else "$prescriptionInput, $phrase"
@@ -923,7 +925,7 @@ private fun StaffScreenContent(
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(text = phrase, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = phrase, fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -955,7 +957,7 @@ private fun StaffScreenContent(
                         recPhrases.forEach { phrase ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(Radius.small))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable {
                                         val nextRec = if (recommendationsInput.isBlank()) phrase else "$recommendationsInput, $phrase"
@@ -964,7 +966,7 @@ private fun StaffScreenContent(
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(text = phrase, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = phrase, fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -1184,7 +1186,7 @@ private fun StaffScreenContent(
             }
         }) {
             Card(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(Radius.large),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
             ) {
@@ -1200,7 +1202,7 @@ private fun StaffScreenContent(
 
                     Text("Пациент в базе клиники:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     if (patientRoleUsers.isEmpty()) {
-                        Text("Нет зарегистрированных пациентов", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                        Text("Нет зарегистрированных пациентов", fontSize = AppFontSize.body, color = MaterialTheme.colorScheme.error)
                     } else {
                         var expandedPatientSpinner by remember { mutableStateOf(false) }
                         Box(modifier = Modifier.fillMaxWidth()) {
@@ -1208,7 +1210,7 @@ private fun StaffScreenContent(
                                 onClick = { expandedPatientSpinner = true },
                                 modifier = Modifier.fillMaxWidth().testTag("select_patient_spinner_btn")
                             ) {
-                                Text(text = "$createPatientName ($createPatientPhone)", fontSize = 12.sp)
+                                Text(text = "$createPatientName ($createPatientPhone)", fontSize = AppFontSize.body)
                             }
                             DropdownMenu(
                                 expanded = expandedPatientSpinner,
@@ -1269,7 +1271,7 @@ private fun StaffScreenContent(
                             onClick = { expandedDocSpinner = true },
                             modifier = Modifier.fillMaxWidth().testTag("select_doctor_spinner_btn")
                         ) {
-                            Text(text = "$createDoctorSelected ($createSpecialtySelected)", fontSize = 12.sp)
+                            Text(text = "$createDoctorSelected ($createSpecialtySelected)", fontSize = AppFontSize.body)
                         }
                         DropdownMenu(
                             expanded = expandedDocSpinner,
@@ -1372,7 +1374,7 @@ private fun StaffScreenContent(
     if (showEditAppointmentDialog) {
         Dialog(onDismissRequest = { showEditAppointmentDialog = false }) {
             Card(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(Radius.large),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
             ) {
@@ -1417,7 +1419,7 @@ private fun StaffScreenContent(
                             onClick = { expandedEditDocSpinner = true },
                             modifier = Modifier.fillMaxWidth().testTag("edit_doc_spinner")
                         ) {
-                            Text(text = "$editDoctorSelected ($editSpecialtySelected)", fontSize = 12.sp)
+                            Text(text = "$editDoctorSelected ($editSpecialtySelected)", fontSize = AppFontSize.body)
                         }
                         DropdownMenu(
                             expanded = expandedEditDocSpinner,
@@ -1478,14 +1480,14 @@ private fun StaffScreenContent(
                             val isSelected = editStatusSelected == status
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(Radius.medium))
                                     .background(if (isSelected) adminColor else MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable { editStatusSelected = status }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 11.sp,
+                                    fontSize = AppFontSize.bodySmall,
                                     color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold
                                 )

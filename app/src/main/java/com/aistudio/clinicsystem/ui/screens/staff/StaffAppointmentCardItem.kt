@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -75,12 +77,12 @@ fun StaffAppointmentCardItem(
     }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -107,13 +109,13 @@ fun StaffAppointmentCardItem(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         color = statusColor.copy(alpha = 0.12f)
                     ) {
                         Text(
                             text = statusTextRu,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
+                            fontSize = AppFontSize.caption,
                             color = statusColor,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
@@ -121,7 +123,7 @@ fun StaffAppointmentCardItem(
 
                     if (isPendingSync) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(Radius.small),
                             color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f))
                         ) {
@@ -151,7 +153,7 @@ fun StaffAppointmentCardItem(
                                 Text(
                                     text = "Ожидает...",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
+                                    fontSize = AppFontSize.caption,
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
                             }
@@ -164,14 +166,14 @@ fun StaffAppointmentCardItem(
 
             Text(
                 text = "Доктор: ${appt.doctorName}",
-                fontSize = 12.sp,
+                fontSize = AppFontSize.body,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
                 text = "Сеанс: ${appt.date} в ${appt.time}",
-                fontSize = 12.sp,
+                fontSize = AppFontSize.body,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -180,7 +182,7 @@ fun StaffAppointmentCardItem(
 
             Text(
                 text = "Жалобы: ${appt.reason}",
-                fontSize = 13.sp,
+                fontSize = AppFontSize.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
@@ -189,13 +191,13 @@ fun StaffAppointmentCardItem(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(Radius.small))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(10.dp)
                 ) {
                     Text(
                         text = "Заметка / Ответ: ${appt.notes}",
-                        fontSize = 12.sp,
+                        fontSize = AppFontSize.body,
                         color = accentColor,
                         fontWeight = FontWeight.Medium
                     )
@@ -214,7 +216,7 @@ fun StaffAppointmentCardItem(
                 IconButton(
                     onClick = onEditClick,
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), RoundedCornerShape(Radius.small))
                         
                         .testTag("edit_appt_icon_btn")
                 ) {
@@ -227,12 +229,12 @@ fun StaffAppointmentCardItem(
                         onClick = onRegisterQueue,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         contentPadding = PaddingValues(horizontal = 8.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         modifier = Modifier.weight(1.2f).heightIn(min = 44.dp).testTag("register_queue_btn_appt")
                     ) {
                         Icon(Icons.Default.Queue, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("В очередь", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface)
+                        Text("В очередь", fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface)
                     }
                 }
 
@@ -241,35 +243,35 @@ fun StaffAppointmentCardItem(
                         onClick = onApprove,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         contentPadding = PaddingValues(horizontal = 8.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.ui_odobrit), fontSize = 11.sp, color = MaterialTheme.colorScheme.surface)
+                        Text(stringResource(R.string.ui_odobrit), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface)
                     }
 
                     OutlinedButton(
                         onClick = onCancelClick,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         contentPadding = PaddingValues(horizontal = 8.dp),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.ui_otklonit), fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.ui_otklonit), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
                 } else {
                     OutlinedButton(
                         onClick = onAddNotesClick,
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         modifier = if (appt.status == "APPROVED") Modifier.weight(1f).heightIn(min = 44.dp) else Modifier.fillMaxWidth().heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.NoteAlt, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.ui_zametka), fontSize = 11.sp)
+                        Text(stringResource(R.string.ui_zametka), fontSize = AppFontSize.bodySmall)
                     }
                 }
             }

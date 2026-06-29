@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -63,8 +65,8 @@ fun StaffQueueSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -89,13 +91,13 @@ fun StaffQueueSection(
             }
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(Radius.small))
                     .background(adminColor.copy(alpha = 0.15f))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "Пациентов: ${cachedQueueSnapshots.size}",
-                    fontSize = 11.sp,
+                    fontSize = AppFontSize.bodySmall,
                     color = adminColor,
                     fontWeight = FontWeight.Bold
                 )
@@ -106,14 +108,14 @@ fun StaffQueueSection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.medium))
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "В коридоре ожидания пока никого нет.\nЗарегистрируйте подтвержденного пациента ниже.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
+                    fontSize = AppFontSize.body,
                     textAlign = TextAlign.Center
                 )
             }
@@ -121,7 +123,7 @@ fun StaffQueueSection(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 cachedQueueSnapshots.sortedBy { it.position }.forEach { q ->
                     Card(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(Radius.medium),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -142,7 +144,7 @@ fun StaffQueueSection(
                                         Text(
                                             text = "${q.position}",
                                             color = MaterialTheme.colorScheme.surface,
-                                            fontSize = 11.sp,
+                                            fontSize = AppFontSize.bodySmall,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
@@ -151,12 +153,12 @@ fun StaffQueueSection(
                                         Text(
                                             text = q.patientName,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
+                                            fontSize = AppFontSize.bodyLarge,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             text = "Приём #${q.appointmentId}",
-                                            fontSize = 10.sp,
+                                            fontSize = AppFontSize.caption,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -176,13 +178,13 @@ fun StaffQueueSection(
                                 }
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(Radius.small))
                                         .background(qStatusColor.copy(alpha = 0.12f))
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
                                     Text(
                                         text = qStatusText,
-                                        fontSize = 10.sp,
+                                        fontSize = AppFontSize.caption,
                                         fontWeight = FontWeight.Bold,
                                         color = qStatusColor
                                     )
@@ -199,14 +201,14 @@ fun StaffQueueSection(
                                 IconButton(
                                     onClick = { onShiftQueuePosition(q.id, true) },
                                     modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small))
                                 ) {
                                     Icon(Icons.Default.ArrowUpward, contentDescription = "Вверх", modifier = Modifier.size(16.dp))
                                 }
                                 IconButton(
                                     onClick = { onShiftQueuePosition(q.id, false) },
                                     modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small))
                                 ) {
                                     Icon(Icons.Default.ArrowDownward, contentDescription = "Вниз", modifier = Modifier.size(16.dp))
                                 }
@@ -220,7 +222,7 @@ fun StaffQueueSection(
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         modifier = Modifier.heightIn(min = 44.dp)
                                     ) {
-                                        Text("Вызвать к врачу", fontSize = 10.sp, color = MaterialTheme.colorScheme.surface)
+                                        Text("Вызвать к врачу", fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
                                     }
                                 } else if (q.status == "IN_PROGRESS") {
                                     Button(
@@ -229,7 +231,7 @@ fun StaffQueueSection(
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         modifier = Modifier.heightIn(min = 44.dp)
                                     ) {
-                                        Text("Завершить прием", fontSize = 10.sp, color = MaterialTheme.colorScheme.surface)
+                                        Text("Завершить прием", fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
                                     }
                                 }
 
@@ -238,7 +240,7 @@ fun StaffQueueSection(
                                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                     modifier = Modifier.heightIn(min = 44.dp).testTag("remove_queue_patient_button")
                                 ) {
-                                    Text(stringResource(R.string.ui_ubrat), fontSize = 10.sp)
+                                    Text(stringResource(R.string.ui_ubrat), fontSize = AppFontSize.caption)
                                 }
                             }
                         }
