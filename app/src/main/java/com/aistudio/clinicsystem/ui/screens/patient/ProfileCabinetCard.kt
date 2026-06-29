@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -55,7 +56,7 @@ fun ProfileCabinetCard(
     onBiometricToggle: (Boolean) -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()

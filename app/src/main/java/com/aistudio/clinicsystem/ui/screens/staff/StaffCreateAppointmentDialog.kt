@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,7 +56,7 @@ fun StaffCreateAppointmentDialog(
                 .fillMaxWidth()
                 .imePadding()
                 .padding(vertical = 16.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(Radius.large),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),

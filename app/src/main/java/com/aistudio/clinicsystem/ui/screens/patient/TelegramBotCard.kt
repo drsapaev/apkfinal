@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -59,7 +61,7 @@ fun TelegramBotCard(
     val telegramBlue = MaterialTheme.colorScheme.tertiary
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), // Pleasant light ice blue
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
@@ -99,13 +101,13 @@ fun TelegramBotCard(
                 }
                 if (user?.telegramChatId != null) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         color = MaterialTheme.colorScheme.primaryContainer,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Text(
                             text = "СВЯЗАНО ✔",
-                            fontSize = 10.sp,
+                            fontSize = AppFontSize.caption,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -118,7 +120,7 @@ fun TelegramBotCard(
 
             Text(
                 text = "Бот автоматически информирует об изменениях статуса записей на прием и моментально доставляет назначения врачей.",
-                fontSize = 11.sp,
+                fontSize = AppFontSize.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 14.sp
             )
@@ -130,7 +132,7 @@ fun TelegramBotCard(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Для подключения бота запустите @IntellectClinicBot в Telegram и введите ваш Chat ID сюда:",
-                        fontSize = 10.sp,
+                        fontSize = AppFontSize.caption,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 13.sp
                     )
@@ -154,7 +156,7 @@ fun TelegramBotCard(
                             modifier = Modifier
                                 .weight(1.3f)
                                 .testTag("telegram_chat_id_input"),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(Radius.small)
                         )
 
                         Button(
@@ -165,12 +167,12 @@ fun TelegramBotCard(
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = telegramBlue),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(Radius.small),
                             modifier = Modifier
                                 .weight(0.7f)
                                 .testTag("link_telegram_button")
                         ) {
-                            Text(stringResource(R.string.ui_svyazat), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
+                            Text(stringResource(R.string.ui_svyazat), fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -185,12 +187,12 @@ fun TelegramBotCard(
                         Column {
                             Text(
                                 text = "Идентификатор Чата (Chat ID):",
-                                fontSize = 10.sp,
+                                fontSize = AppFontSize.caption,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = user.telegramChatId,
-                                fontSize = 14.sp,
+                                fontSize = AppFontSize.title,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -200,17 +202,17 @@ fun TelegramBotCard(
                             onClick = onUnlinkClick,
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(Radius.small),
                             modifier = Modifier.testTag("unlink_telegram_button")
                         ) {
-                            Text(stringResource(R.string.ui_otvyazat), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.ui_otvyazat), fontSize = AppFontSize.caption, fontWeight = FontWeight.Bold)
                         }
                     }
 
                     Button(
                         onClick = onTestClick,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurfaceVariant),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(Radius.small),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("telegram_test_alert_button")
@@ -222,7 +224,7 @@ fun TelegramBotCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Проверить доставку (Тестовое оповещение)", fontSize = 11.sp, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+                        Text("Проверить доставку (Тестовое оповещение)", fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                     }
                 }
             }

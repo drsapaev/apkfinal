@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -56,7 +58,7 @@ fun AnalyticsCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(Radius.medium),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = modifier
@@ -83,13 +85,13 @@ fun AnalyticsCard(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = count,
-                fontSize = 22.sp,
+                fontSize = AppFontSize.headline,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = title,
-                fontSize = 11.sp,
+                fontSize = AppFontSize.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
