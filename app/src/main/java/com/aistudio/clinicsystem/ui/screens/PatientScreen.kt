@@ -45,6 +45,10 @@ import com.aistudio.clinicsystem.ui.screens.patient.CachedQueueSnapshotsCard
 import com.aistudio.clinicsystem.ui.screens.patient.EditProfileDialog
 import com.aistudio.clinicsystem.ui.screens.patient.HeaderGreetingBanner
 import com.aistudio.clinicsystem.ui.screens.patient.MedicalReportsSection
+import com.aistudio.clinicsystem.ui.screens.patient.PatientAppointmentsTab
+import com.aistudio.clinicsystem.ui.screens.patient.PatientHomeTab
+import com.aistudio.clinicsystem.ui.screens.patient.PatientMedicalTab
+import com.aistudio.clinicsystem.ui.screens.patient.PatientProfileTab
 import com.aistudio.clinicsystem.ui.screens.patient.ProfileCabinetCard
 import com.aistudio.clinicsystem.ui.screens.patient.TelegramBotCard
 import com.aistudio.clinicsystem.ui.viewmodel.PatientViewModel
@@ -125,28 +129,8 @@ private fun PatientScreenContent(
     )
     val timeSlots = listOf("09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00")
 
-    // Filter appointments based on selection
-    val filteredAppointments = remember(appointments, selectedAppFilter) {
-        when (selectedAppFilter) {
-            "ACTIVE" -> appointments.filter { it.status == "PENDING" || it.status == "APPROVED" }
-            "FINISHED" -> appointments.filter { it.status == "COMPLETED" || it.status == "CANCELLED" }
-            else -> appointments
-        }
-    }
-
-    // Filter records based on search query
-    val filteredRecords = remember(records, medicalSearchQuery) {
-        if (medicalSearchQuery.isBlank()) {
-            records
-        } else {
-            records.filter {
-                it.diagnosis.contains(medicalSearchQuery, ignoreCase = true) ||
-                        it.doctorName.contains(medicalSearchQuery, ignoreCase = true) ||
-                        it.prescription.contains(medicalSearchQuery, ignoreCase = true) ||
-                        it.recommendations.contains(medicalSearchQuery, ignoreCase = true)
-            }
-        }
-    }
+    // P-03 refactor: filteredAppointments and filteredRecords moved into
+    // PatientAppointmentsTab and PatientMedicalTab respectively.
 
     LaunchedEffect(Unit) {
         com.aistudio.clinicsystem.utils.AnalyticsManager.trackScreen("PatientScreen")
@@ -292,147 +276,64 @@ private fun PatientScreenContent(
         },
         modifier = modifier
     ) { innerPadding ->
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(backgroundSoft)
-                .padding(innerPadding)
-        ) {
-            val isWideScreen = maxWidth > 720.dp
+        // P-03 refactor: Bottom Navigation with 4 tabs
+        var selectedTab by rememberSaveable { mutableStateOf(0) }
 
-            if (isWideScreen) {
-                // RESPONSIVE LANDSCAPE TABLET LAYOUT: Two independent scrollable panes
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    // LEFT COLUMN (60% width): Greeting banner + Appointments
-                    Column(
-                        modifier = Modifier
-                            .weight(1.2f)
-                            .fillMaxHeight()
-                            .imePadding().verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        HeaderGreetingBanner(
-                            userName = currentUser?.fullName ?: "Пациент",
-                            activeAppointmentsCount = appointments.count { it.status == "PENDING" || it.status == "APPROVED" },
-                            completedRecordsCount = records.size
-                        )
-
-                        // Segment selector for Appointments
-                        AppointmentSegmentTabs(
-                            selectedFilter = selectedAppFilter,
-                            onFilterSelect = { selectedAppFilter = it }
-                        )
-
-                        AppointmentsSessionList(
-                            appointments = filteredAppointments,
-                            pendingSyncs = allPendingSyncs,
-                            onCancelClick = { id -> viewModel.cancelAppointment(id, "Отменено пациентом в кабинете") }
-                        )
-                    }
-
-                    // RIGHT COLUMN (40% width): Profile Details + Past Medical Records
-                    Column(
-                        modifier = Modifier
-                            .weight(0.8f)
-                            .fillMaxHeight()
-                            .imePadding().verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ProfileCabinetCard(
-                            user = currentUser,
-                            onEditClick = {
-                                editNameInput = currentUser?.fullName ?: ""
-                                showEditProfile = true
-                            },
-                            onBiometricToggle = { viewModel.setBiometricEnrollment(it) }
-                        )
-
-                        TelegramBotCard(
-                            user = currentUser,
-                            onLinkClick = { chat -> viewModel.linkTelegramChatId(chat) },
-                            onUnlinkClick = { viewModel.unlinkTelegramChatId() },
-                            onTestClick = { viewModel.sendTestTelegramNotification() }
-                        )
-
-                        CachedQueueSnapshotsCard(
-                            snapshots = cachedQueueSnapshots
-                        )
-
-                        MedicalReportsSection(
-                            searchQuery = medicalSearchQuery,
-                            onSearchQueryChange = { medicalSearchQuery = it },
-                            records = filteredRecords,
-                            expandedRecords = expandedRecords,
-                            isFetching = isFetchingRecords,
-                            onFetchClick = { viewModel.fetchMedicalReports() },
-                            onRecordToggle = { id ->
-                                expandedRecords = if (expandedRecords.contains(id)) {
-                                    expandedRecords - id
-                                } else {
-                                    expandedRecords + id
-                                }
-                            }
-                        )
-                    }
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Главная") },
+                        label = { Text("Главная") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        icon = { Icon(Icons.Default.Event, contentDescription = "Записи") },
+                        label = { Text("Записи") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        icon = { Icon(Icons.Default.MenuBook, contentDescription = "Медкарта") },
+                        label = { Text("Медкарта") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 3,
+                        onClick = { selectedTab = 3 },
+                        icon = { Icon(Icons.Default.Person, contentDescription = "Профиль") },
+                        label = { Text("Профиль") }
+                    )
                 }
-            } else {
-                // RESPONSIVE PORTRAIT MOBILE LAYOUT: Full-bleed vertical scroll
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .imePadding().verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    HeaderGreetingBanner(
-                        userName = currentUser?.fullName ?: "Пациент",
-                        activeAppointmentsCount = appointments.count { it.status == "PENDING" || it.status == "APPROVED" },
-                        completedRecordsCount = records.size
+            }
+        ) { tabPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundSoft)
+                    .padding(innerPadding)
+                    .padding(tabPadding)
+            ) {
+                when (selectedTab) {
+                    0 -> PatientHomeTab(
+                        currentUser = currentUser,
+                        appointments = appointments,
+                        records = records,
+                        cachedQueueSnapshots = cachedQueueSnapshots
                     )
-
-                    ProfileCabinetCard(
-                        user = currentUser,
-                        onEditClick = {
-                            editNameInput = currentUser?.fullName ?: ""
-                            showEditProfile = true
-                        },
-                        onBiometricToggle = { viewModel.setBiometricEnrollment(it) }
-                    )
-
-                    TelegramBotCard(
-                        user = currentUser,
-                        onLinkClick = { chat -> viewModel.linkTelegramChatId(chat) },
-                        onUnlinkClick = { viewModel.unlinkTelegramChatId() },
-                        onTestClick = { viewModel.sendTestTelegramNotification() }
-                    )
-
-                    CachedQueueSnapshotsCard(
-                        snapshots = cachedQueueSnapshots
-                    )
-
-                    // Tab bar for Appointments
-                    AppointmentSegmentTabs(
-                        selectedFilter = selectedAppFilter,
-                        onFilterSelect = { selectedAppFilter = it }
-                    )
-
-                    AppointmentsSessionList(
-                        appointments = filteredAppointments,
+                    1 -> PatientAppointmentsTab(
+                        appointments = appointments,
                         pendingSyncs = allPendingSyncs,
+                        selectedFilter = selectedAppFilter,
+                        onFilterSelect = { selectedAppFilter = it },
                         onCancelClick = { id -> viewModel.cancelAppointment(id, "Отменено пациентом в кабинете") }
                     )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    MedicalReportsSection(
+                    2 -> PatientMedicalTab(
+                        records = records,
                         searchQuery = medicalSearchQuery,
                         onSearchQueryChange = { medicalSearchQuery = it },
-                        records = filteredRecords,
                         expandedRecords = expandedRecords,
                         isFetching = isFetchingRecords,
                         onFetchClick = { viewModel.fetchMedicalReports() },
@@ -444,8 +345,17 @@ private fun PatientScreenContent(
                             }
                         }
                     )
-
-                    Spacer(modifier = Modifier.height(80.dp)) // Space for FAB
+                    3 -> PatientProfileTab(
+                        currentUser = currentUser,
+                        onEditClick = {
+                            editNameInput = currentUser?.fullName ?: ""
+                            showEditProfile = true
+                        },
+                        onBiometricToggle = { viewModel.setBiometricEnrollment(it) },
+                        onLinkTelegram = { chat -> viewModel.linkTelegramChatId(chat) },
+                        onUnlinkTelegram = { viewModel.unlinkTelegramChatId() },
+                        onTestTelegram = { viewModel.sendTestTelegramNotification() }
+                    )
                 }
             }
         }
