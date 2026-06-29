@@ -112,7 +112,7 @@ private fun AuthScreenContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "MyClinic System",
+                text = stringResource(R.string.ui_myclinic_system),
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -121,7 +121,7 @@ private fun AuthScreenContent(
             )
 
             Text(
-                text = "Система управления клиникой и взаимодействия с пациентами",
+                text = stringResource(R.string.ui_system_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -141,7 +141,7 @@ private fun AuthScreenContent(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Вход в систему",
+                        text = stringResource(R.string.ui_login_system),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -154,7 +154,7 @@ private fun AuthScreenContent(
 
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "Введите ваши учетные данные:",
+                            text = stringResource(R.string.ui_enter_credentials),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 6.dp)
@@ -163,7 +163,7 @@ private fun AuthScreenContent(
                         OutlinedTextField(
                             value = username,
                             onValueChange = { viewModel.updateUsernameInput(it) },
-                            label = { Text("Имя пользователя") },
+                            label = { Text(stringResource(R.string.auth_username)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Person,
@@ -293,12 +293,12 @@ private fun AuthScreenContent(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Войти по биометрии",
+                                text = stringResource(R.string.ui_enter_by_biometrics),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "Быстрый отпечаток / Face ID",
+                                text = stringResource(R.string.ui_quick_biometrics),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -314,7 +314,7 @@ private fun AuthScreenContent(
             } else {
                 // Info text explaining how to set up bio log in
                 Text(
-                    text = "Подсказка: Войдите по логину и паролю\nи активируйте Биометрический вход в личном кабинете.",
+                    text = stringResource(R.string.ui_hint_biometrics),
                     style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
