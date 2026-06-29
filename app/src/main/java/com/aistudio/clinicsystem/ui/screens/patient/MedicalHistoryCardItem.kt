@@ -174,8 +174,8 @@ fun MedicalHistoryCardItem(
                             .fillMaxWidth()
                             .heightIn(max = 160.dp),
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFF8F9FA),
-                        border = BorderStroke(1.dp, Color(0xFFE9ECEF))
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Column(
                             modifier = Modifier
@@ -186,7 +186,7 @@ fun MedicalHistoryCardItem(
                                 text = documentContentText,
                                 fontSize = 9.sp,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                color = Color(0xFF212529),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 11.sp
                             )
                         }
@@ -240,7 +240,7 @@ fun MedicalHistoryCardItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = Color(0xFFE8F5E9),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -348,7 +348,7 @@ fun MedicalHistoryCardItem(
                             Icon(
                                 imageVector = Icons.Default.Assignment,
                                 contentDescription = "Recommendations",
-                                tint = Color(0xFF558B2F),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(18.dp).padding(top = 2.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -362,7 +362,7 @@ fun MedicalHistoryCardItem(
                                 Text(
                                     text = record.recommendations,
                                     fontSize = 13.sp,
-                                    color = Color(0xFF3E2723)
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }

@@ -284,7 +284,7 @@ private fun AuthScreenContent(
                             Text(
                                 text = "Быстрый отпечаток / Face ID",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF00838F)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         Icon(

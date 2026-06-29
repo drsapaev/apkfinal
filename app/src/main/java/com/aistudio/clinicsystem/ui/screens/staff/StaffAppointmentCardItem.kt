@@ -61,8 +61,8 @@ fun StaffAppointmentCardItem(
     val statusColor = when (appt.status) {
         "PENDING" -> MaterialTheme.colorScheme.tertiary
         "APPROVED" -> MaterialTheme.colorScheme.primary
-        "COMPLETED" -> Color(0xFF2196F3)
-        "CANCELLED" -> Color(0xFFF44336)
+        "COMPLETED" -> MaterialTheme.colorScheme.primary
+        "CANCELLED" -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -80,7 +80,7 @@ fun StaffAppointmentCardItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFE0E8F0), RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
