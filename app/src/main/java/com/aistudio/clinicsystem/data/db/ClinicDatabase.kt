@@ -215,6 +215,36 @@ interface SyncLogDao {
     suspend fun clearLogs()
 }
 
+/**
+ * P-04: DoctorDao — DAO для справочника врачей.
+ */
+@Dao
+interface DoctorDao {
+    @Query("SELECT * FROM doctors WHERE isActive = 1 ORDER BY fullName")
+    fun getAllDoctors(): Flow<List<DoctorEntity>>
+
+    @Query("SELECT * FROM doctors WHERE id = :id")
+    suspend fun getDoctorById(id: String): DoctorEntity?
+
+    @Query("SELECT * FROM doctors WHERE serverId = :serverId")
+    suspend fun getDoctorByServerId(serverId: Int): DoctorEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDoctors(doctors: List<DoctorEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDoctor(doctor: DoctorEntity)
+
+    @Query("DELETE FROM doctors")
+    suspend fun clearDoctors()
+
+    @Query("SELECT MAX(updatedAt) FROM doctors")
+    suspend fun getLastUpdated(): Long?
+
+    @Query("SELECT COUNT(*) FROM doctors")
+    suspend fun getDoctorCount(): Int
+}
+
 @Database(
     entities = [
         UserEntity::class,
@@ -222,13 +252,14 @@ interface SyncLogDao {
         MedicalRecordEntity::class,
         SyncLogEntity::class,
         QueueSnapshotEntity::class,
-        PendingSyncEntity::class
+        PendingSyncEntity::class,
+        DoctorEntity::class
     ],
-    // Stage 3.1: bumped 6 → 7. Migration 6→7 adds database indices (H-8)
-    // and the new columns introduced in Stage 3 (etag, lastHttpCode, etc.).
-    version = 7,
+    // P-04: bumped 7 → 8. Migration 7→8 adds doctors table for backend-synced
+    // doctor directory (replaces hardcoded 3-doctor list in PatientScreen.kt).
+    version = 8,
     // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
-    // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/7.json
+    // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/8.json
     // on every build. This file must be committed to git — it is the
     // baseline used by MigrationTestHelper in E4.4 to write migration tests.
     exportSchema = true
@@ -240,6 +271,7 @@ abstract class ClinicDatabase : RoomDatabase() {
     abstract fun syncLogDao(): SyncLogDao
     abstract fun queueSnapshotDao(): QueueSnapshotDao
     abstract fun pendingSyncDao(): PendingSyncDao
+    abstract fun doctorDao(): DoctorDao  // P-04: doctor directory DAO
 
     companion object {
         @Volatile

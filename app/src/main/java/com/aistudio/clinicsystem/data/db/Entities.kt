@@ -144,3 +144,30 @@ data class SyncLogEntity(
     val direction: String, // "PATIENT_TO_STAFF", "STAFF_TO_PATIENT", "CLOUD_SYNC_SIMULATOR"
     val timestamp: Long = System.currentTimeMillis(),
 )
+
+/**
+ * P-04: DoctorEntity — справочник врачей, синхронизируемый с backend.
+ *
+ * Заменяет хардкод списка врачей (3 шт.) в PatientScreen.kt.
+ * TTL-кеш: обновление раз в сутки через NetworkBoundResource.
+ * UUID primary key, serverId для совместимости с backend (Int).
+ */
+@Entity(
+    tableName = "doctors",
+    indices = [
+        Index(value = ["serverId"], unique = true),
+        Index(value = ["specialty"]),
+    ],
+)
+data class DoctorEntity(
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    val serverId: Int? = null, // backend-assigned ID, null until synced
+    val fullName: String,
+    val specialty: String,
+    val phone: String = "",
+    val email: String = "",
+    val avatarUrl: String? = null,
+    val isActive: Boolean = true,
+    val clinicId: String = "clinic_base",
+    val updatedAt: Long = System.currentTimeMillis(),
+)
