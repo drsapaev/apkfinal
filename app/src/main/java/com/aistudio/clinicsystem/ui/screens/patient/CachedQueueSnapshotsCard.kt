@@ -85,7 +85,14 @@ fun CachedQueueSnapshotsCard(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "${snapshots.size} чел",
+                        // P-29 fix: use plurals for "человек/человека/человек"
+                        text = "${snapshots.size} " +
+                            androidx.compose.ui.platform.LocalContext.current.resources
+                                .getQuantityString(
+                                    com.aistudio.clinicsystem.R.plurals.people_count,
+                                    snapshots.size,
+                                    snapshots.size
+                                ),
                         color = MaterialTheme.colorScheme.surface,
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
                     )
