@@ -98,8 +98,8 @@ private fun StaffScreenContent(
     }
 
     // Safety Dialog conformations
-    var showRemoveQueueConfirmDialog by remember { mutableStateOf(false) }
-    var targetQueueSnapshotToRemove by remember { mutableStateOf<com.aistudio.clinicsystem.data.db.QueueSnapshotEntity?>(null) }
+    // P-19 fix: removed showRemoveQueueConfirmDialog + targetQueueSnapshotToRemove —
+    // queue removal is now instant with undo-Snackbar (consistent with other destructive actions)
     var showCreateUnsavedWarning by remember { mutableStateOf(false) }
     var showEditUnsavedWarning by remember { mutableStateOf(false) }
 
@@ -320,10 +320,8 @@ private fun StaffScreenContent(
                     adminColor = adminColor,
                     onShiftQueuePosition = { id, up -> viewModel.shiftQueuePosition(id, up) },
                     onUpdateQueueStatus = { id, status -> viewModel.updateQueueStatus(id, status) },
-                    onRemoveQueuePatient = { q ->
-                        targetQueueSnapshotToRemove = q
-                        showRemoveQueueConfirmDialog = true
-                    }
+                    // P-19 fix: instant removal with undo-Snackbar (no modal dialog)
+                    onRemoveQueuePatient = { q -> viewModel.removeQueuePatient(q.id) }
                 )
             }
 
@@ -1096,39 +1094,9 @@ private fun StaffScreenContent(
         )
     }
 
-    if (showRemoveQueueConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showRemoveQueueConfirmDialog = false
-                targetQueueSnapshotToRemove = null
-            },
-            title = { Text(stringResource(R.string.dialog_remove_from_queue)) },
-            text = { Text("Вы хотите исключить из списка ожидания пациента ${targetQueueSnapshotToRemove?.patientName ?: "пациента"}? (Эту операцию можно будет отменить).") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        targetQueueSnapshotToRemove?.let { q ->
-                            viewModel.removeQueuePatient(q.id)
-                        }
-                        showRemoveQueueConfirmDialog = false
-                        targetQueueSnapshotToRemove = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.testTag("confirm_remove_queue_patient_btn")
-                ) {
-                    Text(stringResource(R.string.ui_udalit), color = MaterialTheme.colorScheme.surface)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showRemoveQueueConfirmDialog = false
-                    targetQueueSnapshotToRemove = null
-                }) {
-                    Text(stringResource(R.string.ui_otmena))
-                }
-            }
-        )
-    }
+    // P-19 fix: removed showRemoveQueueConfirmDialog modal — removal is now instant
+    // with undo-Snackbar (viewModel.removeQueuePatient already sets UndoAction.RestoreQueue,
+    // which triggers the existing Snackbar with "Отменить" button).
 
     // Modal reasons for cancellation
     if (showCancelReasonDialog) {
