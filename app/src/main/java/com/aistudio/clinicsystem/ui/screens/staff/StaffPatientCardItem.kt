@@ -47,6 +47,8 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.aistudio.clinicsystem.R
 
 @Composable
@@ -86,7 +88,14 @@ fun StaffPatientCardItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+            // P-23 fix: mergeDescendants so TalkBack announces patient info as one group
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "${patient.fullName}, телефон ${patient.phone}, записей в медкарте $recordsCount"
+                    }
+            ) {
                 Text(
                     text = patient.fullName,
                     fontWeight = FontWeight.Bold,

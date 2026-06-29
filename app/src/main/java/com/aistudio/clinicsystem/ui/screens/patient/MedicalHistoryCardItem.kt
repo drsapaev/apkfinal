@@ -64,6 +64,33 @@ fun MedicalHistoryCardItem(
     var downloadedPath by remember { mutableStateOf("") }
     var documentContentText by remember { mutableStateOf("") }
 
+    // P-25 fix: extracted report text builder so Share button can use it without downloading
+    fun buildReportText(record: MedicalRecordEntity): String = buildString {
+        appendLine("==============================================")
+        appendLine("       КЛИНИКА: ИНТЕЛЛЕКТ-КЛИНИК (FASTAPI)     ")
+        appendLine("==============================================")
+        appendLine("МЕДИЦИНСКОЕ ЗАКЛЮЧЕНИЕ ПАЦИЕНТА")
+        appendLine("----------------------------------------------")
+        appendLine("Дата визита:    ${record.visitDate}")
+        appendLine("Лечащий врач:   ${record.doctorName}")
+        appendLine("Номер записи:   #${record.id}")
+        appendLine("----------------------------------------------")
+        appendLine("ДИАГНОЗ:")
+        appendLine(record.diagnosis)
+        appendLine("----------------------------------------------")
+        appendLine("НАЗНАЧЕНИЯ И ПРЕПАРАТЫ:")
+        appendLine(record.prescription)
+        appendLine("----------------------------------------------")
+        if (record.recommendations.isNotEmpty()) {
+            appendLine("ДОПОЛНИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ:")
+            appendLine(record.recommendations)
+            appendLine("----------------------------------------------")
+        }
+        appendLine("Электронная подпись подтверждена врачом клиники.")
+        appendLine("Все права защищены © 2026 IntellectClinic")
+        appendLine("==============================================")
+    }
+
     // Download / Export Simulation
     fun downloadReport(record: MedicalRecordEntity) {
         isDownloading = true
@@ -71,31 +98,7 @@ fun MedicalHistoryCardItem(
             delay(1200) // Realistic latency
             try {
                 val fileName = "medical_report_${record.visitDate.replace("-", "")}_${record.id}.txt"
-                val reportText = buildString {
-                    appendLine("==============================================")
-                    appendLine("       КЛИНИКА: ИНТЕЛЛЕКТ-КЛИНИК (FASTAPI)     ")
-                    appendLine("==============================================")
-                    appendLine("МЕДИЦИНСКОЕ ЗАКЛЮЧЕНИЕ ПАЦИЕНТА")
-                    appendLine("----------------------------------------------")
-                    appendLine("Дата визита:    ${record.visitDate}")
-                    appendLine("Лечащий врач:   ${record.doctorName}")
-                    appendLine("Номер записи:   #${record.id}")
-                    appendLine("----------------------------------------------")
-                    appendLine("ДИАГНОЗ:")
-                    appendLine(record.diagnosis)
-                    appendLine("----------------------------------------------")
-                    appendLine("НАЗНАЧЕНИЯ И ПРЕПАРАТЫ:")
-                    appendLine(record.prescription)
-                    appendLine("----------------------------------------------")
-                    if (record.recommendations.isNotEmpty()) {
-                        appendLine("ДОПОЛНИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ:")
-                        appendLine(record.recommendations)
-                        appendLine("----------------------------------------------")
-                    }
-                    appendLine("Электронная подпись подтверждена врачом клиники.")
-                    appendLine("Все права защищены © 2026 IntellectClinic")
-                    appendLine("==============================================")
-                }
+                val reportText = buildReportText(record)
 
                 val downloadDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
                 val file = java.io.File(downloadDir, fileName)
@@ -372,10 +375,10 @@ fun MedicalHistoryCardItem(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Download Report trigger button
+                    // P-25 fix: Download + Share buttons side by side
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = { downloadReport(record) },
@@ -383,7 +386,7 @@ fun MedicalHistoryCardItem(
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(Radius.small),
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .weight(1f)
                                 .testTag("download_report_button_${record.id}"),
                             contentPadding = PaddingValues(vertical = 10.dp)
                         ) {
@@ -394,7 +397,7 @@ fun MedicalHistoryCardItem(
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Загрузка документа...", fontSize = AppFontSize.body, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
+                                Text("Загрузка...", fontSize = AppFontSize.body, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.FileDownload,
@@ -404,12 +407,34 @@ fun MedicalHistoryCardItem(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    "Скачать медицинский отчёт (TXT)",
+                                    "Скачать",
                                     fontSize = AppFontSize.body,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.surface,
                                 )
                             }
+                        }
+
+                        // P-25 fix: Share button (OutlinedButton for visual distinction)
+                        OutlinedButton(
+                            onClick = { shareFileContent(documentContentText.ifBlank { buildReportText(record) }) },
+                            shape = RoundedCornerShape(Radius.small),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("share_report_button_${record.id}"),
+                            contentPadding = PaddingValues(vertical = 10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Поделиться",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Поделиться",
+                                fontSize = AppFontSize.body,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
 

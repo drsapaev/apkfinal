@@ -188,7 +188,14 @@ fun HeaderGreetingBanner(
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )
                             Text(
-                                text = "$completedRecordsCount записей",
+                                // P-29 fix: use plurals for grammatical correctness
+                                text = "${completedRecordsCount} " +
+                                    androidx.compose.ui.platform.LocalContext.current.resources
+                                        .getQuantityString(
+                                            com.aistudio.clinicsystem.R.plurals.record_count,
+                                            completedRecordsCount,
+                                            completedRecordsCount
+                                        ),
                                 fontSize = AppFontSize.title,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.surface

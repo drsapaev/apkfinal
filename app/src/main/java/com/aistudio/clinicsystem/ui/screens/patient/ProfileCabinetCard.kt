@@ -55,6 +55,9 @@ fun ProfileCabinetCard(
     onEditClick: () -> Unit,
     onBiometricToggle: (Boolean) -> Unit
 ) {
+    // P-24 fix: state for biometric disable confirmation dialog
+    var showDisableBiometricDialog by remember { mutableStateOf(false) }
+
     Card(
         shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -141,7 +144,14 @@ fun ProfileCabinetCard(
                 }
                 Switch(
                     checked = user?.biometricEnabled ?: false,
-                    onCheckedChange = onBiometricToggle,
+                    // P-24 fix: confirm before disabling biometric (destructive action)
+                    onCheckedChange = { isChecked ->
+                        if (!isChecked) {
+                            showDisableBiometricDialog = true
+                        } else {
+                            onBiometricToggle(true)
+                        }
+                    },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.surface,
                         checkedTrackColor = MaterialTheme.colorScheme.primary,
@@ -149,6 +159,36 @@ fun ProfileCabinetCard(
                         uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
                     ),
                     modifier = Modifier.testTag("biometric_switch")
+                )
+            }
+
+            // P-24 fix: confirmation dialog before disabling biometric
+            if (showDisableBiometricDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDisableBiometricDialog = false },
+                    title = { Text("Выключить биометрию?", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Text(
+                            "При следующем входе потребуется пароль. Вы уверены?",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                onBiometricToggle(false)
+                                showDisableBiometricDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Выключить", color = MaterialTheme.colorScheme.surface)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDisableBiometricDialog = false }) {
+                            Text("Отмена")
+                        }
+                    }
                 )
             }
 
