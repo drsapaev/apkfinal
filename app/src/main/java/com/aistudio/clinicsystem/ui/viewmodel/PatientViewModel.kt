@@ -82,6 +82,31 @@ class PatientViewModel @Inject constructor(
     private val _appointmentCreatedEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val appointmentCreatedEvent: SharedFlow<String> = _appointmentCreatedEvent.asSharedFlow()
 
+    // P-18 fix: undo state for cancel appointment action
+    sealed class UndoAction {
+        data class RestoreAppointment(val oldAppt: AppointmentEntity) : UndoAction()
+    }
+
+    private val _undoAction = MutableStateFlow<UndoAction?>(null)
+    val undoAction: StateFlow<UndoAction?> = _undoAction.asStateFlow()
+
+    fun clearUndoAction() {
+        _undoAction.value = null
+    }
+
+    fun triggerUndo() {
+        val action = _undoAction.value ?: return
+        viewModelScope.launch {
+            when (action) {
+                is UndoAction.RestoreAppointment -> {
+                    repository.updateAppointment(action.oldAppt)
+                    repository.addSyncLog("↩️ Действие отменено (Запись #${action.oldAppt.id} восстановлена).", "SYSTEM_SYNC")
+                }
+            }
+            _undoAction.value = null
+        }
+    }
+
     fun logOut() {
         viewModelScope.launch {
             val user = currentUser.value
@@ -183,6 +208,8 @@ class PatientViewModel @Inject constructor(
 
     fun cancelAppointment(id: String, cancelReason: String = "") {
         viewModelScope.launch {
+            // P-18 fix: save old appointment state for undo
+            val oldAppt = repository.getAppointmentById(id)
             val token = sessionRepository.accessToken
             val updated = repository.updateAppointmentStatusOnServerAndLocal(
                 token = token,
@@ -191,6 +218,11 @@ class PatientViewModel @Inject constructor(
                 cancelReason = cancelReason
             )
             if (updated != null) {
+                // P-18 fix: set undo action if we have the old state
+                if (oldAppt != null) {
+                    _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
+                }
+
                 val patientUser = repository.getUserByPhone(updated.patientPhone)
                 val patientName = patientUser?.fullName ?: "Пациент"
                 // Stage 6 TODO: NotificationHelper should accept a Context

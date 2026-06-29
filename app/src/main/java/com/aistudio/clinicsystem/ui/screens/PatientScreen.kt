@@ -260,9 +260,10 @@ private fun PatientScreenContent(
                     .padding(bottom = 12.dp)
             )
         },
-        // P-17 fix: Snackbar host for appointment creation confirmation
+        // P-17 + P-18 fix: Snackbar host for appointment creation + undo on cancel
         snackbarHost = {
             val snackbarHostState = remember { SnackbarHostState() }
+            val undoAction by viewModel.undoAction.collectAsStateWithLifecycle()
             // P-17 fix: listen for appointmentCreatedEvent from ViewModel
             LaunchedEffect(Unit) {
                 viewModel.appointmentCreatedEvent.collect { message ->
@@ -270,6 +271,21 @@ private fun PatientScreenContent(
                         message = message,
                         duration = SnackbarDuration.Long
                     )
+                }
+            }
+            // P-18 fix: listen for undoAction (cancel appointment) — show Snackbar with Undo button
+            LaunchedEffect(undoAction) {
+                if (undoAction != null) {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Запись отменена",
+                        actionLabel = "Отменить",
+                        duration = SnackbarDuration.Short,
+                        withDismissAction = true
+                    )
+                    when (result) {
+                        SnackbarResult.ActionPerformed -> viewModel.triggerUndo()
+                        SnackbarResult.Dismissed -> viewModel.clearUndoAction()
+                    }
                 }
             }
             SnackbarHost(hostState = snackbarHostState)
