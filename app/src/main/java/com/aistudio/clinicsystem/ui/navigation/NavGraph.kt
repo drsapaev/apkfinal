@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aistudio.clinicsystem.ui.screens.AuthScreen
 import com.aistudio.clinicsystem.ui.screens.PatientScreen
@@ -35,14 +36,16 @@ fun ClinicNavGraph(
             patientViewModel.onLogoutSuccess = {
                 viewModel.refreshSession()
             }
-            PatientScreen(viewModel = patientViewModel)
+            val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+            PatientScreen(viewModel = patientViewModel, isOnline = isOnline)
         }
         composable("staff") { backStackEntry ->
             val staffViewModel: StaffViewModel = viewModel(backStackEntry)
             staffViewModel.onLogoutSuccess = {
                 viewModel.refreshSession()
             }
-            StaffScreen(viewModel = staffViewModel)
+            val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+            StaffScreen(viewModel = staffViewModel, isOnline = isOnline)
         }
     }
 }

@@ -54,12 +54,13 @@ import com.aistudio.clinicsystem.R
 @Composable
 fun StaffScreen(
     viewModel: StaffViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isOnline: Boolean = true
 ) {
     // E1.5: secure the staff screen — staff sees PHI of multiple patients
     // (appointments, medical records, queue management).
     com.aistudio.clinicsystem.ui.components.SecureScreen {
-        StaffScreenContent(viewModel, modifier)
+        StaffScreenContent(viewModel, modifier, isOnline)
     }
 }
 
@@ -67,7 +68,8 @@ fun StaffScreen(
 @Composable
 private fun StaffScreenContent(
     viewModel: StaffViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isOnline: Boolean = true
 ) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val allAppointments by viewModel.allAppointments.collectAsStateWithLifecycle()
@@ -180,7 +182,7 @@ private fun StaffScreenContent(
                         Text(
                             text = "Панель управления персоналом",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.surface
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Сотрудник: ${currentUser?.fullName ?: "Доктор"}",
@@ -190,6 +192,17 @@ private fun StaffScreenContent(
                     }
                 },
                 actions = {
+                    // P-15 fix: offline indicator in TopAppBar
+                    if (!isOnline) {
+                        Icon(
+                            imageVector = Icons.Default.CloudOff,
+                            contentDescription = "Нет соединения с интернетом",
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .size(20.dp)
+                        )
+                    }
                     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
                     val themeIcon = when (themeMode) {
                         "LIGHT" -> Icons.Default.LightMode
@@ -218,7 +231,7 @@ private fun StaffScreenContent(
                         Icon(
                             imageVector = themeIcon,
                             contentDescription = themeDescription,
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -233,11 +246,11 @@ private fun StaffScreenContent(
                         Icon(
                             imageVector = Icons.Default.Logout,
                             contentDescription = "Logout",
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = adminColor)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         floatingActionButton = {
