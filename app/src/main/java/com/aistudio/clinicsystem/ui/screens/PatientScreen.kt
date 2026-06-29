@@ -60,12 +60,13 @@ import com.aistudio.clinicsystem.R
 @Composable
 fun PatientScreen(
     viewModel: PatientViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isOnline: Boolean = true
 ) {
     // E1.5: secure the patient screen — contains PHI (appointments, medical records,
     // queue position, telegram id). Prevents screenshots and screen recording.
     com.aistudio.clinicsystem.ui.components.SecureScreen {
-        PatientScreenContent(viewModel, modifier)
+        PatientScreenContent(viewModel, modifier, isOnline)
     }
 }
 
@@ -73,7 +74,8 @@ fun PatientScreen(
 @Composable
 private fun PatientScreenContent(
     viewModel: PatientViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isOnline: Boolean = true
 ) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val appointments by viewModel.patientAppointments.collectAsStateWithLifecycle()
@@ -157,14 +159,14 @@ private fun PatientScreenContent(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.25f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                             modifier = Modifier
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.MedicalServices,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.surface,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -174,17 +176,28 @@ private fun PatientScreenContent(
                             Text(
                                 text = "Интеллект-Клиника",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.surface
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "Личный Кабинет Пациента",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 },
                 actions = {
+                    // P-15 fix: offline indicator in TopAppBar
+                    if (!isOnline) {
+                        Icon(
+                            imageVector = Icons.Default.CloudOff,
+                            contentDescription = "Нет соединения с интернетом",
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .size(20.dp)
+                        )
+                    }
                     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
                     val themeIcon = when (themeMode) {
                         "LIGHT" -> Icons.Default.LightMode
@@ -213,7 +226,7 @@ private fun PatientScreenContent(
                         Icon(
                             imageVector = themeIcon,
                             contentDescription = themeDescription,
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -228,11 +241,11 @@ private fun PatientScreenContent(
                         Icon(
                             imageVector = Icons.Default.Logout,
                             contentDescription = "Log out",
-                            tint = MaterialTheme.colorScheme.surface
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = tealPrimary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         floatingActionButton = {
@@ -246,6 +259,20 @@ private fun PatientScreenContent(
                     .testTag("book_appointment_fab")
                     .padding(bottom = 12.dp)
             )
+        },
+        // P-17 fix: Snackbar host for appointment creation confirmation
+        snackbarHost = {
+            val snackbarHostState = remember { SnackbarHostState() }
+            // P-17 fix: listen for appointmentCreatedEvent from ViewModel
+            LaunchedEffect(Unit) {
+                viewModel.appointmentCreatedEvent.collect { message ->
+                    snackbarHostState.showSnackbar(
+                        message = message,
+                        duration = SnackbarDuration.Long
+                    )
+                }
+            }
+            SnackbarHost(hostState = snackbarHostState)
         },
         modifier = modifier
     ) { innerPadding ->

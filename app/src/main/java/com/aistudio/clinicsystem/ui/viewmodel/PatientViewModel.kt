@@ -78,6 +78,10 @@ class PatientViewModel @Inject constructor(
     private val _isBookingInProgress = MutableStateFlow(false)
     val isBookingInProgress: StateFlow<Boolean> = _isBookingInProgress.asStateFlow()
 
+    // P-17 fix: one-shot event signal for Snackbar after appointment creation
+    private val _appointmentCreatedEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val appointmentCreatedEvent: SharedFlow<String> = _appointmentCreatedEvent.asSharedFlow()
+
     fun logOut() {
         viewModelScope.launch {
             val user = currentUser.value
@@ -163,6 +167,9 @@ class PatientViewModel @Inject constructor(
                     time = time,
                     reason = reason
                 )
+
+                // P-17 fix: emit event for Snackbar
+                _appointmentCreatedEvent.tryEmit("Запись к врачу $doctorName на $date в $time создана. Ожидает подтверждения клиники.")
 
                 if (user.telegramChatId != null) {
                     delay(400)
