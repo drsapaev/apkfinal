@@ -103,12 +103,10 @@ jobs:
 
       - name: Coverage gate
         # Stage 13: hardened — coverage gate now blocks CI.
-        # Overall coverage must be ≥ 30% (was 0% before Stage 10).
-        # data/ and domain/ package thresholds remain informational
-        # (continue-on-error) until Stage 10c tests bring them above 50%.
-        # The overall gate catches regressions where test coverage drops.
+        # The jacocoTestReport task already ran in the previous step
+        # (testDebugUnitTest jacocoTestReport). Don't re-run it — just
+        # parse the XML that was already generated.
         run: |
-          ./gradlew jacocoTestReport
           python3 .github/scripts/coverage-gate.py \
             app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml \
             --min-overall 30 \
