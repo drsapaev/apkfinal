@@ -132,7 +132,10 @@ naming:
     active: true
     # Compose @Composable functions are PascalCase — this is the official
     # convention. Excluded from FunctionNaming to avoid false positives.
+    # Test functions use backtick names (idiomatic Kotlin test style).
     functionPattern: '[a-z][a-zA-Z0-9]*'
     excludes:
       - '**/ui/**'
       - '**/ui/theme/**'
+      - '**/test/**'
+      - '**/androidTest/**'
