@@ -32,11 +32,11 @@ class AuthViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
 ) : ViewModel() {
 
-    private val _phoneInput = MutableStateFlow("+7 ")
-    val phoneInput: StateFlow<String> = _phoneInput.asStateFlow()
+    private val _usernameInput = MutableStateFlow("+7 ")
+    val usernameInput: StateFlow<String> = _usernameInput.asStateFlow()
 
-    private val _otpInput = MutableStateFlow("")
-    val otpInput: StateFlow<String> = _otpInput.asStateFlow()
+    private val _passwordInput = MutableStateFlow("")
+    val passwordInput: StateFlow<String> = _passwordInput.asStateFlow()
 
     private val _isOtpSent = MutableStateFlow(false)
     val isOtpSent: StateFlow<Boolean> = _isOtpSent.asStateFlow()
@@ -62,11 +62,11 @@ class AuthViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun updateUsernameInput(value: String) {
-        _phoneInput.value = value
+        _usernameInput.value = value
     }
 
     fun updatePasswordInput(value: String) {
-        _otpInput.value = value
+        _passwordInput.value = value
     }
 
     fun clearAuthError() {
@@ -76,7 +76,7 @@ class AuthViewModel @Inject constructor(
     /** Clears the 2FA challenge state — used when user cancels the 2FA flow. */
     fun cancel2FAChallenge() {
         _pending2FAChallenge.value = null
-        _otpInput.value = ""
+        _passwordInput.value = ""
     }
 
     // Callbacks to notify parent/navigation graph
@@ -89,8 +89,8 @@ class AuthViewModel @Inject constructor(
      *  3. Failure → set [_authError]
      */
     fun login() {
-        val username = _phoneInput.value.trim()
-        val password = _otpInput.value.trim()
+        val username = _usernameInput.value.trim()
+        val password = _passwordInput.value.trim()
 
         if (username.isBlank() || password.isBlank()) {
             _authError.value = "Пожалуйста, введите имя пользователя и пароль"
@@ -115,7 +115,7 @@ class AuthViewModel @Inject constructor(
                     }
                     is LoginOutcome.TwoFactorRequired -> {
                         _pending2FAChallenge.value = outcome.challengeToken
-                        _otpInput.value = ""  // clear password, prepare for TOTP code
+                        _passwordInput.value = ""  // clear password, prepare for TOTP code
                         repository.addSyncLog(
                             logMessage = "🔐 Требуется двухфакторная аутентификация.",
                             direction = "SYSTEM_SYNC"
@@ -261,7 +261,4 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Kept to avoid compilation errors for existing view calls if any
-    fun requestOtp(phone: String) {}
-    fun checkBiometricHardware(context: android.content.Context) {}
 }

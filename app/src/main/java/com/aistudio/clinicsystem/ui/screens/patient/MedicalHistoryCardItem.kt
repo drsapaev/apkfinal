@@ -150,7 +150,7 @@ fun MedicalHistoryCardItem(
                     Text(
                         text = "Файл '$downloadedFileName' успешно сохранен на устройство в каталог Загрузки приложения.",
                         fontSize = 12.sp,
-                        color = Color.DarkGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
                     Text(
@@ -184,7 +184,7 @@ fun MedicalHistoryCardItem(
                         ) {
                             Text(
                                 text = documentContentText,
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 11.sp
@@ -272,7 +272,7 @@ fun MedicalHistoryCardItem(
                     Text(
                         text = record.visitDate,
                         fontSize = 11.sp,
-                        color = Color.DarkGray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(

@@ -105,7 +105,7 @@ fun TelegramBotCard(
                     ) {
                         Text(
                             text = "СВЯЗАНО ✔",
-                            fontSize = 8.sp,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -131,7 +131,7 @@ fun TelegramBotCard(
                     Text(
                         text = "Для подключения бота запустите @IntellectClinicBot в Telegram и введите ваш Chat ID сюда:",
                         fontSize = 10.sp,
-                        color = Color.DarkGray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 13.sp
                     )
                     Row(

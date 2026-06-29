@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -405,6 +406,10 @@ private fun PatientScreenContent(
         }
     }
 
+    // P-27 fix: BackHandler intercepts back press when a dialog is open
+    BackHandler(enabled = showEditProfile) { showEditProfile = false }
+    BackHandler(enabled = showBookDialog) { showBookDialog = false }
+
     // Modal dialog to Edit Name/Username
     if (showEditProfile) {
         AlertDialog(
@@ -591,20 +596,16 @@ private fun PatientScreenContent(
                                         color = if (isSelected) MaterialTheme.colorScheme.surface else accentNavy
                                     )
                                     Text(
-                                        text = when(month) {
-                                            "01" -> "Янв"
-                                            "02" -> "Фев"
-                                            "03" -> "Мар"
-                                            "04" -> "Апр"
-                                            "05" -> "Май"
-                                            "06" -> "Июн"
-                                            "07" -> "Июл"
-                                            "08" -> "Авг"
-                                            "09" -> "Сен"
-                                            "10" -> "Окт"
-                                            "11" -> "Ноя"
-                                            "12" -> "Дек"
-                                            else -> month
+                                        // P-28 fix: Locale-aware month name instead of hardcoded Russian
+                                        text = remember(month) {
+                                            try {
+                                                val monthNum = month.toIntOrNull()
+                                                if (monthNum != null && monthNum in 1..12) {
+                                                    val cal = java.util.Calendar.getInstance()
+                                                    cal.set(java.util.Calendar.MONTH, monthNum - 1)
+                                                    java.text.SimpleDateFormat("MMM", Locale.getDefault()).format(cal.time)
+                                                } else month
+                                            } catch (e: Exception) { month }
                                         },
                                         fontSize = 10.sp,
                                         color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
@@ -648,7 +649,7 @@ private fun PatientScreenContent(
                                         text = slot,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -673,7 +674,7 @@ private fun PatientScreenContent(
                                         text = slot,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) MaterialTheme.colorScheme.surface else Color.DarkGray
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }

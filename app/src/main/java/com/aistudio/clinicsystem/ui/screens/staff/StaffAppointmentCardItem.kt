@@ -173,7 +173,7 @@ fun StaffAppointmentCardItem(
                 text = "Сеанс: ${appt.date} в ${appt.time}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.DarkGray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(4.dp))

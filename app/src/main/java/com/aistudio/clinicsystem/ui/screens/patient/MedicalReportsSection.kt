@@ -150,14 +150,14 @@ fun MedicalReportsSection(
                     Icon(
                         imageVector = Icons.Default.FolderOpen,
                         contentDescription = null,
-                        tint = Color.LightGray,
+                        tint = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = "Документы отсутствуют",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = Color.DarkGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "После приёма врачи внесут результаты в карту, результаты отобразятся тут.",

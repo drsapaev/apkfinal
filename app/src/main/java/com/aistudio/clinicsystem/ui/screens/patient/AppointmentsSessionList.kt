@@ -72,14 +72,14 @@ fun AppointmentsSessionList(
                 Icon(
                     imageVector = Icons.Default.EventNote,
                     contentDescription = null,
-                    tint = Color.LightGray,
+                    tint = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = "Записи не найдены",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color.DarkGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Используйте зеленую кнопку '+' для быстрой записи.",
