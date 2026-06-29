@@ -156,12 +156,12 @@ private fun PatientScreenContent(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Интеллект-Клиника",
+                                text = stringResource(R.string.ui_intellect_clinic),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Личный Кабинет Пациента",
+                                text = stringResource(R.string.ui_patient_cabinet_title),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -234,7 +234,7 @@ private fun PatientScreenContent(
             ExtendedFloatingActionButton(
                 onClick = { showBookDialog = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = "Book Appointment") },
-                text = { Text("Запись на приём", fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(R.string.ui_book_appointment), fontWeight = FontWeight.Bold) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.surface,
                 modifier = Modifier
@@ -283,26 +283,26 @@ private fun PatientScreenContent(
                     NavigationBarItem(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        icon = { Icon(Icons.Default.Home, contentDescription = "Главная") },
-                        label = { Text("Главная") }
+                        icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.ui_tab_home)) },
+                        label = { Text(stringResource(R.string.ui_tab_home)) }
                     )
                     NavigationBarItem(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        icon = { Icon(Icons.Default.Event, contentDescription = "Записи") },
-                        label = { Text("Записи") }
+                        icon = { Icon(Icons.Default.Event, contentDescription = stringResource(R.string.ui_tab_appointments)) },
+                        label = { Text(stringResource(R.string.ui_tab_appointments)) }
                     )
                     NavigationBarItem(
                         selected = selectedTab == 2,
                         onClick = { selectedTab = 2 },
-                        icon = { Icon(Icons.Default.MenuBook, contentDescription = "Медкарта") },
-                        label = { Text("Медкарта") }
+                        icon = { Icon(Icons.Default.MenuBook, contentDescription = stringResource(R.string.ui_tab_medical)) },
+                        label = { Text(stringResource(R.string.ui_tab_medical)) }
                     )
                     NavigationBarItem(
                         selected = selectedTab == 3,
                         onClick = { selectedTab = 3 },
-                        icon = { Icon(Icons.Default.Person, contentDescription = "Профиль") },
-                        label = { Text("Профиль") }
+                        icon = { Icon(Icons.Default.Person, contentDescription = stringResource(R.string.ui_tab_profile)) },
+                        label = { Text(stringResource(R.string.ui_tab_profile)) }
                     )
                 }
             }
