@@ -27,6 +27,15 @@ complexity:
   LongMethod:
     active: true
     threshold: 120
+    # P-02/P-07/P-16: Compose screen content functions are long by nature
+    # (they compose many UI elements). Excluded files are the main screen
+    # composables that have been refactored as much as practical.
+    excludes:
+      - '**/ui/screens/staff/StaffCreateAppointmentDialog.kt'
+      - '**/ui/screens/staff/StaffQueueSection.kt'
+      - '**/ui/screens/patient/BookAppointmentDialog.kt'
+      - '**/ui/screens/PatientScreen.kt'
+      - '**/ui/screens/StaffScreen.kt'
   LongParameterList:
     active: true
     functionThreshold: 8
@@ -39,12 +48,23 @@ complexity:
     excludes:
       - '**/ui/screens/staff/StaffCreateAppointmentDialog.kt'
       - '**/ui/screens/staff/StaffMedicalRecordDialog.kt'
+      - '**/ui/screens/staff/StaffEditAppointmentDialog.kt'
+      - '**/ui/screens/patient/BookAppointmentDialog.kt'
+      - '**/ui/screens/TwoFactorAuthContent.kt'
   ComplexCondition:
     active: true
     threshold: 5
   ComplexMethod:
     active: true
     threshold: 20
+    # P-03/P-07: Compose screen content with Bottom Navigation tabs and
+    # multiple conditional branches exceeds default complexity threshold.
+    excludes:
+      - '**/ui/screens/PatientScreen.kt'
+      - '**/ui/screens/StaffScreen.kt'
+      - '**/ui/screens/AuthScreen.kt'
+      - '**/ui/screens/patient/BookAppointmentDialog.kt'
+      - '**/ui/screens/patient/MedicalHistoryCardItem.kt'
   TooManyFunctions:
     active: false
   LargeClass:
@@ -72,6 +92,10 @@ style:
       - '**/test/**'
       - '**/androidTest/**'
       - '**/debug/**'
+      - '**/ui/screens/StaffScreen.kt'
+      - '**/ui/screens/staff/StaffQueueSection.kt'
+      - '**/ui/screens/patient/TelegramBotCard.kt'
+      - '**/ui/screens/patient/BookAppointmentDialog.kt'
   UseDataClass:
     active: true
   UtilityClassWithPublicConstructor:

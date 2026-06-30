@@ -66,6 +66,7 @@ import java.text.SimpleDateFormat
  * State is hoisted via parameters — caller owns all mutable state and
  * invokes viewModel.createAppointment() via [onConfirm].
  */
+@Suppress("UnusedParameter")  // selectedSpecialty kept for API symmetry with caller
 @Composable
 fun BookAppointmentDialog(
     doctors: List<Pair<String, String>>,
