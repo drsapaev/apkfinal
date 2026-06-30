@@ -108,7 +108,7 @@ fun BookAppointmentDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Новая запись на приём",
+                        text = stringResource(R.string.pat_new_appointment),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = accentNavy
                     )

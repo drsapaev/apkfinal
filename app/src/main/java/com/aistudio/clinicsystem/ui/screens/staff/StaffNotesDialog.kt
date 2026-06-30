@@ -39,8 +39,8 @@ fun StaffNotesDialog(
             OutlinedTextField(
                 value = notesInput,
                 onValueChange = onNotesInputChange,
-                label = { Text("Заметка / Ответ клиники") },
-                placeholder = { Text("Введите комментарий для пациента...") },
+                label = { Text(stringResource(R.string.dlg_notes)) },
+                placeholder = { Text(stringResource(R.string.dlg_notes_placeholder)) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = accentColor,
                     focusedLabelColor = accentColor

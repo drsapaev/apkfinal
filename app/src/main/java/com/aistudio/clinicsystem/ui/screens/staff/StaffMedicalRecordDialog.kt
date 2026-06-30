@@ -67,7 +67,7 @@ fun StaffMedicalRecordDialog(
                 verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 Text(
-                    text = "Внести запись в медицинскую карту",
+                    text = stringResource(R.string.dlg_medical_record),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -87,8 +87,8 @@ fun StaffMedicalRecordDialog(
                 OutlinedTextField(
                     value = diagnosis,
                     onValueChange = onDiagnosisChange,
-                    label = { Text("Клинический диагноз") },
-                    placeholder = { Text("Острый пульпит, гипертония 2 ст. и др.") },
+                    label = { Text(stringResource(R.string.dlg_diagnosis)) },
+                    placeholder = { Text(stringResource(R.string.dlg_diagnosis_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                 )
@@ -97,8 +97,8 @@ fun StaffMedicalRecordDialog(
                 OutlinedTextField(
                     value = prescription,
                     onValueChange = onPrescriptionChange,
-                    label = { Text("Назначения и Рецептурный лист") },
-                    placeholder = { Text("Принимать Лозартан 50мг по утрам") },
+                    label = { Text(stringResource(R.string.dlg_prescription)) },
+                    placeholder = { Text(stringResource(R.string.dlg_prescription_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                 )
@@ -108,7 +108,7 @@ fun StaffMedicalRecordDialog(
                     value = recommendations,
                     onValueChange = onRecommendationsChange,
                     label = { Text(stringResource(R.string.ui_recommendations)) },
-                    placeholder = { Text("Повторный визит через две недели.") },
+                    placeholder = { Text(stringResource(R.string.dlg_recommendations_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                 )

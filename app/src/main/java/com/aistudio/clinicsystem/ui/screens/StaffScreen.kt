@@ -85,8 +85,8 @@ private fun StaffScreenContent(
         val currentUndo = undoState
         if (currentUndo != null) {
             val result = snackbarHostState.showSnackbar(
-                message = "Действие успешно выполнено",
-                actionLabel = "Отменить",
+                message = stringResource(R.string.staff_action_done),
+                actionLabel = stringResource(R.string.staff_undo),
                 duration = SnackbarDuration.Short
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -133,8 +133,8 @@ private fun StaffScreenContent(
     val cachedQueueSnapshots by viewModel.cachedQueueSnapshots.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
-    var selectedDoctorFilter by remember { mutableStateOf("Все врачи") }
-    var selectedStatusFilter by remember { mutableStateOf("Все статусы") }
+    var selectedDoctorFilter by remember { mutableStateOf(stringResource(R.string.dlg_all_doctors)) }
+    var selectedStatusFilter by remember { mutableStateOf(stringResource(R.string.dlg_all_statuses)) }
 
     // Create Appointment Dialog state & Flows
     val draftCreatePatientPhoneVal by viewModel.draftCreatePatientPhone.collectAsStateWithLifecycle()
@@ -183,7 +183,7 @@ private fun StaffScreenContent(
                 title = {
                     Column {
                         Text(
-                            text = "Панель управления персоналом",
+                            text = stringResource(R.string.staff_dashboard),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -199,7 +199,7 @@ private fun StaffScreenContent(
                     if (!isOnline) {
                         Icon(
                             imageVector = Icons.Default.CloudOff,
-                            contentDescription = "Нет соединения с интернетом",
+                            contentDescription = stringResource(R.string.pat_no_connection),
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier
                                 .padding(end = 4.dp)
@@ -213,9 +213,9 @@ private fun StaffScreenContent(
                         else -> Icons.Default.BrightnessAuto
                     }
                     val themeDescription = when (themeMode) {
-                        "LIGHT" -> "Светлая тема"
-                        "DARK" -> "Темная тема"
-                        else -> "Системная тема"
+                        "LIGHT" -> stringResource(R.string.theme_light)
+                        "DARK" -> stringResource(R.string.theme_dark)
+                        else -> stringResource(R.string.theme_system)
                     }
 
                     IconButton(
@@ -265,7 +265,7 @@ private fun StaffScreenContent(
                     }
                 },
                 icon = { Icon(Icons.Default.PostAdd, contentDescription = "Add Medical Record") },
-                text = { Text("Заполнить медкарту") },
+                text = { Text(stringResource(R.string.staff_fill_medcard)) },
                 containerColor = adminColor,
                 contentColor = MaterialTheme.colorScheme.surface
             )
@@ -277,26 +277,26 @@ private fun StaffScreenContent(
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.QueuePlayNext, contentDescription = "Очередь") },
-                    label = { Text("Очередь") }
+                    icon = { Icon(Icons.Default.QueuePlayNext, contentDescription = stringResource(R.string.staff_tab_queue)) },
+                    label = { Text(stringResource(R.string.staff_tab_queue)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.AssignmentLate, contentDescription = "Записи") },
-                    label = { Text("Записи") }
+                    icon = { Icon(Icons.Default.AssignmentLate, contentDescription = stringResource(R.string.pat_tab_appointments)) },
+                    label = { Text(stringResource(R.string.pat_tab_appointments)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.Group, contentDescription = "Пациенты") },
-                    label = { Text("Пациенты") }
+                    icon = { Icon(Icons.Default.Group, contentDescription = stringResource(R.string.staff_tab_patients)) },
+                    label = { Text(stringResource(R.string.staff_tab_patients)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
-                    icon = { Icon(Icons.Default.Dashboard, contentDescription = "Аналитика") },
-                    label = { Text("Аналитика") }
+                    icon = { Icon(Icons.Default.Dashboard, contentDescription = stringResource(R.string.staff_tab_analytics)) },
+                    label = { Text(stringResource(R.string.staff_tab_analytics)) }
                 )
             }
         },
@@ -321,7 +321,7 @@ private fun StaffScreenContent(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     AnalyticsCard(
-                        title = "Заявки",
+                        title = stringResource(R.string.staff_requests),
                         count = "${pendingAppts.size}",
                         icon = Icons.Default.PendingActions,
                         indicatorColor = MaterialTheme.colorScheme.tertiary,
@@ -335,7 +335,7 @@ private fun StaffScreenContent(
                         modifier = Modifier.weight(1f)
                     )
                     AnalyticsCard(
-                        title = "Пациенты",
+                        title = stringResource(R.string.staff_tab_patients),
                         count = "${patientRoleUsers.size}",
                         icon = Icons.Default.Group,
                         indicatorColor = adminColor,
@@ -377,7 +377,7 @@ private fun StaffScreenContent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Очередь приёма и одобрение записей",
+                                text = stringResource(R.string.staff_approvals),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -415,7 +415,7 @@ private fun StaffScreenContent(
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.dlg_clear))
                                 }
                             }
                         },
@@ -484,7 +484,7 @@ private fun StaffScreenContent(
                     }
 
                     // DOCTOR FILTER CHIPS
-                    Text("Фильтр по врачу:", fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.dlg_filter_doctor), fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     
                     val allDoctorsInSystem = remember(allAppointments) {
                         allAppointments.map { it.doctorName }.distinct().filter { it.isNotBlank() }
@@ -498,7 +498,7 @@ private fun StaffScreenContent(
                     }
 
                     val doctorsList = buildList {
-                        add("Все врачи")
+                        add(stringResource(R.string.dlg_all_doctors))
                         if (isCurrentUserDoctor && currentUser != null) {
                             if (!contains(currentUser!!.fullName)) add(currentUser!!.fullName)
                         }
@@ -529,9 +529,9 @@ private fun StaffScreenContent(
                     }
 
                     // STATUS FILTER CHIPS
-                    Text("Фильтр по статусу:", fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.dlg_filter_status), fontSize = AppFontSize.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val statusesList = listOf(
-                        "Все статусы",
+                        stringResource(R.string.dlg_all_statuses),
                         "PENDING",
                         "APPROVED",
                         "COMPLETED",
@@ -543,11 +543,11 @@ private fun StaffScreenContent(
                     ) {
                         statusesList.forEach { status ->
                             val labelText = when (status) {
-                                "Все статусы" -> "Все статусы"
-                                "PENDING" -> "На рассмотрении"
-                                "APPROVED" -> "Подтверждено"
-                                "COMPLETED" -> "Осмотр завершен"
-                                "CANCELLED" -> "Отклонено"
+                                stringResource(R.string.dlg_all_statuses) -> stringResource(R.string.dlg_all_statuses)
+                                "PENDING" -> stringResource(R.string.st_pending)
+                                "APPROVED" -> stringResource(R.string.st_approved)
+                                "COMPLETED" -> stringResource(R.string.st_completed)
+                                "CANCELLED" -> stringResource(R.string.st_rejected)
                                 else -> status
                             }
                             val isSelected = selectedStatusFilter == status
@@ -578,11 +578,11 @@ private fun StaffScreenContent(
                     appt.patientPhone.contains(searchQuery)
                 } else true
                 
-                val matchesDoctor = if (selectedDoctorFilter != "Все врачи") {
+                val matchesDoctor = if (selectedDoctorFilter != stringResource(R.string.dlg_all_doctors)) {
                     appt.doctorName == selectedDoctorFilter
                 } else true
                 
-                val matchesStatus = if (selectedStatusFilter != "Все статусы") {
+                val matchesStatus = if (selectedStatusFilter != stringResource(R.string.dlg_all_statuses)) {
                     appt.status == selectedStatusFilter
                 } else true
                 
@@ -600,7 +600,7 @@ private fun StaffScreenContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Подходящих сеансов или записей не найдено.",
+                            text = stringResource(R.string.staff_no_sessions),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -688,7 +688,7 @@ private fun StaffScreenContent(
                         .imePadding().verticalScroll(rememberScrollState())
                 ) {
                     Text(
-                        text = "Внести запись в медицинскую карту",
+                        text = stringResource(R.string.dlg_medical_record),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = adminColor
                     )
@@ -715,7 +715,7 @@ private fun StaffScreenContent(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Активный черновик (защита от потери)",
+                                    text = stringResource(R.string.dlg_active_draft),
                                     fontSize = AppFontSize.bodySmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     fontWeight = FontWeight.Bold
@@ -753,7 +753,7 @@ private fun StaffScreenContent(
                         val templatesList = listOf(
                             listOf(
                                 "🌡️ ОРВИ",
-                                "ОРВИ, острое течение (МКБ-10: J06.9)",
+                                stringResource(R.string.dx_orvi),
                                 "Парацетамол 500мг при темп. >38.5С, обильное теплое питье, витамин С 1000мг.",
                                 "Постельный режим 3-5 дней, повторный прием при сохранении лихорадки."
                             ),
@@ -765,7 +765,7 @@ private fun StaffScreenContent(
                             ),
                             listOf(
                                 "🦷  Пульпит",
-                                "Острый пульпит (МКБ-10: K04.0)",
+                                stringResource(R.string.dx_pulpitis),
                                 "Ибупрофен 400мг при острых болях (не более 3 раз в день), полоскание раствором соды.",
                                 "Срочно обратиться к стоматологу для санации зуба."
                             ),
@@ -804,7 +804,7 @@ private fun StaffScreenContent(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(text = "Выберите пациента:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(text = stringResource(R.string.dlg_select_patient), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // Patient Selector Spinner layout
@@ -907,15 +907,15 @@ private fun StaffScreenContent(
                             diagnosisInput = it 
                             viewModel.setDraftDiagnosis(it)
                         },
-                        label = { Text("Клинический диагноз") },
-                        placeholder = { Text("Острый пульпит, гипертония 2 ст. и др.") },
+                        label = { Text(stringResource(R.string.dlg_diagnosis)) },
+                        placeholder = { Text(stringResource(R.string.dlg_diagnosis_placeholder)) },
                         singleLine = false,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                         modifier = Modifier.fillMaxWidth().testTag("diagnosis_input_field")
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Рекомендованные диагнозы (ICD-10):", fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = stringResource(R.string.dlg_icd10_label), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -950,8 +950,8 @@ private fun StaffScreenContent(
                             prescriptionInput = it 
                             viewModel.setDraftPrescription(it)
                         },
-                        label = { Text("Назначения и Рецептурный лист") },
-                        placeholder = { Text("Принимать Лозартан 50мг по утрам, полоскание") },
+                        label = { Text(stringResource(R.string.dlg_prescription)) },
+                        placeholder = { Text(stringResource(R.string.rx_losartan_rinse)) },
                         singleLine = false,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                         modifier = Modifier.fillMaxWidth()
@@ -964,7 +964,7 @@ private fun StaffScreenContent(
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
                     ) {
-                        val rxPhrases = listOf("+ Вит. C 1000мг", "Обильное питье", "Ибупрофен 400мг", "Полоскание содой", "Лозартан 50мг утром")
+                        val rxPhrases = listOf("+ Вит. C 1000мг", stringResource(R.string.rx_fluids), stringResource(R.string.rx_ibuprofen), stringResource(R.string.rx_soda_rinse), "Лозартан 50мг утром")
                         rxPhrases.forEach { phrase ->
                             Box(
                                 modifier = Modifier
@@ -991,8 +991,8 @@ private fun StaffScreenContent(
                             recommendationsInput = it 
                             viewModel.setDraftRecommendations(it)
                         },
-                        label = { Text("Советы и рекомендации") },
-                        placeholder = { Text("Повторный визит через две недели.") },
+                        label = { Text(stringResource(R.string.dlg_recommendations)) },
+                        placeholder = { Text(stringResource(R.string.dlg_recommendations_placeholder)) },
                         singleLine = false,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                         modifier = Modifier.fillMaxWidth()
@@ -1005,7 +1005,7 @@ private fun StaffScreenContent(
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
                     ) {
-                        val recPhrases = listOf("Явка через 3 дня", "Контроль АД", "Ограничить соль", "Постельный режим", "Диета Стол №5")
+                        val recPhrases = listOf(stringResource(R.string.rx_followup_3d), stringResource(R.string.rx_bp_control), stringResource(R.string.rx_salt_restriction), stringResource(R.string.rx_bed_rest), stringResource(R.string.rx_diet5))
                         recPhrases.forEach { phrase ->
                             Box(
                                 modifier = Modifier
@@ -1059,7 +1059,7 @@ private fun StaffScreenContent(
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             modifier = Modifier.testTag("save_medical_record_button")
                         ) {
-                            Text("Сохранить в базу", color = MaterialTheme.colorScheme.surface)
+                            Text(stringResource(R.string.dlg_save_to_db), color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -1091,12 +1091,12 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Да, закрыть", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.dlg_yes_close), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showUnsavedWarningDialog = false }) {
-                    Text("Продолжить редактирование")
+                    Text(stringResource(R.string.dlg_continue_editing))
                 }
             }
         )
@@ -1115,12 +1115,12 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = adminColor)
                 ) {
-                    Text("Да, закрыть", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.dlg_yes_close), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCreateUnsavedWarning = false }) {
-                    Text("Продолжить редактирование")
+                    Text(stringResource(R.string.dlg_continue_editing))
                 }
             }
         )
@@ -1128,7 +1128,7 @@ private fun StaffScreenContent(
 
     // P-19 fix: removed showRemoveQueueConfirmDialog modal — removal is now instant
     // with undo-Snackbar (viewModel.removeQueuePatient already sets UndoAction.RestoreQueue,
-    // which triggers the existing Snackbar with "Отменить" button).
+    // which triggers the existing Snackbar with stringResource(R.string.staff_undo) button).
 
     // Modal reasons for cancellation
     if (showCancelReasonDialog) {
@@ -1139,8 +1139,8 @@ private fun StaffScreenContent(
                 OutlinedTextField(
                     value = cancelReasonInput,
                     onValueChange = { cancelReasonInput = it },
-                    label = { Text("Причина отмены") },
-                    placeholder = { Text("Врач заболел или время занято") },
+                    label = { Text(stringResource(R.string.dlg_cancel_reason)) },
+                    placeholder = { Text(stringResource(R.string.dlg_cancel_placeholder)) },
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1153,7 +1153,7 @@ private fun StaffScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Отменить запись", color = MaterialTheme.colorScheme.surface)
+                    Text(stringResource(R.string.dlg_cancel_btn), color = MaterialTheme.colorScheme.surface)
                 }
             },
             dismissButton = {
@@ -1173,7 +1173,7 @@ private fun StaffScreenContent(
                 OutlinedTextField(
                     value = notesInput,
                     onValueChange = { notesInput = it },
-                    label = { Text("Короткое примечание клиники") },
+                    label = { Text(stringResource(R.string.dlg_short_clinic_note)) },
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1217,14 +1217,14 @@ private fun StaffScreenContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Записать на приём (Регистратор)",
+                        text = stringResource(R.string.staff_book_registrar),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = adminColor
                     )
 
-                    Text("Пациент в базе клиники:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.staff_patient_in_db), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     if (patientRoleUsers.isEmpty()) {
-                        Text("Нет зарегистрированных пациентов", fontSize = AppFontSize.body, color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.staff_no_registered_patients), fontSize = AppFontSize.body, color = MaterialTheme.colorScheme.error)
                     } else {
                         var expandedPatientSpinner by remember { mutableStateOf(false) }
                         Box(modifier = Modifier.fillMaxWidth()) {
@@ -1254,14 +1254,14 @@ private fun StaffScreenContent(
                         }
                     }
 
-                    Text("Или введите профиль вручную:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.staff_or_enter_manually), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = createPatientName,
                         onValueChange = {
                             createPatientName = it
                             viewModel.setDraftCreatePatientName(it)
                         },
-                        label = { Text("ФИО Пациента") },
+                        label = { Text(stringResource(R.string.dlg_patient_name_upper)) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = adminColor, focusedLabelColor = adminColor),
                         modifier = Modifier.fillMaxWidth().testTag("manual_patient_name")
@@ -1278,14 +1278,14 @@ private fun StaffScreenContent(
                         modifier = Modifier.fillMaxWidth().testTag("manual_patient_phone")
                     )
 
-                    Text("Лечащий врач и специальность:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.dlg_doctor_specialty), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     val availableDocs = listOf(
-                        "Д-р Сапаев (Стоматолог-терапевт)" to "Стоматология",
-                        "Д-р Иванов (Кардиолог)" to "Кардиология",
-                        "Д-р Петров (Невролог)" to "Неврология",
-                        "Д-р Сидорова (Педиатр)" to "Педиатрия",
-                        "Д-р Смирнова (Офтальмолог)" to "Офтальмология",
-                        "Д-р Кузнецов (Терапевт)" to "Общая терапия"
+                        stringResource(R.string.doc_sapaev) to stringResource(R.string.spec_dentistry),
+                        stringResource(R.string.doc_ivanov) to stringResource(R.string.spec_cardiology),
+                        stringResource(R.string.doc_petrov) to stringResource(R.string.spec_neurology),
+                        stringResource(R.string.doc_sidorova) to stringResource(R.string.spec_pediatrics),
+                        stringResource(R.string.doc_smirnova) to stringResource(R.string.spec_ophthalmology),
+                        stringResource(R.string.doc_kuznetsov) to stringResource(R.string.spec_general_therapy)
                     )
                     var expandedDocSpinner by remember { mutableStateOf(false) }
                     Box(modifier = Modifier.fillMaxWidth()) {
@@ -1321,7 +1321,7 @@ private fun StaffScreenContent(
                                 createDate = it
                                 viewModel.setDraftCreateDate(it)
                             },
-                            label = { Text("Дата (ГГГГ-ММ-ДД)") },
+                            label = { Text(stringResource(R.string.dlg_date_format)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f).testTag("create_date_field")
                         )
@@ -1331,7 +1331,7 @@ private fun StaffScreenContent(
                                 createTime = it
                                 viewModel.setDraftCreateTime(it)
                             },
-                            label = { Text("Время (ЧЧ:ММ)") },
+                            label = { Text(stringResource(R.string.dlg_time_format)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f).testTag("create_time_field")
                         )
@@ -1343,7 +1343,7 @@ private fun StaffScreenContent(
                             createReason = it
                             viewModel.setDraftCreateReason(it)
                         },
-                        label = { Text("Причина приёма") },
+                        label = { Text(stringResource(R.string.dlg_reason_appointment)) },
                         singleLine = false,
                         modifier = Modifier.fillMaxWidth().testTag("create_reason_field")
                     )
@@ -1384,7 +1384,7 @@ private fun StaffScreenContent(
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             modifier = Modifier.testTag("submit_create_appointment_btn")
                         ) {
-                            Text("Создать приём", color = MaterialTheme.colorScheme.surface)
+                            Text(stringResource(R.string.dlg_create_appointment_short), color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }
@@ -1413,7 +1413,7 @@ private fun StaffScreenContent(
                     OutlinedTextField(
                         value = editPatientName,
                         onValueChange = { editPatientName = it },
-                        label = { Text("ФИО Пациента") },
+                        label = { Text(stringResource(R.string.dlg_patient_name_upper)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("edit_patient_name")
                     )
@@ -1426,14 +1426,14 @@ private fun StaffScreenContent(
                         modifier = Modifier.fillMaxWidth().testTag("edit_patient_phone")
                     )
 
-                    Text("Выберите лечащего врача:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.dlg_select_doctor), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     val availableDocs = listOf(
-                        "Д-р Сапаев (Стоматолог-терапевт)" to "Стоматология",
-                        "Д-р Иванов (Кардиолог)" to "Кардиология",
-                        "Д-р Петров (Невролог)" to "Неврология",
-                        "Д-р Сидорова (Педиатр)" to "Педиатрия",
-                        "Д-р Смирнова (Офтальмолог)" to "Офтальмология",
-                        "Д-р Кузнецов (Терапевт)" to "Общая терапия"
+                        stringResource(R.string.doc_sapaev) to stringResource(R.string.spec_dentistry),
+                        stringResource(R.string.doc_ivanov) to stringResource(R.string.spec_cardiology),
+                        stringResource(R.string.doc_petrov) to stringResource(R.string.spec_neurology),
+                        stringResource(R.string.doc_sidorova) to stringResource(R.string.spec_pediatrics),
+                        stringResource(R.string.doc_smirnova) to stringResource(R.string.spec_ophthalmology),
+                        stringResource(R.string.doc_kuznetsov) to stringResource(R.string.spec_general_therapy)
                     )
                     var expandedEditDocSpinner by remember { mutableStateOf(false) }
                     Box(modifier = Modifier.fillMaxWidth()) {
@@ -1493,10 +1493,10 @@ private fun StaffScreenContent(
                     ) {
                         statusList.forEach { status ->
                             val label = when (status) {
-                                "PENDING" -> "Ожидает"
-                                "APPROVED" -> "Подтвержден"
-                                "COMPLETED" -> "Выполнен"
-                                "CANCELLED" -> "Отменен"
+                                "PENDING" -> stringResource(R.string.st_waiting)
+                                "APPROVED" -> stringResource(R.string.st_confirmed)
+                                "COMPLETED" -> stringResource(R.string.st_done)
+                                "CANCELLED" -> stringResource(R.string.st_cancelled_m)
                                 else -> status
                             }
                             val isSelected = editStatusSelected == status
@@ -1547,7 +1547,7 @@ private fun StaffScreenContent(
                             colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                             modifier = Modifier.testTag("submit_edit_appointment_btn")
                         ) {
-                            Text("Применить изменения", color = MaterialTheme.colorScheme.surface)
+                            Text(stringResource(R.string.dlg_apply), color = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }

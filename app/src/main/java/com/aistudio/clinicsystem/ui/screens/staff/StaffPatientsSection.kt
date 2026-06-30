@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import androidx.compose.ui.res.stringResource
 import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.background
@@ -55,7 +56,7 @@ fun LazyListScope.staffPatientsSection(
             )
             Spacer(modifier = Modifier.width(Spacing.s))
             Text(
-                text = "Справочник пациентов и медкарты",
+                text = stringResource(R.string.staff_patients_dir),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -80,7 +81,7 @@ fun LazyListScope.staffPatientsSection(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Пациенты не найдены.",
+                    text = stringResource(R.string.staff_no_patients),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium
                 )

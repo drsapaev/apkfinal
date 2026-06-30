@@ -60,10 +60,10 @@ fun HeaderGreetingBanner(
     val localTime = Calendar.getInstance()
     val hour = localTime.get(Calendar.HOUR_OF_DAY)
     val greeting = when {
-        hour in 5..11 -> "Доброе утро"
-        hour in 12..16 -> "Добрый день"
-        hour in 17..22 -> "Добрый вечер"
-        else -> "Доброй ночи"
+        hour in 5..11 -> stringResource(R.string.g_morning)
+        hour in 12..16 -> stringResource(R.string.g_day)
+        hour in 17..22 -> stringResource(R.string.g_evening)
+        else -> stringResource(R.string.g_night)
     }
 
     Card(
@@ -150,7 +150,7 @@ fun HeaderGreetingBanner(
                         }
                         Column {
                             Text(
-                                text = "Активные записи",
+                                text = stringResource(R.string.pat_active_records),
                                 fontSize = AppFontSize.caption,
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )
@@ -184,7 +184,7 @@ fun HeaderGreetingBanner(
                         }
                         Column {
                             Text(
-                                text = "Медицинская карта",
+                                text = stringResource(R.string.pat_medical_card),
                                 fontSize = AppFontSize.caption,
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                             )

@@ -124,7 +124,7 @@ fun MedicalHistoryCardItem(
                 putExtra(android.content.Intent.EXTRA_TITLE, "Медицинское заключение от ${record.visitDate}")
                 putExtra(android.content.Intent.EXTRA_TEXT, text)
             }
-            context.startActivity(android.content.Intent.createChooser(intent, "Отправить отчёт"))
+            context.startActivity(android.content.Intent.createChooser(intent, stringResource(R.string.med_share_report)))
         } catch (e: Exception) {
             // share fails safely
         }
@@ -143,7 +143,7 @@ fun MedicalHistoryCardItem(
             },
             title = {
                 Text(
-                    text = "Документ скачан!",
+                    text = stringResource(R.string.med_downloaded),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -331,7 +331,7 @@ fun MedicalHistoryCardItem(
                         Spacer(modifier = Modifier.width(Spacing.s))
                         Column {
                             Text(
-                                text = "Назначенный рецепт & Препараты",
+                                text = stringResource(R.string.med_prescription_label),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = AppFontSize.bodySmall,
                                 color = MaterialTheme.colorScheme.primaryContainer
@@ -360,7 +360,7 @@ fun MedicalHistoryCardItem(
                             Spacer(modifier = Modifier.width(Spacing.s))
                             Column {
                                 Text(
-                                    text = "Дополнительные рекомендации",
+                                    text = stringResource(R.string.med_recommendations_label),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = AppFontSize.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -398,7 +398,7 @@ fun MedicalHistoryCardItem(
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(Spacing.s))
-                                Text("Загрузка...", fontSize = AppFontSize.body, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
+                                Text(stringResource(R.string.med_loading), fontSize = AppFontSize.body, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.FileDownload,

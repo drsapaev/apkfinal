@@ -90,7 +90,7 @@ fun TelegramBotCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Telegram-Бот Оповещений",
+                        text = stringResource(R.string.tg_bot_title),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -107,7 +107,7 @@ fun TelegramBotCard(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Text(
-                            text = "СВЯЗАНО ✔",
+                            text = stringResource(R.string.tg_linked),
                             fontSize = AppFontSize.caption,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -187,7 +187,7 @@ fun TelegramBotCard(
                     ) {
                         Column {
                             Text(
-                                text = "Идентификатор Чата (Chat ID):",
+                                text = stringResource(R.string.tg_chat_id_label),
                                 fontSize = AppFontSize.caption,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -225,7 +225,7 @@ fun TelegramBotCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Проверить доставку (Тестовое оповещение)", fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.tg_test_alert), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                     }
                 }
             }

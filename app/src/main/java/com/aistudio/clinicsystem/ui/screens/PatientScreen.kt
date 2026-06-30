@@ -95,7 +95,7 @@ private fun PatientScreenContent(
 
     var showBookDialog by remember { mutableStateOf(false) }
     var selectedDoctor by remember { mutableStateOf("Dr. Rustam Sapaev") }
-    var selectedSpecialty by remember { mutableStateOf("Стоматолог-Хирург") }
+    var selectedSpecialty by remember { mutableStateOf(stringResource(R.string.spec_dental_surgery)) }
     var selectedDateIdx by remember { mutableStateOf(0) }
     var selectedTimeSlot by remember { mutableStateOf("11:00") }
     var bookingReasonInput by remember { mutableStateOf("") }
@@ -177,7 +177,7 @@ private fun PatientScreenContent(
                     if (!isOnline) {
                         Icon(
                             imageVector = Icons.Default.CloudOff,
-                            contentDescription = "Нет соединения с интернетом",
+                            contentDescription = stringResource(R.string.pat_no_connection),
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier
                                 .padding(end = 4.dp)
@@ -265,8 +265,8 @@ private fun PatientScreenContent(
             LaunchedEffect(undoAction) {
                 if (undoAction != null) {
                     val result = snackbarHostState.showSnackbar(
-                        message = "Запись отменена",
-                        actionLabel = "Отменить",
+                        message = stringResource(R.string.pat_appointment_cancelled),
+                        actionLabel = stringResource(R.string.staff_undo),
                         duration = SnackbarDuration.Short,
                         withDismissAction = true
                     )
@@ -332,7 +332,7 @@ private fun PatientScreenContent(
                         pendingSyncs = allPendingSyncs,
                         selectedFilter = selectedAppFilter,
                         onFilterSelect = { selectedAppFilter = it },
-                        onCancelClick = { id -> viewModel.cancelAppointment(id, "Отменено пациентом в кабинете") },
+                        onCancelClick = { id -> viewModel.cancelAppointment(id, stringResource(R.string.pat_cancel_reason_default)) },
                         scrollState = appointmentsScrollState
                     )
                     2 -> PatientMedicalTab(
