@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,11 +58,11 @@ import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
  * Flow:
  * 1. User enters 6-digit TOTP code from authenticator app
  * 2. Optionally checks "Доверять этому устройству" (rememberDevice)
- * 3. Taps "Подтвердить" → viewModel.verify2FA(totpCode, rememberDevice)
+ * 3. Taps stringResource(R.string.ui_verify) → viewModel.verify2FA(totpCode, rememberDevice)
  *    - Success → onLoginSuccess callback (navigates to main screen)
  *    - Failure → authError StateFlow shows "Неверный код 2FA"
  * 4. Alternative: "Использовать recovery-код" → opens recovery flow dialog
- * 5. "Отмена" → viewModel.cancel2FAChallenge() (returns to login form)
+ * 5. stringResource(R.string.ui_cancel) → viewModel.cancel2FAChallenge() (returns to login form)
  *
  * The AuthViewModel already implements the full 2FA API (verify2FA,
  * request2FARecovery, verify2FARecovery, cancel2FAChallenge) since M1/E3.4.
@@ -90,7 +92,7 @@ fun TwoFactorAuthContent(
         modifier = modifier
             .fillMaxWidth()
             .background(backgroundBrush)
-            .padding(24.dp),
+            .padding(Spacing.xl),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -116,7 +118,7 @@ fun TwoFactorAuthContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             Text(
                 text = "Двухфакторная аутентификация",
@@ -198,7 +200,7 @@ private fun TwoFactorTotpCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(Spacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -209,7 +211,7 @@ private fun TwoFactorTotpCard(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             OutlinedTextField(
                 value = totpCode,
@@ -232,7 +234,7 @@ private fun TwoFactorTotpCard(
             )
 
             authError?.let { error ->
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.m))
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
@@ -242,7 +244,7 @@ private fun TwoFactorTotpCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             // Remember device checkbox
             Row(
@@ -261,7 +263,7 @@ private fun TwoFactorTotpCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             if (isSyncing) {
                 CircularProgressIndicator(color = tealPrimary)
@@ -276,14 +278,14 @@ private fun TwoFactorTotpCard(
                         .height(50.dp)
                 ) {
                     Text(
-                        text = "Подтвердить",
+                        text = stringResource(R.string.ui_verify),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.surface
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.m))
 
             TextButton(onClick = onShowRecovery) {
                 Text(
@@ -292,11 +294,11 @@ private fun TwoFactorTotpCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.s))
 
             TextButton(onClick = onCancel) {
                 Text(
-                    "Отмена",
+                    stringResource(R.string.ui_cancel),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -325,7 +327,7 @@ private fun TwoFactorRecoveryCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(Spacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -336,7 +338,7 @@ private fun TwoFactorRecoveryCard(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.s))
 
             Text(
                 text = "Укажите email или телефон — мы отправим recovery-код",
@@ -360,7 +362,7 @@ private fun TwoFactorRecoveryCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.m))
 
             Button(
                 onClick = onRequestRecovery,
@@ -376,7 +378,7 @@ private fun TwoFactorRecoveryCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             Text(
                 text = "После получения кода введите его ниже:",
@@ -385,7 +387,7 @@ private fun TwoFactorRecoveryCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.s))
 
             OutlinedTextField(
                 value = recoveryCode,
@@ -401,7 +403,7 @@ private fun TwoFactorRecoveryCard(
             )
 
             authError?.let { error ->
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.m))
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
@@ -411,7 +413,7 @@ private fun TwoFactorRecoveryCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.l))
 
             if (isSyncing) {
                 CircularProgressIndicator(color = tealPrimary)
@@ -431,7 +433,7 @@ private fun TwoFactorRecoveryCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.m))
 
             TextButton(onClick = onBackToTotp) {
                 Text(

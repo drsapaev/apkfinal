@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -87,9 +89,9 @@ fun StaffCreateAppointmentDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp)
+                    .padding(Spacing.xl)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 Text(
                     text = "Создать запись на приём",
@@ -102,7 +104,7 @@ fun StaffCreateAppointmentDialog(
                 OutlinedTextField(
                     value = patientPhone,
                     onValueChange = onPatientPhoneChange,
-                    label = { Text("Телефон пациента") },
+                    label = { Text(stringResource(R.string.ui_patient_phone)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.fillMaxWidth(),
@@ -126,7 +128,7 @@ fun StaffCreateAppointmentDialog(
                             value = doctorSelected,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Врач") },
+                            label = { Text(stringResource(R.string.ui_doctor)) },
                             singleLine = true,
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDoctor)
@@ -164,7 +166,7 @@ fun StaffCreateAppointmentDialog(
                     OutlinedTextField(
                         value = doctorSelected,
                         onValueChange = onDoctorSelectedChange,
-                        label = { Text("Врач") },
+                        label = { Text(stringResource(R.string.ui_doctor)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -180,7 +182,7 @@ fun StaffCreateAppointmentDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.m),
                 ) {
                     // P-10 fix: Material 3 DatePicker for date field
                     OutlinedTextField(
@@ -190,13 +192,13 @@ fun StaffCreateAppointmentDialog(
                         },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Дата") },
+                        label = { Text(stringResource(R.string.ui_date)) },
                         singleLine = true,
                         trailingIcon = {
                             IconButton(onClick = { showDatePicker = true }) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = "Выбрать дату"
+                                    contentDescription = stringResource(R.string.ui_select_date)
                                 )
                             }
                         },
@@ -205,7 +207,7 @@ fun StaffCreateAppointmentDialog(
                     OutlinedTextField(
                         value = time,
                         onValueChange = onTimeChange,
-                        label = { Text("Время (ЧЧ:ММ)") },
+                        label = { Text(stringResource(R.string.ui_time_hhmm)) },
                         singleLine = true,
                         placeholder = { Text("09:00") },
                         trailingIcon = {
@@ -226,16 +228,16 @@ fun StaffCreateAppointmentDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.s))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Отмена")
+                        Text(stringResource(R.string.ui_cancel))
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.s))
                     Button(
                         onClick = onCreate,
                         enabled = patientPhone.isNotBlank() && patientName.isNotBlank(),
@@ -264,7 +266,7 @@ fun StaffCreateAppointmentDialog(
                 ) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Отмена") }
+                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.ui_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -60,9 +62,9 @@ fun StaffMedicalRecordDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp)
+                    .padding(Spacing.xl)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 Text(
                     text = "Внести запись в медицинскую карту",
@@ -75,7 +77,7 @@ fun StaffMedicalRecordDialog(
                 OutlinedTextField(
                     value = selectedPatientPhone,
                     onValueChange = onPatientPhoneChange,
-                    label = { Text("Телефон пациента") },
+                    label = { Text(stringResource(R.string.ui_patient_phone)) },
                     placeholder = { Text("+7...") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -105,13 +107,13 @@ fun StaffMedicalRecordDialog(
                 OutlinedTextField(
                     value = recommendations,
                     onValueChange = onRecommendationsChange,
-                    label = { Text("Советы и рекомендации") },
+                    label = { Text(stringResource(R.string.ui_recommendations)) },
                     placeholder = { Text("Повторный визит через две недели.") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.s))
 
                 // Action buttons
                 Row(
@@ -119,14 +121,14 @@ fun StaffMedicalRecordDialog(
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.ui_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.s))
                     Button(
                         onClick = onSave,
                         enabled = selectedPatientPhone.isNotEmpty() && diagnosis.isNotBlank(),
                     ) {
-                        Text("Сохранить в базу", color = MaterialTheme.colorScheme.onPrimary)
+                        Text(stringResource(R.string.ui_save_to_db), color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }

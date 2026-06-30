@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -59,7 +60,7 @@ fun MedicalReportsSection(
     onFetchClick: () -> Unit,
     onRecordToggle: (String) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
         // Section Title
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -73,9 +74,9 @@ fun MedicalReportsSection(
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.s))
                 Text(
-                    text = "Документы и мед. отчёты",
+                    text = stringResource(R.string.ui_documents_and_reports),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -144,7 +145,7 @@ fun MedicalReportsSection(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(Spacing.xl),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -156,7 +157,7 @@ fun MedicalReportsSection(
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Документы отсутствуют",
+                        text = stringResource(R.string.ui_documents_empty),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

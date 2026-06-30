@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -64,7 +65,7 @@ fun ProfileCabinetCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.l)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -83,10 +84,10 @@ fun ProfileCabinetCard(
                         modifier = Modifier.size(34.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(Spacing.m))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = user?.fullName ?: "Пациент",
+                        text = user?.fullName ?: stringResource(R.string.ui_patient),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -186,7 +187,7 @@ fun ProfileCabinetCard(
                     },
                     dismissButton = {
                         TextButton(onClick = { showDisableBiometricDialog = false }) {
-                            Text("Отмена")
+                            Text(stringResource(R.string.ui_cancel))
                         }
                     }
                 )

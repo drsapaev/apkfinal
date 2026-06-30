@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.foundation.background
@@ -67,7 +68,7 @@ fun StaffQueueSection(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
-            .padding(16.dp),
+            .padding(Spacing.l),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
@@ -82,7 +83,7 @@ fun StaffQueueSection(
                     tint = adminColor,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.s))
                 Text(
                     text = "Живая очередь в клинике",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -109,7 +110,7 @@ fun StaffQueueSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.medium))
-                    .padding(16.dp),
+                    .padding(Spacing.l),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -120,14 +121,14 @@ fun StaffQueueSection(
                 )
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
                 cachedQueueSnapshots.sortedBy { it.position }.forEach { q ->
                     Card(
                         shape = RoundedCornerShape(Radius.medium),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(modifier = Modifier.padding(Spacing.m)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -148,7 +149,7 @@ fun StaffQueueSection(
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(Spacing.s))
                                     Column {
                                         Text(
                                             text = q.patientName,
@@ -191,7 +192,7 @@ fun StaffQueueSection(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.s))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -203,14 +204,14 @@ fun StaffQueueSection(
                                     modifier = Modifier
                                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small))
                                 ) {
-                                    Icon(Icons.Default.ArrowUpward, contentDescription = "Вверх", modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(R.string.ui_up), modifier = Modifier.size(16.dp))
                                 }
                                 IconButton(
                                     onClick = { onShiftQueuePosition(q.id, false) },
                                     modifier = Modifier
                                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small))
                                 ) {
-                                    Icon(Icons.Default.ArrowDownward, contentDescription = "Вниз", modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.ui_down), modifier = Modifier.size(16.dp))
                                 }
 
                                 Spacer(modifier = Modifier.weight(1f))
@@ -222,7 +223,7 @@ fun StaffQueueSection(
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         modifier = Modifier.heightIn(min = 44.dp)
                                     ) {
-                                        Text("Вызвать к врачу", fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
+                                        Text(stringResource(R.string.ui_call_to_doctor), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
                                     }
                                 } else if (q.status == "IN_PROGRESS") {
                                     Button(
