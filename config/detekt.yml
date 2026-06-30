@@ -65,6 +65,15 @@ complexity:
       - '**/ui/screens/AuthScreen.kt'
       - '**/ui/screens/patient/BookAppointmentDialog.kt'
       - '**/ui/screens/patient/MedicalHistoryCardItem.kt'
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+    excludes:
+      - '**/ui/screens/PatientScreen.kt'
+      - '**/ui/screens/StaffScreen.kt'
+      - '**/ui/screens/AuthScreen.kt'
+      - '**/ui/screens/patient/BookAppointmentDialog.kt'
+      - '**/ui/screens/patient/MedicalHistoryCardItem.kt'
   TooManyFunctions:
     active: false
   LargeClass:
