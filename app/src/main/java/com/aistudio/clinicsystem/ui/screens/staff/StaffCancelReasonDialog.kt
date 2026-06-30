@@ -41,8 +41,8 @@ fun StaffCancelReasonDialog(
             OutlinedTextField(
                 value = cancelReasonInput,
                 onValueChange = onReasonInputChange,
-                label = { Text("Причина отмены") },
-                placeholder = { Text("Врач заболел или время занято") },
+                label = { Text(stringResource(R.string.dlg_cancel_reason)) },
+                placeholder = { Text(stringResource(R.string.dlg_cancel_placeholder)) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = accentColor,
                     focusedLabelColor = accentColor
@@ -55,7 +55,7 @@ fun StaffCancelReasonDialog(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text("Отменить запись", color = MaterialTheme.colorScheme.surface)
+                Text(stringResource(R.string.dlg_cancel_btn), color = MaterialTheme.colorScheme.surface)
             }
         },
         dismissButton = {

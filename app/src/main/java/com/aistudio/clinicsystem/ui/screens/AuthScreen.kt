@@ -212,7 +212,7 @@ private fun AuthScreenContent(
                                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль",
+                                        contentDescription = if (passwordVisible) stringResource(R.string.auth_hide_password) else stringResource(R.string.auth_show_password),
                                         tint = tealPrimary
                                     )
                                 }
@@ -434,13 +434,13 @@ private fun AuthScreenContent(
 
                         override fun onAuthenticationFailed() {
                             super.onAuthenticationFailed()
-                            Toast.makeText(context, "Отпечаток не распознан", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, stringResource(R.string.auth_fingerprint_not_recognized), Toast.LENGTH_SHORT).show()
                         }
                     })
 
                 val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                    .setTitle("Вход по биометрии")
-                    .setSubtitle("Приложите палец для подтверждения входа")
+                    .setTitle(stringResource(R.string.auth_biometric_login))
+                    .setSubtitle(stringResource(R.string.auth_biometric_prompt))
                     // Stage 4.4: BIOMETRIC_STRONG only — Class 3 biometrics
                     // required to unlock the keystore key.
                     .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
@@ -450,7 +450,7 @@ private fun AuthScreenContent(
                 // Stage 4.4: two-arg authenticate with CryptoObject.
                 biometricPrompt.authenticate(promptInfo, cryptoObject)
             } else {
-                Toast.makeText(context, "Ошибка: требуется FragmentActivity", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, stringResource(R.string.auth_error_fragment_activity), Toast.LENGTH_SHORT).show()
                 showVerificationDialog = false
             }
         }

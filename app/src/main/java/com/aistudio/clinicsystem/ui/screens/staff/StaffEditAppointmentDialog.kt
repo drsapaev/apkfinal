@@ -80,7 +80,7 @@ fun StaffEditAppointmentDialog(
                 verticalArrangement = Arrangement.spacedBy(Spacing.m)
             ) {
                 Text(
-                    text = "Редактировать запись",
+                    text = stringResource(R.string.dlg_edit_appointment),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -88,7 +88,7 @@ fun StaffEditAppointmentDialog(
                 OutlinedTextField(
                     value = editPatientPhone,
                     onValueChange = onPatientPhoneChange,
-                    label = { Text("Телефон пациента") },
+                    label = { Text(stringResource(R.string.dlg_patient_phone)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -96,7 +96,7 @@ fun StaffEditAppointmentDialog(
                 OutlinedTextField(
                     value = editPatientName,
                     onValueChange = onPatientNameChange,
-                    label = { Text("ФИО пациента") },
+                    label = { Text(stringResource(R.string.dlg_patient_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -104,7 +104,7 @@ fun StaffEditAppointmentDialog(
                 OutlinedTextField(
                     value = editDoctorSelected,
                     onValueChange = onDoctorSelectedChange,
-                    label = { Text("Врач") },
+                    label = { Text(stringResource(R.string.dlg_doctor)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -112,7 +112,7 @@ fun StaffEditAppointmentDialog(
                 OutlinedTextField(
                     value = editSpecialtySelected,
                     onValueChange = onSpecialtySelectedChange,
-                    label = { Text("Специальность") },
+                    label = { Text(stringResource(R.string.dlg_specialty)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -124,14 +124,14 @@ fun StaffEditAppointmentDialog(
                     OutlinedTextField(
                         value = editDate,
                         onValueChange = onDateChange,
-                        label = { Text("Дата") },
+                        label = { Text(stringResource(R.string.dlg_date)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = editTime,
                         onValueChange = onTimeChange,
-                        label = { Text("Время") },
+                        label = { Text(stringResource(R.string.dlg_time)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -140,14 +140,14 @@ fun StaffEditAppointmentDialog(
                 OutlinedTextField(
                     value = editReason,
                     onValueChange = onReasonChange,
-                    label = { Text("Причина визита") },
+                    label = { Text(stringResource(R.string.dlg_reason_visit)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = editStatusSelected,
                     onValueChange = onStatusSelectedChange,
-                    label = { Text("Статус (PENDING/APPROVED/COMPLETED/CANCELLED)") },
+                    label = { Text(stringResource(R.string.dlg_status)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )

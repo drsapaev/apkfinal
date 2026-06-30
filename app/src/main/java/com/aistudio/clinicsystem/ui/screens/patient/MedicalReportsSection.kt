@@ -97,7 +97,7 @@ fun MedicalReportsSection(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Скачать мед. отчеты",
+                        contentDescription = stringResource(R.string.med_fetch_reports),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -108,7 +108,7 @@ fun MedicalReportsSection(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("Поиск диагнозов, врачей, рецептов...") },
+            placeholder = { Text(stringResource(R.string.med_search)) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {

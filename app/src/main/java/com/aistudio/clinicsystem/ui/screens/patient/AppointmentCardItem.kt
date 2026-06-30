@@ -66,10 +66,10 @@ fun AppointmentCardItem(
     }
 
     val statusText = when (appointment.status) {
-        "PENDING" -> "На рассмотрении"
-        "APPROVED" -> "Подтверждён"
-        "COMPLETED" -> "Осмотр завершён"
-        "CANCELLED" -> "Отменён"
+        "PENDING" -> stringResource(R.string.st_pending)
+        "APPROVED" -> stringResource(R.string.st_approved_m)
+        "COMPLETED" -> stringResource(R.string.st_completed_m)
+        "CANCELLED" -> stringResource(R.string.st_cancelled)
         else -> appointment.status
     }
 
@@ -181,7 +181,7 @@ fun AppointmentCardItem(
                                     )
                                     Spacer(modifier = Modifier.width(Spacing.xs))
                                     Text(
-                                        text = "Ожидает...",
+                                        text = stringResource(R.string.st_syncing),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = AppFontSize.caption,
                                         color = MaterialTheme.colorScheme.tertiary
@@ -285,7 +285,7 @@ fun AppointmentCardItem(
                     ) {
                         Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Отменить запись на приём", fontSize = AppFontSize.body, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.pat_cancel_appointment), fontSize = AppFontSize.body, fontWeight = FontWeight.Bold)
                     }
                 }
             }

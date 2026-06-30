@@ -132,12 +132,12 @@ fun ProfileCabinetCard(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "Вход по биометрии",
+                            text = stringResource(R.string.auth_biometric_login),
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Авторизация по отпечатку пальца",
+                            text = stringResource(R.string.auth_biometric_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -167,10 +167,10 @@ fun ProfileCabinetCard(
             if (showDisableBiometricDialog) {
                 AlertDialog(
                     onDismissRequest = { showDisableBiometricDialog = false },
-                    title = { Text("Выключить биометрию?", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.dlg_biometric_disable_title), fontWeight = FontWeight.Bold) },
                     text = {
                         Text(
-                            "При следующем входе потребуется пароль. Вы уверены?",
+                            stringResource(R.string.dlg_biometric_disable_text),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
@@ -182,7 +182,7 @@ fun ProfileCabinetCard(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text("Выключить", color = MaterialTheme.colorScheme.surface)
+                            Text(stringResource(R.string.dlg_biometric_disable_btn), color = MaterialTheme.colorScheme.surface)
                         }
                     },
                     dismissButton = {
@@ -216,12 +216,12 @@ fun ProfileCabinetCard(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "Защита экрана (FLAG_SECURE)",
+                            text = stringResource(R.string.pat_secure_screen),
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Скрытие скриншотов и превью",
+                            text = stringResource(R.string.pat_secure_screen_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

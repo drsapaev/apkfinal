@@ -57,11 +57,11 @@ import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
  *
  * Flow:
  * 1. User enters 6-digit TOTP code from authenticator app
- * 2. Optionally checks "Доверять этому устройству" (rememberDevice)
+ * 2. Optionally checks stringResource(R.string.auth_2fa_trust_device) (rememberDevice)
  * 3. Taps stringResource(R.string.ui_verify) → viewModel.verify2FA(totpCode, rememberDevice)
  *    - Success → onLoginSuccess callback (navigates to main screen)
- *    - Failure → authError StateFlow shows "Неверный код 2FA"
- * 4. Alternative: "Использовать recovery-код" → opens recovery flow dialog
+ *    - Failure → authError StateFlow shows stringResource(R.string.auth_2fa_error_invalid)
+ * 4. Alternative: stringResource(R.string.auth_2fa_use_recovery) → opens recovery flow dialog
  * 5. stringResource(R.string.ui_cancel) → viewModel.cancel2FAChallenge() (returns to login form)
  *
  * The AuthViewModel already implements the full 2FA API (verify2FA,
@@ -112,7 +112,7 @@ fun TwoFactorAuthContent(
             ) {
                 Icon(
                     imageVector = Icons.Default.Lock,
-                    contentDescription = "Двухфакторная аутентификация",
+                    contentDescription = stringResource(R.string.auth_2fa_title),
                     tint = tealPrimary,
                     modifier = Modifier.size(36.dp)
                 )
@@ -121,7 +121,7 @@ fun TwoFactorAuthContent(
             Spacer(modifier = Modifier.height(Spacing.l))
 
             Text(
-                text = "Двухфакторная аутентификация",
+                text = stringResource(R.string.auth_2fa_title),
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -204,7 +204,7 @@ private fun TwoFactorTotpCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Введите код подтверждения",
+                text = stringResource(R.string.auth_2fa_enter_code),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth(),
@@ -256,7 +256,7 @@ private fun TwoFactorTotpCard(
                     onCheckedChange = onRememberDeviceChange
                 )
                 Text(
-                    text = "Доверять этому устройству",
+                    text = stringResource(R.string.auth_2fa_trust_device),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp)
@@ -289,7 +289,7 @@ private fun TwoFactorTotpCard(
 
             TextButton(onClick = onShowRecovery) {
                 Text(
-                    "Использовать recovery-код",
+                    stringResource(R.string.auth_2fa_use_recovery),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -331,7 +331,7 @@ private fun TwoFactorRecoveryCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Восстановление доступа",
+                text = stringResource(R.string.auth_2fa_recovery_title),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth(),
@@ -372,7 +372,7 @@ private fun TwoFactorRecoveryCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "Отправить recovery-код",
+                    stringResource(R.string.auth_2fa_send_recovery),
                     color = MaterialTheme.colorScheme.surface,
                     fontWeight = FontWeight.Bold
                 )
@@ -381,7 +381,7 @@ private fun TwoFactorRecoveryCard(
             Spacer(modifier = Modifier.height(Spacing.l))
 
             Text(
-                text = "После получения кода введите его ниже:",
+                text = stringResource(R.string.misc_after_code_received),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
@@ -426,7 +426,7 @@ private fun TwoFactorRecoveryCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "Подтвердить recovery-код",
+                        stringResource(R.string.auth_2fa_verify_recovery),
                         color = MaterialTheme.colorScheme.surface,
                         fontWeight = FontWeight.Bold
                     )

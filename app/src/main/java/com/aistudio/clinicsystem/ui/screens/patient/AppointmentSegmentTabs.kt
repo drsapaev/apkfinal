@@ -66,9 +66,9 @@ fun AppointmentSegmentTabs(
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
     ) {
         listOf(
-            Triple("ALL", "Все записи", "appointment_tab_all"),
-            Triple("ACTIVE", "Активные", "appointment_tab_active"),
-            Triple("FINISHED", "Прошедшие", "appointment_tab_finished")
+            Triple("ALL", stringResource(R.string.dlg_all_appointments), "appointment_tab_all"),
+            Triple("ACTIVE", stringResource(R.string.appt_filter_active), "appointment_tab_active"),
+            Triple("FINISHED", stringResource(R.string.appt_filter_finished), "appointment_tab_finished")
         ).forEach { (filter, title, tag) ->
             val isSelected = selectedFilter == filter
             Box(

@@ -94,7 +94,7 @@ fun StaffCreateAppointmentDialog(
                 verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 Text(
-                    text = "Создать запись на приём",
+                    text = stringResource(R.string.dlg_create_appointment),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -113,7 +113,7 @@ fun StaffCreateAppointmentDialog(
                 OutlinedTextField(
                     value = patientName,
                     onValueChange = onPatientNameChange,
-                    label = { Text("ФИО пациента") },
+                    label = { Text(stringResource(R.string.dlg_patient_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -175,7 +175,7 @@ fun StaffCreateAppointmentDialog(
                 OutlinedTextField(
                     value = specialtySelected,
                     onValueChange = onSpecialtySelectedChange,
-                    label = { Text("Специальность") },
+                    label = { Text(stringResource(R.string.dlg_specialty)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -224,7 +224,7 @@ fun StaffCreateAppointmentDialog(
                 OutlinedTextField(
                     value = reason,
                     onValueChange = onReasonChange,
-                    label = { Text("Причина визита") },
+                    label = { Text(stringResource(R.string.dlg_reason_visit)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -242,7 +242,7 @@ fun StaffCreateAppointmentDialog(
                         onClick = onCreate,
                         enabled = patientPhone.isNotBlank() && patientName.isNotBlank(),
                     ) {
-                        Text("Создать запись")
+                        Text(stringResource(R.string.dlg_create))
                     }
                 }
             }

@@ -70,10 +70,10 @@ fun StaffAppointmentCardItem(
     }
 
     val statusTextRu = when (appt.status) {
-        "PENDING" -> "На рассмотрении"
+        "PENDING" -> stringResource(R.string.st_pending)
         "APPROVED" -> stringResource(R.string.ui_approved)
-        "COMPLETED" -> "Осмотр завершен"
-        "CANCELLED" -> "Отклонено"
+        "COMPLETED" -> stringResource(R.string.st_completed)
+        "CANCELLED" -> stringResource(R.string.st_rejected)
         else -> appt.status
     }
 
@@ -152,7 +152,7 @@ fun StaffAppointmentCardItem(
                                 )
                                 Spacer(modifier = Modifier.width(Spacing.xs))
                                 Text(
-                                    text = "Ожидает...",
+                                    text = stringResource(R.string.st_syncing),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = AppFontSize.caption,
                                     color = MaterialTheme.colorScheme.tertiary
@@ -235,7 +235,7 @@ fun StaffAppointmentCardItem(
                     ) {
                         Icon(Icons.Default.Queue, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
                         Spacer(modifier = Modifier.width(Spacing.xs))
-                        Text("В очередь", fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface)
+                        Text(stringResource(R.string.queue_to_queue), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface)
                     }
                 }
 

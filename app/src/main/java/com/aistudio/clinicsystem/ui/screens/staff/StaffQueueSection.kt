@@ -85,7 +85,7 @@ fun StaffQueueSection(
                 )
                 Spacer(modifier = Modifier.width(Spacing.s))
                 Text(
-                    text = "Живая очередь в клинике",
+                    text = stringResource(R.string.queue_title),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.surface
                 )
@@ -172,9 +172,9 @@ fun StaffQueueSection(
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                 }
                                 val qStatusText = when (q.status) {
-                                    "WAITING" -> "Ожидает"
-                                    "IN_PROGRESS" -> "На приёме"
-                                    "COMPLETED" -> "Осмотрен"
+                                    "WAITING" -> stringResource(R.string.st_waiting)
+                                    "IN_PROGRESS" -> stringResource(R.string.st_in_progress)
+                                    "COMPLETED" -> stringResource(R.string.st_seen)
                                     else -> q.status
                                 }
                                 Box(
@@ -232,7 +232,7 @@ fun StaffQueueSection(
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         modifier = Modifier.heightIn(min = 44.dp)
                                     ) {
-                                        Text("Завершить прием", fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
+                                        Text(stringResource(R.string.queue_complete), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
                                     }
                                 }
 

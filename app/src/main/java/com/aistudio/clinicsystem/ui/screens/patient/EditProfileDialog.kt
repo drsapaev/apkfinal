@@ -53,7 +53,7 @@ fun EditProfileDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Edit, contentDescription = null, tint = tealPrimary)
                 Spacer(modifier = Modifier.width(Spacing.s))
-                Text("Редактировать ФИО", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.pat_edit_name), fontWeight = FontWeight.Bold)
             }
         },
         text = {
@@ -67,7 +67,7 @@ fun EditProfileDialog(
                 OutlinedTextField(
                     value = editNameInput,
                     onValueChange = onEditNameInputChange,
-                    label = { Text("Полное имя (ФИО)") },
+                    label = { Text(stringResource(R.string.pat_full_name)) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = tealPrimary,
