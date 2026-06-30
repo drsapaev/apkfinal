@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
@@ -70,7 +71,7 @@ fun StaffAppointmentCardItem(
 
     val statusTextRu = when (appt.status) {
         "PENDING" -> "На рассмотрении"
-        "APPROVED" -> "Подтверждено"
+        "APPROVED" -> stringResource(R.string.ui_approved)
         "COMPLETED" -> "Осмотр завершен"
         "CANCELLED" -> "Отклонено"
         else -> appt.status
@@ -84,7 +85,7 @@ fun StaffAppointmentCardItem(
             .fillMaxWidth()
             .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.l)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -149,7 +150,7 @@ fun StaffAppointmentCardItem(
                                         .size(12.dp)
                                         .graphicsLayer { rotationZ = rotation }
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(Spacing.xs))
                                 Text(
                                     text = "Ожидает...",
                                     fontWeight = FontWeight.Bold,
@@ -178,7 +179,7 @@ fun StaffAppointmentCardItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(Spacing.xs))
 
             Text(
                 text = "Жалобы: ${appt.reason}",
@@ -187,13 +188,13 @@ fun StaffAppointmentCardItem(
             )
 
             if (appt.notes.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.s))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(Radius.small))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(10.dp)
+                        .padding(Spacing.s)
                 ) {
                     Text(
                         text = "Заметка / Ответ: ${appt.notes}",
@@ -204,12 +205,12 @@ fun StaffAppointmentCardItem(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Spacing.m))
 
             // Action buttons row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Edit button always active for registrar speed
@@ -233,7 +234,7 @@ fun StaffAppointmentCardItem(
                         modifier = Modifier.weight(1.2f).heightIn(min = 44.dp).testTag("register_queue_btn_appt")
                     ) {
                         Icon(Icons.Default.Queue, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Spacing.xs))
                         Text("В очередь", fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface)
                     }
                 }
@@ -247,7 +248,7 @@ fun StaffAppointmentCardItem(
                         modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Spacing.xs))
                         Text(stringResource(R.string.ui_odobrit), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.surface)
                     }
 
@@ -259,7 +260,7 @@ fun StaffAppointmentCardItem(
                         modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Spacing.xs))
                         Text(stringResource(R.string.ui_otklonit), fontSize = AppFontSize.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
                 } else {
@@ -270,7 +271,7 @@ fun StaffAppointmentCardItem(
                         modifier = if (appt.status == "APPROVED") Modifier.weight(1f).heightIn(min = 44.dp) else Modifier.fillMaxWidth().heightIn(min = 44.dp)
                     ) {
                         Icon(Icons.Default.NoteAlt, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Spacing.xs))
                         Text(stringResource(R.string.ui_zametka), fontSize = AppFontSize.bodySmall)
                     }
                 }

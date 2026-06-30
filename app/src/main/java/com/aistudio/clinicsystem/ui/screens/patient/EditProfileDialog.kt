@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,7 +52,7 @@ fun EditProfileDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Edit, contentDescription = null, tint = tealPrimary)
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(Spacing.s))
                 Text("Редактировать ФИО", fontWeight = FontWeight.Bold)
             }
         },

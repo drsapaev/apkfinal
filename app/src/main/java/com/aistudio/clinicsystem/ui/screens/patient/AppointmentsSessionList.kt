@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -66,7 +67,7 @@ fun AppointmentsSessionList(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(Spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -78,7 +79,7 @@ fun AppointmentsSessionList(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Записи не найдены",
+                    text = stringResource(R.string.ui_appointments_not_found),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

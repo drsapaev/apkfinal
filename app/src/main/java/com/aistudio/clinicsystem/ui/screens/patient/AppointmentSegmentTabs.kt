@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
@@ -61,8 +62,8 @@ fun AppointmentSegmentTabs(
             .fillMaxWidth()
             .clip(RoundedCornerShape(Radius.medium))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
     ) {
         listOf(
             Triple("ALL", "Все записи", "appointment_tab_all"),

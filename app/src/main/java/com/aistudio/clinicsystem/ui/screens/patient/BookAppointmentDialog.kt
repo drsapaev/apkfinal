@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.foundation.BorderStroke
@@ -65,6 +66,7 @@ import java.text.SimpleDateFormat
  * State is hoisted via parameters — caller owns all mutable state and
  * invokes viewModel.createAppointment() via [onConfirm].
  */
+@Suppress("UnusedParameter")  // selectedSpecialty kept for API symmetry with caller
 @Composable
 fun BookAppointmentDialog(
     doctors: List<Pair<String, String>>,
@@ -97,7 +99,7 @@ fun BookAppointmentDialog(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .padding(Spacing.l)
                     .imePadding().verticalScroll(rememberScrollState())
             ) {
                 Row(
@@ -115,7 +117,7 @@ fun BookAppointmentDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.m))
 
                 Text(
                     text = "1. ВЫБЕРИТЕ СПЕЦИАЛИСТА",
@@ -141,7 +143,7 @@ fun BookAppointmentDialog(
                                 shape = RoundedCornerShape(Radius.medium)
                             )
                             .clickable { onSelectDoctor(doc, spec.substringBefore(" (")) }
-                            .padding(10.dp)
+                            .padding(Spacing.s)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
@@ -167,7 +169,7 @@ fun BookAppointmentDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.l))
 
                 Text(
                     text = "2. ВЫБЕРИТЕ ДАТУ ПРИЁМА",
@@ -227,7 +229,7 @@ fun BookAppointmentDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.l))
 
                 Text(
                     text = "3. ВЫБЕРИТЕ ВРЕМЯ",
@@ -268,7 +270,7 @@ fun BookAppointmentDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.l))
 
                 Text(
                     text = "4. ОПИШИТЕ ЖАЛОБЫ / ПРИЧИНУ",
@@ -292,7 +294,7 @@ fun BookAppointmentDialog(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(Spacing.l))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -305,7 +307,7 @@ fun BookAppointmentDialog(
                     ) {
                         Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.s))
                     Button(
                         onClick = onConfirm,
                         enabled = !isBookingInProgress,

@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
@@ -165,7 +166,7 @@ fun MedicalHistoryCardItem(
                         fontWeight = FontWeight.Medium
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(
                         text = "Превью документа:",
                         fontSize = AppFontSize.bodySmall,
@@ -184,7 +185,7 @@ fun MedicalHistoryCardItem(
                     ) {
                         Column(
                             modifier = Modifier
-                                .padding(10.dp)
+                                .padding(Spacing.s)
                                 .imePadding().verticalScroll(rememberScrollState())
                         ) {
                             Text(
@@ -236,7 +237,7 @@ fun MedicalHistoryCardItem(
             )
             .testTag("medical_record_card_${record.id}")
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.l)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -260,7 +261,7 @@ fun MedicalHistoryCardItem(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "Заключение осмотра",
+                            text = stringResource(R.string.ui_appointment_session),
                             fontWeight = FontWeight.Bold,
                             fontSize = AppFontSize.title,
                             color = MaterialTheme.colorScheme.primary
@@ -327,7 +328,7 @@ fun MedicalHistoryCardItem(
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp).padding(top = 2.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Spacing.s))
                         Column {
                             Text(
                                 text = "Назначенный рецепт & Препараты",
@@ -356,7 +357,7 @@ fun MedicalHistoryCardItem(
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(18.dp).padding(top = 2.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Spacing.s))
                             Column {
                                 Text(
                                     text = "Дополнительные рекомендации",
@@ -373,12 +374,12 @@ fun MedicalHistoryCardItem(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Spacing.m))
 
                     // P-25 fix: Download + Share buttons side by side
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.s)
                     ) {
                         Button(
                             onClick = { downloadReport(record) },
@@ -396,18 +397,18 @@ fun MedicalHistoryCardItem(
                                     color = MaterialTheme.colorScheme.surface,
                                     strokeWidth = 2.dp
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(Spacing.s))
                                 Text("Загрузка...", fontSize = AppFontSize.body, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.surface)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.FileDownload,
-                                    contentDescription = "Скачать",
+                                    contentDescription = stringResource(R.string.ui_download),
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.surface
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    "Скачать",
+                                    stringResource(R.string.ui_download),
                                     fontSize = AppFontSize.body,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.surface,
@@ -426,19 +427,19 @@ fun MedicalHistoryCardItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Поделиться",
+                                contentDescription = stringResource(R.string.ui_share),
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                "Поделиться",
+                                stringResource(R.string.ui_share),
                                 fontSize = AppFontSize.body,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.s))
                     Surface(
                         shape = RoundedCornerShape(Radius.small),
                         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -448,7 +449,7 @@ fun MedicalHistoryCardItem(
                             text = "✓ Электронная подпись подтверждена врачом клиники.",
                             fontSize = AppFontSize.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(8.dp),
+                            modifier = Modifier.padding(Spacing.s),
                             textAlign = TextAlign.Center
                         )
                     }

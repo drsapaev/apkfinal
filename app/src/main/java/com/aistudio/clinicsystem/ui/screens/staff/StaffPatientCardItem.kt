@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
@@ -68,7 +69,7 @@ fun StaffPatientCardItem(
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(Spacing.l)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -86,7 +87,7 @@ fun StaffPatientCardItem(
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(Spacing.m))
 
             // P-23 fix: mergeDescendants so TalkBack announces patient info as one group
             Column(

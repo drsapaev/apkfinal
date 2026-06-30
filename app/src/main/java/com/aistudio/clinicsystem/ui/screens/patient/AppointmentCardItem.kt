@@ -1,5 +1,6 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.animation.*
@@ -99,7 +100,7 @@ fun AppointmentCardItem(
                     .align(Alignment.CenterVertically)
             )
 
-            Column(modifier = Modifier.padding(16.dp).weight(1f)) {
+            Column(modifier = Modifier.padding(Spacing.l).weight(1f)) {
                 // Header of Appointment Card
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -140,7 +141,7 @@ fun AppointmentCardItem(
                                     tint = statusColor,
                                     modifier = Modifier.size(12.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(Spacing.xs))
                                 Text(
                                     text = statusText,
                                     fontWeight = FontWeight.Bold,
@@ -178,7 +179,7 @@ fun AppointmentCardItem(
                                             .size(12.dp)
                                             .graphicsLayer { rotationZ = rotation }
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(Spacing.xs))
                                     Text(
                                         text = "Ожидает...",
                                         fontWeight = FontWeight.Bold,
@@ -191,7 +192,7 @@ fun AppointmentCardItem(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Spacing.m))
 
                 // Date Time indicators
                 Row(
@@ -243,7 +244,7 @@ fun AppointmentCardItem(
                             .clip(RoundedCornerShape(Radius.small))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .border(1.dp, MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(Radius.small))
-                            .padding(8.dp)
+                            .padding(Spacing.s)
                     ) {
                         Row {
                             Icon(
@@ -255,7 +256,7 @@ fun AppointmentCardItem(
                             Spacer(modifier = Modifier.width(6.dp))
                             Column {
                                 Text(
-                                    text = "Ответ клиники:",
+                                    text = stringResource(R.string.ui_clinic_response),
                                     fontSize = AppFontSize.caption,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -272,7 +273,7 @@ fun AppointmentCardItem(
 
                 // Call to action: CANCEL APPOINTMENT if ACTIVE/PENDING
                 if (appointment.status == "PENDING" || appointment.status == "APPROVED") {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Spacing.m))
                     TextButton(
                         onClick = { onCancelClick(appointment.id) },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),

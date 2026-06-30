@@ -174,6 +174,9 @@ private fun StaffScreenContent(
         com.aistudio.clinicsystem.utils.AnalyticsManager.trackScreen("StaffScreen")
     }
 
+    // P-03 completion: Bottom Navigation tab state
+    var selectedTab by rememberSaveable { mutableStateOf(0) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -268,6 +271,35 @@ private fun StaffScreenContent(
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        // P-03 completion: Bottom Navigation with 4 tabs
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.QueuePlayNext, contentDescription = "Очередь") },
+                    label = { Text("Очередь") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.AssignmentLate, contentDescription = "Записи") },
+                    label = { Text("Записи") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.Group, contentDescription = "Пациенты") },
+                    label = { Text("Пациенты") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Default.Dashboard, contentDescription = "Аналитика") },
+                    label = { Text("Аналитика") }
+                )
+            }
+        },
         modifier = modifier
     ) { innerPadding ->
         Box(
