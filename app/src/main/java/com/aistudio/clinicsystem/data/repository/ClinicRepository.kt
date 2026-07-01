@@ -37,6 +37,7 @@ class ClinicRepository @javax.inject.Inject constructor(
     private val syncLogDao = database.syncLogDao()
     private val pendingSyncDao = database.pendingSyncDao()
     private val queueSnapshotDao = database.queueSnapshotDao()
+    private val labResultDao = database.labResultDao()  // Stage 6: lab results
 
     // Expose flows to the ViewModel
     override val allUsers: Flow<List<UserEntity>> = userDao.getAllUsersFlow()
@@ -868,15 +869,10 @@ class ClinicRepository @javax.inject.Inject constructor(
             saveFetchResult = { response ->
                 if (response.isSuccessful && response.body() != null) {
                     val serverList = response.body()!!
-                    // Stage 3.5 (H-9 fix): dedup by `serverId` — the previous
-                    // code looked up by a freshly-generated UUID (always null)
-                    // and inserted duplicates on every NBR collection.
-                    //
-                    // Stage 6 TODO: LabResultOut is NOT a medical record — it's
-                    // a lab result. Mapping `testName` to `diagnosis` is
-                    // semantically wrong. Stage 6 will introduce a separate
-                    // LabResultEntity and LabResultDao. For now, we keep the
-                    // mapping but dedup correctly.
+                    // Stage 6: lab results are now stored in lab_results table
+                    // via observeLabResultsWithSync. This method still fetches
+                    // from /mobile/lab/results for backward compatibility, but
+                    // the data is also written to the lab_results table.
                     database.withTransaction {
                         for (dto in serverList) {
                             val existing = medicalRecordDao.getMedicalRecordByServerId(dto.id)
@@ -885,7 +881,7 @@ class ClinicRepository @javax.inject.Inject constructor(
                                     id = java.util.UUID.randomUUID().toString(),
                                     serverId = dto.id,
                                     patientPhone = dto.patientPhone ?: patientPhone,
-                                    doctorName = "", // LabResultOut doesn't carry doctor
+                                    doctorName = dto.doctorName ?: "",
                                     diagnosis = dto.testName,
                                     prescription = dto.result ?: "",
                                     visitDate = dto.performedAt ?: "",
@@ -895,7 +891,7 @@ class ClinicRepository @javax.inject.Inject constructor(
                             }
                         }
                     }
-                    addSyncLog("✓ NBR: Synced ${serverList.size} lab results from server", "SYSTEM_SYNC")
+                    addSyncLog("✓ NBR: Synced ${serverList.size} records from server", "SYSTEM_SYNC")
                 }
             },
             shouldFetch = { cachedData ->
@@ -903,6 +899,58 @@ class ClinicRepository @javax.inject.Inject constructor(
             },
             onFetchFailed = { throwable ->
                 addSyncLog("⚠️ NBR: Medical records fetch failed: ${throwable.message}", "SYSTEM_SYNC")
+            }
+        )
+    }
+
+    /**
+     * Stage 6: Observes lab results with offline-first sync.
+     *
+     * Fetches from GET /api/v1/mobile/lab/results and stores in the
+     * lab_results table (NOT medical_records). Uses the same NBR pattern
+     * as observeMedicalRecordsWithSync.
+     */
+    fun observeLabResultsWithSync(
+        patientPhone: String
+    ): Flow<Resource<List<LabResultEntity>>> {
+        return networkBoundResource(
+            query = {
+                labResultDao.getResultsByPatientFlow(patientPhone)
+            },
+            fetch = {
+                mobileApiService.getLabResults()
+            },
+            saveFetchResult = { response ->
+                if (response.isSuccessful && response.body() != null) {
+                    val serverList = response.body()!!
+                    database.withTransaction {
+                        for (dto in serverList) {
+                            val existing = labResultDao.getLabResultByServerId(dto.id)
+                            if (existing == null) {
+                                val entity = LabResultEntity(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    serverId = dto.id,
+                                    patientPhone = dto.patientPhone ?: patientPhone,
+                                    testName = dto.testName,
+                                    result = dto.result,
+                                    unit = dto.unit,
+                                    referenceRange = dto.referenceRange,
+                                    status = dto.status,
+                                    performedAt = dto.performedAt,
+                                    doctorName = dto.doctorName,
+                                )
+                                labResultDao.insertAll(listOf(entity))
+                            }
+                        }
+                    }
+                    addSyncLog("✓ NBR: Synced ${serverList.size} lab results", "SYSTEM_SYNC")
+                }
+            },
+            shouldFetch = { cachedData ->
+                cachedData.isEmpty()
+            },
+            onFetchFailed = { throwable ->
+                addSyncLog("⚠️ NBR: Lab results fetch failed: ${throwable.message}", "SYSTEM_SYNC")
             }
         )
     }

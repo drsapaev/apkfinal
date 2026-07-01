@@ -208,10 +208,46 @@ object Migrations {
         }
     }
 
+    /**
+     * Stage 6: Migration 8 → 9 — adds lab_results table.
+     *
+     * Creates a new table for LabResultEntity with proper fields matching
+     * the backend LabResultOut DTO (test_name, result, unit,
+     * reference_range, status, performed_at, doctor_name).
+     *
+     * Does NOT delete or modify existing medical_records table — legacy
+     * lab results that were incorrectly mapped into medical_records
+     * remain there for backward compatibility.
+     */
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS lab_results (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    serverId INTEGER,
+                    patientPhone TEXT NOT NULL,
+                    testName TEXT NOT NULL,
+                    result TEXT,
+                    unit TEXT,
+                    referenceRange TEXT,
+                    status TEXT NOT NULL,
+                    performedAt TEXT,
+                    doctorName TEXT,
+                    timestamp INTEGER NOT NULL DEFAULT 0
+                )
+            """.trimIndent())
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_lab_results_patientPhone ON lab_results(patientPhone)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_lab_results_serverId ON lab_results(serverId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_lab_results_performedAt ON lab_results(performedAt)")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_4_5,
         MIGRATION_5_6,
         MIGRATION_6_7,
         MIGRATION_7_8,
+        MIGRATION_8_9,
     )
 }
