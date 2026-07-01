@@ -245,6 +245,31 @@ interface DoctorDao {
     suspend fun getDoctorCount(): Int
 }
 
+/**
+ * LabResultDao — DAO for lab_results table.
+ * Stores lab results from GET /api/v1/mobile/lab/results.
+ */
+@Dao
+interface LabResultDao {
+    @Query("SELECT * FROM lab_results WHERE patientPhone = :patientPhone ORDER BY performedAt DESC")
+    fun getResultsByPatientFlow(patientPhone: String): Flow<List<LabResultEntity>>
+
+    @Query("SELECT * FROM lab_results ORDER BY performedAt DESC")
+    fun getAllResultsFlow(): Flow<List<LabResultEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(results: List<LabResultEntity>)
+
+    @Query("SELECT * FROM lab_results WHERE serverId = :serverId LIMIT 1")
+    suspend fun getLabResultByServerId(serverId: Int): LabResultEntity?
+
+    @Query("DELETE FROM lab_results WHERE patientPhone = :patientPhone")
+    suspend fun clearResultsByPatient(patientPhone: String)
+
+    @Query("DELETE FROM lab_results")
+    suspend fun clearAll()
+}
+
 @Database(
     entities = [
         UserEntity::class,
@@ -253,11 +278,11 @@ interface DoctorDao {
         SyncLogEntity::class,
         QueueSnapshotEntity::class,
         PendingSyncEntity::class,
-        DoctorEntity::class
+        DoctorEntity::class,
+        LabResultEntity::class
     ],
-    // P-04: bumped 7 → 8. Migration 7→8 adds doctors table for backend-synced
-    // doctor directory (replaces hardcoded 3-doctor list in PatientScreen.kt).
-    version = 8,
+    // Stage 6: bumped 8 → 9. Migration 8→9 adds lab_results table.
+    version = 9,
     // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
     // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/8.json
     // on every build. This file must be committed to git — it is the
@@ -272,6 +297,7 @@ abstract class ClinicDatabase : RoomDatabase() {
     abstract fun queueSnapshotDao(): QueueSnapshotDao
     abstract fun pendingSyncDao(): PendingSyncDao
     abstract fun doctorDao(): DoctorDao  // P-04: doctor directory DAO
+    abstract fun labResultDao(): LabResultDao  // Stage 6: lab results DAO
 
     companion object {
         @Volatile

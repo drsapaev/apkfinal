@@ -141,7 +141,36 @@ data class SyncLogEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val logMessage: String,
     val clinicId: String = "clinic_base",
-    val direction: String, // "PATIENT_TO_STAFF", "STAFF_TO_PATIENT", "CLOUD_SYNC_SIMULATOR"
+    val direction: String,
+    val timestamp: Long = System.currentTimeMillis(),
+)
+
+/**
+ * LabResultEntity — stores lab results from GET /api/v1/mobile/lab/results.
+ *
+ * Previously, lab results were incorrectly mapped into MedicalRecordEntity
+ * (testName→diagnosis, result→prescription). This entity stores the fields
+ * as-is, preserving their semantic meaning.
+ */
+@Entity(
+    tableName = "lab_results",
+    indices = [
+        Index(value = ["patientPhone"]),
+        Index(value = ["serverId"]),
+        Index(value = ["performedAt"]),
+    ],
+)
+data class LabResultEntity(
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    val serverId: Int? = null,
+    val patientPhone: String,
+    val testName: String,
+    val result: String? = null,
+    val unit: String? = null,
+    val referenceRange: String? = null,
+    val status: String,
+    val performedAt: String? = null,
+    val doctorName: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
 )
 
