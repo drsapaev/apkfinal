@@ -877,15 +877,23 @@ class ClinicRepository @javax.inject.Inject constructor(
                         for (dto in serverList) {
                             val existing = medicalRecordDao.getMedicalRecordByServerId(dto.id)
                             if (existing == null) {
+                                // High-1 audit fix: aligned with backend LabResultOut DTO.
+                                // Backend no longer returns patientPhone/doctorName/result/
+                                // performedAt as separate fields — these are now derived
+                                // from the new backend contract (result_value, result_date,
+                                // notes). The medical_records table fields are mapped
+                                // semantically: testName→diagnosis, resultValue→
+                                // prescription, resultDate→visitDate, referenceRange→
+                                // recommendations, notes→doctorName.
                                 val entity = MedicalRecordEntity(
                                     id = java.util.UUID.randomUUID().toString(),
                                     serverId = dto.id,
-                                    patientPhone = dto.patientPhone ?: patientPhone,
-                                    doctorName = dto.doctorName ?: "",
+                                    patientPhone = patientPhone,
+                                    doctorName = dto.notes ?: "",
                                     diagnosis = dto.testName,
-                                    prescription = dto.result ?: "",
-                                    visitDate = dto.performedAt ?: "",
-                                    recommendations = dto.referenceRange ?: "",
+                                    prescription = dto.resultValue,
+                                    visitDate = dto.resultDate,
+                                    recommendations = dto.referenceRange,
                                 )
                                 medicalRecordDao.insertRecord(entity)
                             }
@@ -927,17 +935,26 @@ class ClinicRepository @javax.inject.Inject constructor(
                         for (dto in serverList) {
                             val existing = labResultDao.getLabResultByServerId(dto.id)
                             if (existing == null) {
+                                // High-1 audit fix: aligned with backend LabResultOut DTO.
+                                // Backend returns: result_value, reference_range, unit,
+                                // result_date, status, notes. Previous client DTO
+                                // expected patientPhone, result, performedAt, doctorName
+                                // which the backend never returned (all were null).
+                                // Backend does NOT return patientPhone — we use the
+                                // current patient's phone from the enclosing scope.
+                                // Backend "notes" replaces the old "doctorName" field
+                                // (arbitrary notes including doctor attribution).
                                 val entity = LabResultEntity(
                                     id = java.util.UUID.randomUUID().toString(),
                                     serverId = dto.id,
-                                    patientPhone = dto.patientPhone ?: patientPhone,
+                                    patientPhone = patientPhone,
                                     testName = dto.testName,
-                                    result = dto.result,
+                                    result = dto.resultValue,
                                     unit = dto.unit,
                                     referenceRange = dto.referenceRange,
                                     status = dto.status,
-                                    performedAt = dto.performedAt,
-                                    doctorName = dto.doctorName,
+                                    performedAt = dto.resultDate,
+                                    doctorName = dto.notes,
                                 )
                                 labResultDao.insertAll(listOf(entity))
                             }
