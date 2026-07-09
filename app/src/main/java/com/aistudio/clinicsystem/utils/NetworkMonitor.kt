@@ -5,7 +5,6 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.util.Log
 import com.aistudio.clinicsystem.data.db.SyncLogEntity
 import com.aistudio.clinicsystem.data.realtime.RealtimeManager
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,9 +54,7 @@ class NetworkMonitor @Inject constructor(
     private val realtimeManager: RealtimeManager,
     private val syncLogDao: com.aistudio.clinicsystem.data.db.SyncLogDao,
 ) {
-    companion object {
-        private const val TAG = "NetworkMonitor"
-    }
+    // Medium-1 audit fix: TAG constant removed — Timber auto-tags with class name.
 
     private val _isOnline = MutableStateFlow(true)
     val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
@@ -75,7 +73,7 @@ class NetworkMonitor @Inject constructor(
      */
     fun startMonitoring() {
         if (started) {
-            Log.d(TAG, "startMonitoring() already started — ignoring")
+            Timber.d("startMonitoring() already started — ignoring")
             return
         }
         started = true
@@ -100,7 +98,7 @@ class NetworkMonitor @Inject constructor(
             override fun onAvailable(network: Network) {
                 if (!_isOnline.value) {
                     _isOnline.value = true
-                    Log.d(TAG, "Network connection is AVAILABLE")
+                    Timber.d("Network connection is AVAILABLE")
                     scope.launch {
                         syncLogDao.insertLog(
                             SyncLogEntity(
@@ -116,7 +114,7 @@ class NetworkMonitor @Inject constructor(
                         try {
                             realtimeManager.reconnectNow()
                         } catch (e: Exception) {
-                            Log.e(TAG, "WebSocket reconnect failed", e)
+                            Timber.e("WebSocket reconnect failed", e)
                         }
                         // Trigger WorkManager instant syncer
                         SyncWorkScheduler.triggerImmediateSync(appContext)
@@ -127,7 +125,7 @@ class NetworkMonitor @Inject constructor(
             override fun onLost(network: Network) {
                 if (_isOnline.value) {
                     _isOnline.value = false
-                    Log.d(TAG, "Network connection was LOST")
+                    Timber.d("Network connection was LOST")
                     scope.launch {
                         syncLogDao.insertLog(
                             SyncLogEntity(
@@ -148,7 +146,7 @@ class NetworkMonitor @Inject constructor(
         try {
             connectivityManager?.registerNetworkCallback(request, networkCallback!!)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to register network callback", e)
+            Timber.e("Failed to register network callback", e)
         }
     }
 
@@ -162,7 +160,7 @@ class NetworkMonitor @Inject constructor(
         try {
             networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to unregister network callback", e)
+            Timber.e("Failed to unregister network callback", e)
         }
         networkCallback = null
         connectivityManager = null

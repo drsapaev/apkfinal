@@ -1,7 +1,6 @@
 package com.aistudio.clinicsystem.data.realtime
 
 import android.content.Context
-import android.util.Log
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.session.SessionState
 import com.aistudio.clinicsystem.data.session.SessionRepository
@@ -19,6 +18,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -55,9 +55,7 @@ class RealtimeManager @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val wsClient: ClinicWebSocketClient,
 ) {
-    companion object {
-        private const val TAG = "RealtimeManager"
-    }
+    // Medium-1 audit fix: TAG removed — Timber auto-tags with class name.
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sessionObserverJob: Job? = null
@@ -90,7 +88,7 @@ class RealtimeManager @Inject constructor(
      */
     fun initialize() {
         if (sessionObserverJob?.isActive == true) {
-            Log.d(TAG, "initialize() called but already initialized — ignoring")
+            Timber.d("initialize() called but already initialized — ignoring")
             return
         }
 
@@ -122,7 +120,7 @@ class RealtimeManager @Inject constructor(
             sessionRepository.sessionState.collectLatest { state ->
                 if (state is SessionState.Authenticated) {
                     if (lastToken != null && lastToken != state.accessToken) {
-                        Log.i(TAG, "Access token rotated — reconnecting WebSocket with new token")
+                        Timber.i("Access token rotated — reconnecting WebSocket with new token")
                         // NET-18 fix: reconnect with new token
                         wsClient.stop()
                         wsClient.start()
@@ -148,17 +146,17 @@ class RealtimeManager @Inject constructor(
 
     private fun ensureStarted() {
         if (isStarted) {
-            Log.d(TAG, "ensureStarted() — WebSocket already started, ignoring")
+            Timber.d("ensureStarted() — WebSocket already started, ignoring")
             return
         }
         // Only start if authenticated — don't open a socket to a server we
         // can't authenticate to.
         val state = sessionRepository.sessionState.value
         if (state !is SessionState.Authenticated) {
-            Log.d(TAG, "ensureStarted() — session not Authenticated ($state), skipping")
+            Timber.d("ensureStarted() — session not Authenticated ($state), skipping")
             return
         }
-        Log.i(TAG, "Starting real-time WebSocket connection")
+        Timber.i("Starting real-time WebSocket connection")
         wsClient.start()
         isStarted = true
         _connectionState.value = RealtimeEvent.ConnectionState.Connected
@@ -173,11 +171,11 @@ class RealtimeManager @Inject constructor(
 
     private fun ensureStopped() {
         if (!isStarted) return
-        Log.i(TAG, "Stopping real-time WebSocket connection")
+        Timber.i("Stopping real-time WebSocket connection")
         try {
             wsClient.stop()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to stop WebSocket cleanly", e)
+            Timber.e("Failed to stop WebSocket cleanly", e)
         }
         isStarted = false
         _connectionState.value = RealtimeEvent.ConnectionState.Disconnected
@@ -192,12 +190,12 @@ class RealtimeManager @Inject constructor(
      * singleton instance — Hilt guarantees that.
      */
     fun reconnectNow() {
-        Log.i(TAG, "reconnectNow() — forcing reconnect (network restored)")
+        Timber.i("reconnectNow() — forcing reconnect (network restored)")
         if (isStarted) {
             try {
                 wsClient.stop()
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to stop WebSocket before reconnect", e)
+                Timber.e("Failed to stop WebSocket before reconnect", e)
             }
             isStarted = false
         }
