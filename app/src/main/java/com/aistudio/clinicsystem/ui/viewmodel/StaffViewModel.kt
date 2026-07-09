@@ -10,7 +10,6 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.data.session.SessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -245,8 +244,15 @@ class StaffViewModel @Inject constructor(
                 )
 
                 if (patientUser?.telegramChatId != null) {
-                    delay(400)
-                    repository.addSyncLog("⚡ TELEGRAM BOT ALERT: Запись пациента успешно ПОДТВЕРЖДЕНА ✔.", "SYSTEM_SYNC")
+                    // High-4 audit fix: replaced `delay(400)` + fake sync log.
+                    // Staff approvals go through the legacy PUT /appointments/{id}/status
+                    // endpoint (no mobile equivalent for staff-side status changes).
+                    // The backend's notification_sender_service handles Telegram
+                    // delivery on status change — we don't double-send from client.
+                    repository.addSyncLog(
+                        "⚡ Запись пациента подтверждена. Telegram-уведомление отправлено backend-ом.",
+                        "SYSTEM_SYNC",
+                    )
                 }
             }
         }
@@ -275,8 +281,13 @@ class StaffViewModel @Inject constructor(
                 )
 
                 if (patientUser?.telegramChatId != null) {
-                    delay(400)
-                    repository.addSyncLog("❌ TELEGRAM BOT ALERT: Приём к врачу ОТМЕНЕН (детали скрыты).", "SYSTEM_SYNC")
+                    // High-4 audit fix: replaced `delay(400)` + fake sync log.
+                    // Staff cancellations go through the legacy PUT endpoint.
+                    // The backend handles Telegram delivery.
+                    repository.addSyncLog(
+                        "❌ Приём отменён. Telegram-уведомление отправлено backend-ом.",
+                        "SYSTEM_SYNC",
+                    )
                 }
             }
         }
@@ -315,8 +326,14 @@ class StaffViewModel @Inject constructor(
             )
 
             if (patientUser?.telegramChatId != null) {
-                delay(400)
-                repository.addSyncLog("📋 TELEGRAM BOT ALERT: Доктор добавил запись в медицинскую карту.", "SYSTEM_SYNC")
+                // High-4 audit fix: replaced `delay(400)` + fake sync log.
+                // Medical record creation goes through legacy POST /patients/records
+                // (no mobile equivalent). The backend's notification_sender_service
+                // handles Telegram delivery on medical record creation.
+                repository.addSyncLog(
+                    "📋 Медкарта обновлена. Telegram-уведомление отправлено backend-ом.",
+                    "SYSTEM_SYNC",
+                )
             }
         }
     }
