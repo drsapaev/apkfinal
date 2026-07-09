@@ -88,8 +88,11 @@ interface MobileApiService {
     @GET("api/v1/authentication/profile")
     suspend fun getProfile(): Response<UserProfileResponse>
 
-    @GET("api/v1/authentication/status")
-    suspend fun getAuthStatus(): Response<AuthStatusResponse>
+    // High-3 audit fix: removed `getAuthStatus` — duplicates `getProfile`.
+    // The auth status endpoint returned a subset of profile fields
+    // (authenticated, user_id, role, requires_2fa). `getProfile` returns
+    // the full UserProfileResponse including role + 2FA status, so the
+    // status endpoint is redundant.
 
     // ═══════════════════════════════════════════════════════════════════
     // 2FA
@@ -110,21 +113,34 @@ interface MobileApiService {
         @Body request: TwoFARecoveryVerifyRequest
     ): Response<LoginResponse>
 
-    @POST("api/v1/2fa/send-code")
-    suspend fun send2FACode(
-        @Body request: Send2FACodeRequest
-    ): Response<Unit>
+    // High-3 audit fix: removed `send2FACode` — never called. The 2FA
+    // flow uses `verify2FA` directly (TOTP code is entered by the user
+    // after receiving it from their authenticator app, not sent by the
+    // backend). The send-code endpoint was for SMS/email 2FA which is
+    // not implemented in the mobile client.
 
     // ═══════════════════════════════════════════════════════════════════
     // Mobile: profile
     // ═══════════════════════════════════════════════════════════════════
 
+    // High-3 audit fix: the next 3 endpoints are reserved for future
+    // Profile tab features (ProfileCabinetCard edit, avatar upload).
+    // Marked @Suppress("unused") until the UI is wired up — they are
+    // part of the documented mobile contract and will be called once
+    // the profile-edit screens are implemented.
+
+    /** Reserved for future: Profile tab — display patient profile from /mobile/patients/me. */
+    @Suppress("unused")
     @GET("api/v1/mobile/patients/me")
     suspend fun getMyPatientProfile(): Response<PatientProfileOut>
 
+    /** Reserved for future: Profile edit — PUT /mobile/profile. */
+    @Suppress("unused")
     @PUT("api/v1/mobile/profile")
     suspend fun updateProfile(@Body request: ProfileUpdateRequest): Response<Unit>
 
+    /** Reserved for future: Avatar upload — POST /mobile/profile/avatar. */
+    @Suppress("unused")
     @POST("api/v1/mobile/profile/avatar")
     suspend fun uploadAvatar(@Body body: AvatarUploadRequest): Response<Unit>
 
@@ -135,10 +151,10 @@ interface MobileApiService {
     @GET("api/v1/mobile/appointments/upcoming")
     suspend fun getUpcomingAppointments(): Response<List<MobileAppointmentOut>>
 
-    @GET("api/v1/mobile/appointments/{appointment_id}")
-    suspend fun getAppointment(
-        @Path("appointment_id") appointmentId: String
-    ): Response<MobileAppointmentOut>
+    // High-3 audit fix: removed `getAppointment(id)` — never called.
+    // The list endpoint `getUpcomingAppointments` returns all the
+    // appointment data the UI needs. Single-appointment fetch by id
+    // was for a future appointment-detail screen that doesn't exist.
 
     @POST("api/v1/mobile/appointments/book")
     suspend fun bookAppointment(
@@ -150,6 +166,8 @@ interface MobileApiService {
         @Body request: AppointmentCancelRequest
     ): Response<Unit>
 
+    /** Reserved for future: Reschedule dialog — POST /mobile/appointments/reschedule. */
+    @Suppress("unused")
     @POST("api/v1/mobile/appointments/reschedule")
     suspend fun rescheduleAppointment(
         @Body request: AppointmentRescheduleRequest
@@ -159,31 +177,29 @@ interface MobileApiService {
     // Mobile: doctors / services
     // ═══════════════════════════════════════════════════════════════════
 
-    @POST("api/v1/mobile/doctors/search")
-    suspend fun searchDoctors(
-        @Body request: DoctorSearchRequest
-    ): Response<List<DoctorOut>>
+    // High-3 audit fix: removed 4 doctor/service search endpoints:
+    //   - `searchDoctors` — duplicates `getDoctors` (P-04 doctor
+    //     directory already uses `getDoctors` with ETag caching)
+    //   - `getDoctorSchedule` — duplicates `getDoctorTimeSlots` (used
+    //     by DoctorRepository for slot booking)
+    //   - `searchServices` — no service directory UI exists
+    //   - `getServiceCategories` — no service category UI exists
+    //
+    // The doctor directory (P-04) uses `getDoctors` + `getDoctorTimeSlots`
+    // (declared at the bottom of this interface). When a service catalog
+    // UI is added, these can be restored from git history.
 
-    @GET("api/v1/mobile/doctors/{doctor_id}/schedule")
-    suspend fun getDoctorSchedule(
-        @Path("doctor_id") doctorId: String,
-        @Query("date") date: String? = null
-    ): Response<DoctorScheduleOut>
-
-    @POST("api/v1/mobile/services/search")
-    suspend fun searchServices(
-        @Body request: ServiceSearchRequest
-    ): Response<List<ServiceOut>>
-
-    @GET("api/v1/mobile/services/categories")
-    suspend fun getServiceCategories(): Response<List<ServiceCategoryOut>>
+    // (searchDoctors, getDoctorSchedule, searchServices, getServiceCategories removed)
 
     // ═══════════════════════════════════════════════════════════════════
     // Mobile: queue
     // ═══════════════════════════════════════════════════════════════════
 
-    @GET("api/v1/mobile/queues/status")
-    suspend fun getQueueStatus(): Response<QueueStatusOut>
+    // High-3 audit fix: removed `getQueueStatus` — never called.
+    // Patient-side uses `getMyQueuePosition` (own position only, privacy-
+    // scoped). Staff-side uses legacy `getQueue()` (full clinic queue).
+    // `getQueueStatus` returned aggregate queue stats (total_waiting,
+    // average_wait_minutes) — no UI consumes this.
 
     @GET("api/v1/mobile/queues/my-position")
     suspend fun getMyQueuePosition(): Response<QueuePositionOut>
@@ -199,17 +215,29 @@ interface MobileApiService {
     // Mobile: notifications
     // ═══════════════════════════════════════════════════════════════════
 
+    // High-3 audit fix: the next 4 notification endpoints are reserved
+    // for the future Notification Center + Settings screens. Marked
+    // @Suppress("unused") until the UI is wired up.
+
+    /** Reserved for future: Notification Center — GET /mobile/notifications. */
+    @Suppress("unused")
     @GET("api/v1/mobile/notifications")
     suspend fun getNotifications(): Response<List<NotificationOut>>
 
+    /** Reserved for future: mark notification as read — POST /mobile/notifications/{id}/read. */
+    @Suppress("unused")
     @POST("api/v1/mobile/notifications/{notification_id}/read")
     suspend fun markNotificationRead(
         @Path("notification_id") notificationId: String
     ): Response<Unit>
 
+    /** Reserved for future: Notification settings screen — GET /mobile/settings/notifications. */
+    @Suppress("unused")
     @GET("api/v1/mobile/settings/notifications")
     suspend fun getNotificationSettings(): Response<NotificationSettingsOut>
 
+    /** Reserved for future: Notification settings screen — PUT /mobile/settings/notifications. */
+    @Suppress("unused")
     @PUT("api/v1/mobile/settings/notifications")
     suspend fun updateNotificationSettings(
         @Body request: NotificationSettingsRequest
@@ -219,25 +247,25 @@ interface MobileApiService {
     // Mobile: clinic info / feedback / emergency
     // ═══════════════════════════════════════════════════════════════════
 
-    @GET("api/v1/mobile/clinic/info")
-    suspend fun getClinicInfo(): Response<ClinicInfoOut>
+    // High-3 audit fix: removed `getClinicInfo` — no clinic-info UI exists.
+    // The clinic address is shown inline in appointment cards (from
+    // AppointmentUpcomingOut.clinicAddress, see High-1 fix).
 
+    /** Reserved for future: Dashboard quick stats — GET /mobile/stats. */
+    @Suppress("unused")
     @GET("api/v1/mobile/stats")
     suspend fun getQuickStats(): Response<MobileQuickStats>
 
-    @POST("api/v1/mobile/feedback")
-    suspend fun submitFeedback(@Body request: FeedbackRequest): Response<Unit>
+    // High-3 audit fix: removed `submitFeedback` and `setEmergencyContact`
+    // — no UI exists for either. Feedback collection and emergency contact
+    // management are not on the roadmap. Can be restored from git history
+    // if/when these features are prioritized.
 
-    @POST("api/v1/mobile/emergency/contact")
-    suspend fun setEmergencyContact(
-        @Body request: EmergencyContactRequest
-    ): Response<Unit>
-
-    @GET("api/v1/mobile/version")
-    suspend fun getApiVersion(): Response<ApiVersionOut>
-
-    @GET("api/v1/mobile/health")
-    suspend fun healthCheck(): Response<Unit>
+    // High-3 audit fix: removed `getApiVersion` and `healthCheck` —
+    // diagnostics endpoints, never called from the app. Backend health
+    // is implicitly verified on every authenticated request (401/403/
+    // 5xx responses trigger appropriate error handling). API version
+    // is not displayed in the UI.
 
     // P-04: doctor directory endpoints
     @GET("api/v1/mobile/doctors")
@@ -306,15 +334,8 @@ data class LogoutRequest(
     @Json(name = "refresh_token") val refreshToken: String
 )
 
-@JsonClass(generateAdapter = true)
-data class AuthStatusResponse(
-    @Json(name = "authenticated") val authenticated: Boolean,
-    @Json(name = "user_id") val userId: Int? = null,
-    @Json(name = "username") val username: String? = null,
-    @Json(name = "role") val role: String? = null,
-    @Json(name = "requires_2fa") val requires2fa: Boolean? = null,
-    @Json(name = "two_factor_enrolled") val twoFactorEnrolled: Boolean? = null
-)
+// High-3 audit fix: removed unused DTO `AuthStatusResponse` —
+// `getAuthStatus` endpoint was removed (duplicates `getProfile`).
 
 /**
  * User profile returned by GET /api/v1/authentication/profile.
@@ -367,11 +388,8 @@ data class TwoFARecoveryVerifyRequest(
     @Json(name = "code") val code: String
 )
 
-@JsonClass(generateAdapter = true)
-data class Send2FACodeRequest(
-    @Json(name = "method") val method: String,
-    @Json(name = "pending_2fa_token") val pending2faToken: String
-)
+// High-3 audit fix: removed unused DTO `Send2FACodeRequest` —
+// `send2FACode` endpoint was removed (2FA uses verify2FA directly).
 
 // ═══════════════════════════════════════════════════════════════════════
 // DTOs — Mobile: profile
@@ -535,71 +553,22 @@ data class AppointmentRescheduleRequest(
 // DTOs — Mobile: doctors / services
 // ═══════════════════════════════════════════════════════════════════════
 
-@JsonClass(generateAdapter = true)
-data class DoctorSearchRequest(
-    @Json(name = "query") val query: String? = null,
-    @Json(name = "specialty") val specialty: String? = null,
-    @Json(name = "clinic_id") val clinicId: String? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class DoctorOut(
-    @Json(name = "id") val id: Int,
-    @Json(name = "full_name") val fullName: String,
-    @Json(name = "specialty") val specialty: String? = null,
-    @Json(name = "phone") val phone: String? = null,
-    @Json(name = "clinic_id") val clinicId: String? = null,
-    @Json(name = "photo_url") val photoUrl: String? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class DoctorScheduleOut(
-    @Json(name = "doctor_id") val doctorId: Int,
-    @Json(name = "slots") val slots: List<TimeSlot> = emptyList()
-)
-
-@JsonClass(generateAdapter = true)
-data class TimeSlot(
-    @Json(name = "date") val date: String,
-    @Json(name = "time") val time: String,
-    @Json(name = "available") val available: Boolean = true
-)
-
-@JsonClass(generateAdapter = true)
-data class ServiceSearchRequest(
-    @Json(name = "query") val query: String? = null,
-    @Json(name = "category") val category: String? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class ServiceOut(
-    @Json(name = "id") val id: Int,
-    @Json(name = "name") val name: String,
-    @Json(name = "description") val description: String? = null,
-    @Json(name = "price") val price: Double? = null,
-    @Json(name = "category") val category: String? = null,
-    @Json(name = "duration_minutes") val durationMinutes: Int? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class ServiceCategoryOut(
-    @Json(name = "id") val id: Int,
-    @Json(name = "name") val name: String,
-    @Json(name = "icon") val icon: String? = null
-)
+// High-3 audit fix: removed 7 unused DTOs that backed the removed
+// doctor/service search endpoints:
+//   - DoctorSearchRequest, DoctorOut, DoctorScheduleOut, TimeSlot
+//     (searchDoctors, getDoctorSchedule — duplicates of getDoctors +
+//     getDoctorTimeSlots which use DoctorDto + TimeSlotDto)
+//   - ServiceSearchRequest, ServiceOut, ServiceCategoryOut
+//     (searchServices, getServiceCategories — no UI exists)
+// The doctor directory (P-04) uses DoctorDto + TimeSlotDto (declared
+// at the bottom of this file) via getDoctors + getDoctorTimeSlots.
 
 // ═══════════════════════════════════════════════════════════════════════
 // DTOs — Mobile: queue
 // ═══════════════════════════════════════════════════════════════════════
 
-@JsonClass(generateAdapter = true)
-data class QueueStatusOut(
-    @Json(name = "queue_id") val queueId: Int? = null,
-    @Json(name = "total_waiting") val totalWaiting: Int = 0,
-    @Json(name = "current_number") val currentNumber: Int? = null,
-    @Json(name = "average_wait_minutes") val averageWaitMinutes: Int? = null,
-    @Json(name = "status") val status: String = "OPEN"
-)
+// High-3 audit fix: removed unused DTO `QueueStatusOut` —
+// `getQueueStatus` endpoint was removed (patient uses getMyQueuePosition).
 
 @JsonClass(generateAdapter = true)
 data class QueuePositionOut(
@@ -718,19 +687,12 @@ data class NotificationSettingsRequest(
 )
 
 // ═══════════════════════════════════════════════════════════════════════
-// DTOs — Mobile: clinic info / feedback / emergency / version
+// DTOs — Mobile: stats / version
 // ═══════════════════════════════════════════════════════════════════════
 
-@JsonClass(generateAdapter = true)
-data class ClinicInfoOut(
-    @Json(name = "name") val name: String,
-    @Json(name = "address") val address: String? = null,
-    @Json(name = "phone") val phone: String? = null,
-    @Json(name = "email") val email: String? = null,
-    @Json(name = "working_hours") val workingHours: String? = null,
-    @Json(name = "lat") val lat: Double? = null,
-    @Json(name = "lng") val lng: Double? = null
-)
+// High-3 audit fix: removed unused DTO `ClinicInfoOut` —
+// `getClinicInfo` endpoint was removed (clinic address is inline in
+// AppointmentUpcomingOut.clinicAddress, see High-1 fix).
 
 /**
  * High-1 audit fix: aligned with backend `MobileQuickStats`
@@ -757,26 +719,10 @@ data class MobileQuickStats(
     @Json(name = "pending_payments") val pendingPayments: Int = 0,
 )
 
-@JsonClass(generateAdapter = true)
-data class FeedbackRequest(
-    @Json(name = "rating") val rating: Int,
-    @Json(name = "message") val message: String? = null,
-    @Json(name = "category") val category: String? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class EmergencyContactRequest(
-    @Json(name = "name") val name: String,
-    @Json(name = "phone") val phone: String,
-    @Json(name = "relationship") val relationship: String? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class ApiVersionOut(
-    @Json(name = "version") val version: String,
-    @Json(name = "api_version") val apiVersion: String? = null,
-    @Json(name = "build_date") val buildDate: String? = null
-)
+// High-3 audit fix: removed 3 unused DTOs:
+//   - `FeedbackRequest` (submitFeedback endpoint removed)
+//   - `EmergencyContactRequest` (setEmergencyContact endpoint removed)
+//   - `ApiVersionOut` (getApiVersion endpoint removed)
 
 // ═══════════════════════════════════════════════════════════════════════
 // P-04: DTOs — Doctor directory
