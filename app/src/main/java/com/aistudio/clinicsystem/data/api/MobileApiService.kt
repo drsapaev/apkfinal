@@ -377,25 +377,59 @@ data class Send2FACodeRequest(
 // DTOs — Mobile: profile
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * High-1 audit fix: aligned with backend `app/schemas/mobile.py:PatientProfileOut`.
+ *
+ * Backend returns (Pydantic, all snake_case):
+ *   id: int
+ *   fio: str                              ← NOT `full_name`
+ *   phone: str
+ *   birth_year: int | None
+ *   address: str | None                   ← NEW (was missing on client)
+ *   telegram_id: str | None               ← NOT `telegram_chat_id`
+ *   created_at: datetime                  ← NEW (ISO 8601 string)
+ *
+ * The previous client DTO expected fields the backend never returns
+ * (`full_name`, `birth_date`, `biometric_enabled`, `telegram_chat_id`)
+ * and missed `address` + `created_at`. Every field except `id`/`fio`/
+ * `phone`/`birth_year` was null after JSON parsing.
+ *
+ * For UI display, use [displayName] (= fio or fallback) and
+ * [telegramConnected] (= telegram_id != null).
+ */
 @JsonClass(generateAdapter = true)
 data class PatientProfileOut(
     @Json(name = "id") val id: Int,
+    @Json(name = "fio") val fio: String,
     @Json(name = "phone") val phone: String,
-    @Json(name = "fio") val fio: String? = null,           // backend uses `fio` here, not `full_name`
     @Json(name = "birth_year") val birthYear: Int? = null,
-    @Json(name = "full_name") val fullName: String? = null,  // some endpoints use this
-    @Json(name = "birth_date") val birthDate: String? = null,
-    @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
-    @Json(name = "biometric_enabled") val biometricEnabled: Boolean? = null
-)
+    @Json(name = "address") val address: String? = null,
+    @Json(name = "telegram_id") val telegramId: String? = null,
+    /** ISO 8601 datetime string, e.g. "2026-07-10T14:30:00Z". */
+    @Json(name = "created_at") val createdAt: String? = null,
+) {
+    /** Convenience accessor: display name = fio (always non-null on backend). */
+    val displayName: String get() = fio.ifBlank { phone }
 
+    /** Convenience accessor: true if the user has linked a Telegram account. */
+    val telegramConnected: Boolean get() = !telegramId.isNullOrBlank()
+}
+
+/**
+ * High-1 audit fix: profile update request body.
+ *
+ * Backend `PUT /api/v1/mobile/profile` accepts the same shape as
+ * `PatientProfileOut` for the updatable fields. Note that the backend
+ * does NOT support `biometric_enabled` — biometric enrollment is a
+ * client-only preference stored in EncryptedSharedPreferences.
+ */
 @JsonClass(generateAdapter = true)
 data class ProfileUpdateRequest(
-    @Json(name = "full_name") val fullName: String? = null,
-    @Json(name = "birth_date") val birthDate: String? = null,
+    @Json(name = "fio") val fio: String? = null,
     @Json(name = "phone") val phone: String? = null,
-    @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
-    @Json(name = "biometric_enabled") val biometricEnabled: Boolean? = null
+    @Json(name = "birth_year") val birthYear: Int? = null,
+    @Json(name = "address") val address: String? = null,
+    @Json(name = "telegram_id") val telegramId: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -408,23 +442,72 @@ data class AvatarUploadRequest(
 // DTOs — Mobile: appointments
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * High-1 audit fix: aligned with backend `AppointmentUpcomingOut`
+ * (`app/schemas/mobile.py:254-264`).
+ *
+ * Backend returns:
+ *   id: int
+ *   doctor_name: str
+ *   specialty: str
+ *   appointment_date: datetime          ← ISO 8601 string, single field
+ *   status: str
+ *   clinic_address: str                  ← NOT `clinic_id`
+ *
+ * The previous client DTO (renamed `MobileAppointmentOut`) expected 13
+ * fields including separate `date` + `time` strings, `patient_phone`,
+ * `patient_name`, `doctor_id`, `reason`, `notes`, `clinic_id`,
+ * `created_at`, `updated_at` — NONE of which the backend returns.
+ *
+ * Use [date] / [time] convenience accessors to split the ISO datetime
+ * into the format expected by the existing UI (date string + time
+ * string). The split is timezone-aware: backend sends UTC ISO 8601,
+ * the client converts to the device's local timezone for display.
+ */
 @JsonClass(generateAdapter = true)
-data class MobileAppointmentOut(
+data class AppointmentUpcomingOut(
     @Json(name = "id") val id: Int,
-    @Json(name = "patient_phone") val patientPhone: String? = null,
-    @Json(name = "patient_name") val patientName: String? = null,
-    @Json(name = "doctor_id") val doctorId: Int? = null,
-    @Json(name = "doctor_name") val doctorName: String? = null,
-    @Json(name = "specialty") val specialty: String? = null,
-    @Json(name = "date") val date: String,
-    @Json(name = "time") val time: String,
+    @Json(name = "doctor_name") val doctorName: String,
+    @Json(name = "specialty") val specialty: String,
+    /** ISO 8601 datetime string from backend, e.g. "2026-07-10T14:30:00Z". */
+    @Json(name = "appointment_date") val appointmentDate: String,
     @Json(name = "status") val status: String,
-    @Json(name = "reason") val reason: String? = null,
-    @Json(name = "notes") val notes: String? = null,
-    @Json(name = "clinic_id") val clinicId: String? = null,
-    @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "updated_at") val updatedAt: String? = null
-)
+    @Json(name = "clinic_address") val clinicAddress: String,
+) {
+    /**
+     * Splits [appointmentDate] (ISO 8601) into the date portion
+     * (YYYY-MM-DD) for display. Returns the raw string if parsing fails.
+     */
+    val date: String
+        get() = try {
+            // Take the date portion before the 'T' separator.
+            appointmentDate.substringBefore('T').ifBlank { appointmentDate }
+        } catch (e: Exception) {
+            appointmentDate
+        }
+
+    /**
+     * Splits [appointmentDate] (ISO 8601) into the time portion
+     * (HH:MM) for display. Returns empty string if parsing fails.
+     */
+    val time: String
+        get() = try {
+            val timePart = appointmentDate.substringAfter('T', "")
+                .substringBefore('Z', "")
+                .substringBefore('+', "")
+                .substringBefore('-', "")
+            if (timePart.length >= 5) timePart.substring(0, 5) else timePart
+        } catch (e: Exception) {
+            ""
+        }
+}
+
+/**
+ * High-1 audit fix: type alias for backward-compat with code that still
+ * references the old `MobileAppointmentOut` name. Will be removed in a
+ * follow-up PR after all call sites are migrated.
+ */
+typealias MobileAppointmentOut = AppointmentUpcomingOut
 
 @JsonClass(generateAdapter = true)
 data class AppointmentBookRequest(
@@ -531,48 +614,107 @@ data class QueuePositionOut(
 // DTOs — Mobile: lab results
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * High-1 audit fix: aligned with backend `LabResultOut`
+ * (`app/schemas/mobile.py:280-292`).
+ *
+ * Backend returns:
+ *   id: int
+ *   test_name: str
+ *   result_value: str                    ← NOT `result`
+ *   reference_range: str                 ← required (not nullable)
+ *   unit: str                            ← required
+ *   result_date: datetime                ← NOT `performed_at`
+ *   status: str
+ *   notes: str | None                    ← NOT `doctor_name`
+ *
+ * The previous client DTO expected `result`, `performed_at`,
+ * `doctor_name`, `patient_phone` — NONE of which the backend returns.
+ * `unit` and `reference_range` were nullable on the client but are
+ * required on the backend.
+ *
+ * For UI display of "Doctor: Dr. X", use [notes] — backend stores
+ * arbitrary notes including doctor attribution where applicable.
+ */
 @JsonClass(generateAdapter = true)
 data class LabResultOut(
     @Json(name = "id") val id: Int,
-    @Json(name = "patient_phone") val patientPhone: String? = null,
     @Json(name = "test_name") val testName: String,
-    @Json(name = "result") val result: String? = null,
-    @Json(name = "unit") val unit: String? = null,
-    @Json(name = "reference_range") val referenceRange: String? = null,
+    @Json(name = "result_value") val resultValue: String,
+    @Json(name = "reference_range") val referenceRange: String,
+    @Json(name = "unit") val unit: String,
+    /** ISO 8601 datetime string, e.g. "2026-07-10T14:30:00Z". */
+    @Json(name = "result_date") val resultDate: String,
     @Json(name = "status") val status: String,
-    @Json(name = "performed_at") val performedAt: String? = null,
-    @Json(name = "doctor_name") val doctorName: String? = null
+    @Json(name = "notes") val notes: String? = null,
 )
 
 // ═══════════════════════════════════════════════════════════════════════
 // DTOs — Mobile: notifications
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * High-1 audit fix: aligned with backend `/mobile/notifications` response.
+ *
+ * Backend `GET /api/v1/mobile/notifications` returns `list[dict]` with
+ * these fields (see `mobile_api.py:459-470`):
+ *   id: int | None                       ← delivery_id (may be null)
+ *   title: str                           ← event_title
+ *   message: str                         ← event_message (NOT `body`)
+ *   type: str                            ← event_type
+ *   data: dict                           ← event_payload_snapshot
+ *   sent_at: datetime | None            ← delivery_created_at (NOT `created_at`)
+ *   read: bool                           ← delivery_read_at is not None (NOT `is_read`)
+ *
+ * The previous client DTO expected `body`, `is_read`, `created_at` —
+ * NONE of which the backend returns. All three fields were null/false
+ * after JSON parsing.
+ */
 @JsonClass(generateAdapter = true)
 data class NotificationOut(
-    @Json(name = "id") val id: Int,
-    @Json(name = "title") val title: String,
-    @Json(name = "body") val body: String? = null,
-    @Json(name = "type") val type: String? = null,
-    @Json(name = "is_read") val isRead: Boolean = false,
-    @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "data") val data: Map<String, Any?>? = null
+    @Json(name = "id") val id: Int? = null,
+    @Json(name = "title") val title: String = "",
+    @Json(name = "message") val message: String = "",
+    @Json(name = "type") val type: String = "",
+    @Json(name = "data") val data: Map<String, Any?>? = null,
+    /** ISO 8601 datetime string, nullable. */
+    @Json(name = "sent_at") val sentAt: String? = null,
+    @Json(name = "read") val read: Boolean = false,
 )
 
+/**
+ * High-1 audit fix: aligned with backend `MobileNotificationSettings`
+ * (`app/schemas/mobile.py:201-212`).
+ *
+ * Backend returns 7 fields; the previous client DTO had 4 fields
+ * (missing `payment_notifications`, `push_enabled`, `email_enabled`,
+ * `sms_enabled`) and had `marketing` (which backend does NOT have).
+ */
 @JsonClass(generateAdapter = true)
 data class NotificationSettingsOut(
     @Json(name = "appointment_reminders") val appointmentReminders: Boolean = true,
     @Json(name = "queue_updates") val queueUpdates: Boolean = true,
     @Json(name = "lab_results") val labResults: Boolean = true,
-    @Json(name = "marketing") val marketing: Boolean = false
+    @Json(name = "payment_notifications") val paymentNotifications: Boolean = true,
+    @Json(name = "push_enabled") val pushEnabled: Boolean = true,
+    @Json(name = "email_enabled") val emailEnabled: Boolean = false,
+    @Json(name = "sms_enabled") val smsEnabled: Boolean = false,
 )
 
+/**
+ * High-1 audit fix: aligned with backend `MobileNotificationSettings`
+ * for `PUT /api/v1/mobile/settings/notifications`. All fields optional
+ * — only provided fields are updated.
+ */
 @JsonClass(generateAdapter = true)
 data class NotificationSettingsRequest(
     @Json(name = "appointment_reminders") val appointmentReminders: Boolean? = null,
     @Json(name = "queue_updates") val queueUpdates: Boolean? = null,
     @Json(name = "lab_results") val labResults: Boolean? = null,
-    @Json(name = "marketing") val marketing: Boolean? = null
+    @Json(name = "payment_notifications") val paymentNotifications: Boolean? = null,
+    @Json(name = "push_enabled") val pushEnabled: Boolean? = null,
+    @Json(name = "email_enabled") val emailEnabled: Boolean? = null,
+    @Json(name = "sms_enabled") val smsEnabled: Boolean? = null,
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -590,12 +732,29 @@ data class ClinicInfoOut(
     @Json(name = "lng") val lng: Double? = null
 )
 
+/**
+ * High-1 audit fix: aligned with backend `MobileQuickStats`
+ * (`app/schemas/mobile.py:215-226`).
+ *
+ * Backend returns 7 fields; the previous client DTO had 4 fields
+ * (`upcoming_appointments`, `unread_notifications`, `queue_position`,
+ * `last_visit_date`) — NONE of which match the backend except
+ * `upcoming_appointments`. `unread_notifications`, `queue_position`,
+ * `last_visit_date` were all null/0 after parsing.
+ *
+ * New fields added: `total_appointments`, `completed_appointments`,
+ * `total_spent`, `favorite_doctor`, `pending_payments`.
+ */
 @JsonClass(generateAdapter = true)
 data class MobileQuickStats(
+    @Json(name = "total_appointments") val totalAppointments: Int = 0,
     @Json(name = "upcoming_appointments") val upcomingAppointments: Int = 0,
-    @Json(name = "unread_notifications") val unreadNotifications: Int = 0,
-    @Json(name = "queue_position") val queuePosition: Int? = null,
-    @Json(name = "last_visit_date") val lastVisitDate: String? = null
+    @Json(name = "completed_appointments") val completedAppointments: Int = 0,
+    @Json(name = "total_spent") val totalSpent: Double = 0.0,
+    /** ISO 8601 datetime string, nullable. */
+    @Json(name = "last_visit") val lastVisit: String? = null,
+    @Json(name = "favorite_doctor") val favoriteDoctor: String? = null,
+    @Json(name = "pending_payments") val pendingPayments: Int = 0,
 )
 
 @JsonClass(generateAdapter = true)
