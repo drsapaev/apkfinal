@@ -120,7 +120,24 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     is SessionState.Authenticated -> {
-                                        val startDest = if (state.user?.role == "STAFF") "staff" else "patient"
+                                        // P0-5 audit fix: use UserRole.fromBackend(...).isStaff
+                                        // instead of comparing against the literal "STAFF" string.
+                                        //
+                                        // The backend returns one of these roles (case-sensitive,
+                                        // see backend app/core/security.py):
+                                        //   "Patient", "Doctor", "Registrar", "Receptionist",
+                                        //   "Lab", "Cashier", "cardio", "derma", "dentist", "Admin"
+                                        //
+                                        // There is NO "STAFF" role on the backend. The previous
+                                        // comparison `state.user?.role == "STAFF"` was ALWAYS false
+                                        // — every user (including doctors, registrars, admins)
+                                        // was routed to the PatientScreen.
+                                        //
+                                        // UserRole.fromBackend() handles null/blank safely (defaults
+                                        // to PATIENT) and treats any non-PATIENT role as staff.
+                                        val role = com.aistudio.clinicsystem.domain.model.UserRole
+                                            .fromBackend(state.user?.role)
+                                        val startDest = if (role.isStaff) "staff" else "patient"
                                         com.aistudio.clinicsystem.ui.navigation.ClinicNavGraph(
                                             navController = androidx.navigation.compose.rememberNavController(),
                                             viewModel = viewModel,
