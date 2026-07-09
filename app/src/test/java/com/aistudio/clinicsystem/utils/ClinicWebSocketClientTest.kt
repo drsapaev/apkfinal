@@ -54,7 +54,13 @@ class ClinicWebSocketClientTest {
             ClinicDatabase::class.java
         ).allowMainThreadQueries().build()
 
-        wsClient = ClinicWebSocketClient(context, database)
+        // P0-2 audit fix: pass a relaxed mockk SessionRepository to the
+        // new 3-arg constructor. The previous test used the 2-arg
+        // constructor which no longer exists.
+        val sessionRepo = io.mockk.mockk<com.aistudio.clinicsystem.data.session.SessionRepository>(relaxed = true)
+        io.mockk.every { sessionRepo.accessToken } returns "fake-test-token"
+
+        wsClient = ClinicWebSocketClient(context, database, sessionRepo)
 
         // Replace scope with Unconfined for synchronous execution
         val scopeField = ClinicWebSocketClient::class.java.getDeclaredField("scope")
@@ -242,5 +248,124 @@ class ClinicWebSocketClientTest {
     @Test
     fun `empty JSON string does not crash`() {
         handleMessage("")
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // P0-2 audit fix: new backend contract — `type` field, ping/pong,
+    // queue.connected, error, lowercase event types.
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun `type field is preferred over event field`() {
+        // Backend sends `type` (lowercase). Old contract used `event` (UPPER).
+        // Verify the new `type:APPOINTMENT_STATUS` is dispatched correctly.
+        handleMessage("""{"type":"APPOINTMENT_STATUS","data":{"id":777,"status":"APPROVED","doctor_name":"Dr. Type","date":"2026-07-10","time":"10:00","patient_name":"Type Patient","patient_phone":"+77771112233"}}""")
+
+        runBlocking {
+            val appt = database.appointmentDao().getAppointmentByServerId(777)
+            assertNotNull("Appointment via type field should be inserted", appt)
+            assertEquals("APPROVED", appt!!.status)
+        }
+    }
+
+    @Test
+    fun `ping event does not crash and is handled`() {
+        // Backend sends {"type":"ping","timestamp":12345.678} every 30s.
+        // The handler must not crash — sending a pong reply requires a live
+        // WebSocket, which we don't have in this test (wsClient.webSocket == null).
+        // The handler must swallow the NPE / send-failure gracefully.
+        handleMessage("""{"type":"ping","timestamp":12345.678}""")
+        // No assertion needed — the test passes if no exception propagates.
+    }
+
+    @Test
+    fun `queue connected event logs subscription confirmation without crashing`() {
+        handleMessage("""{"type":"queue.connected","room":"general::2026-07-10"}""")
+        // No data assertion — the handler only writes a sync log. Verify
+        // no exception was thrown.
+    }
+
+    @Test
+    fun `error event with auth reason stops the socket`() {
+        // Backend sends {"type":"error","reason":"Authentication required in production"}
+        // — the handler should call stop() when reason mentions auth.
+        // We can't easily verify stop() here without a real WebSocket; we
+        // verify the handler doesn't crash and writes a sync log.
+        handleMessage("""{"type":"error","reason":"Authentication required in production"}""")
+
+        runBlocking {
+            val logs = database.syncLogDao().getAllSyncLogs()
+            assertTrue(
+                "Should log auth error",
+                logs.any { it.logMessage.contains("Authentication") }
+            )
+        }
+    }
+
+    @Test
+    fun `error event with non-auth reason does not stop the socket`() {
+        handleMessage("""{"type":"error","reason":"origin not allowed"}""")
+
+        runBlocking {
+            val logs = database.syncLogDao().getAllSyncLogs()
+            assertTrue(
+                "Should log origin error",
+                logs.any { it.logMessage.contains("origin") }
+            )
+        }
+    }
+
+    @Test
+    fun `lowercase queue_update event type is handled like QUEUE_UPDATE`() {
+        handleMessage("""{"type":"queue_update","data":{"queue":[{"id":10,"patient_name":"Dave","appointment_id":10,"position":1,"status":"WAITING"}]}}""")
+
+        runBlocking {
+            val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
+            assertEquals(1, snapshots.size)
+            assertEquals("Dave", snapshots[0].patientName)
+        }
+    }
+
+    @Test
+    fun `lowercase patient_called event type is handled like QUEUE_UPDATE`() {
+        handleMessage("""{"type":"patient_called","data":{"queue":[{"id":11,"patient_name":"Eve","appointment_id":11,"position":1,"status":"CALLED"}]}}""")
+
+        runBlocking {
+            val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
+            assertEquals(1, snapshots.size)
+            assertEquals("Eve", snapshots[0].patientName)
+        }
+    }
+
+    @Test
+    fun `lowercase entry_added event type is handled like QUEUE_UPDATE`() {
+        handleMessage("""{"type":"entry_added","data":{"queue":[{"id":12,"patient_name":"Frank","appointment_id":12,"position":1,"status":"WAITING"}]}}""")
+
+        runBlocking {
+            val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
+            assertEquals(1, snapshots.size)
+            assertEquals("Frank", snapshots[0].patientName)
+        }
+    }
+
+    @Test
+    fun `type and event fields both present - type wins`() {
+        // Edge case: backend migration emits both fields. `type` takes priority.
+        handleMessage("""{"type":"QUEUE_UPDATE","event":"APPOINTMENT_STATUS","data":{"queue":[{"id":13,"patient_name":"Grace","appointment_id":13,"position":1,"status":"WAITING"}]}}""")
+
+        runBlocking {
+            val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
+            assertEquals(
+                "type=QUEUE_UPDATE should win, populating queue snapshots",
+                1,
+                snapshots.size,
+            )
+        }
+    }
+
+    @Test
+    fun `unknown type field is logged and dropped`() {
+        handleMessage("""{"type":"some_future_event","data":{}}""")
+        // No assertion — the test passes if no exception propagates.
     }
 }

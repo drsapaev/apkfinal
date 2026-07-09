@@ -213,6 +213,12 @@ interface SyncLogDao {
 
     @Query("DELETE FROM sync_logs")
     suspend fun clearLogs()
+
+    // P0-2 audit fix: added for unit-test verification of WS event handlers.
+    // Returns all logs (no limit) — used only in tests to assert that the
+    // WS handler wrote the expected sync log entries.
+    @Query("SELECT * FROM sync_logs ORDER BY timestamp DESC")
+    suspend fun getAllSyncLogs(): List<SyncLogEntity>
 }
 
 /**
