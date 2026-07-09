@@ -285,6 +285,32 @@ Events: APPOINTMENT_STATUS, NEW_MEDICAL_RECORD, QUEUE_UPDATE
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for version history.
 
+### Required GitHub Secrets (for CI release workflow)
+
+The `release.yml` workflow (triggered on `v*.*.*` tags) reads these
+secrets — the build **fails fast** if any is missing:
+
+| Secret | Purpose |
+|---|---|
+| `CLINIC_BASE_URL` | `https://api.clinic.tld/` — production backend base URL |
+| `CLINIC_WS_URL` | `wss://api.clinic.tld/ws/queue` — production WebSocket URL |
+| `CLINIC_CERT_PIN_1` | `sha256/AAAA...` — current public key pin |
+| `CLINIC_CERT_PIN_2` | `sha256/BBBB...` — backup pin for rotation |
+| `KEYSTORE_PATH` | base64-encoded `.jks` keystore |
+| `STORE_PASSWORD` | keystore store password |
+| `KEY_PASSWORD` | key alias password |
+
+Configure in **GitHub repo → Settings → Secrets and variables → Actions**.
+
+To extract cert pins from a server certificate:
+```bash
+echo | openssl s_client -connect api.clinic.tld:443 2>/dev/null \
+  | openssl x509 -pubkey -noout \
+  | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -binary \
+  | base64 | awk '{print "sha256/"$1}'
+```
+
 ### Build Release AAB
 
 ```bash

@@ -39,6 +39,46 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # P0-4 audit fix: pre-flight check that all required release secrets
+      # are present. If any secret is missing, the build fails FAST with a
+      # clear error message — instead of producing a release APK that
+      # contains `https://INVALID.unset-base-url.example/` as BASE_URL and
+      # no certificate pinning.
+      - name: Verify required release secrets
+        env:
+          CLINIC_BASE_URL: ${{ secrets.CLINIC_BASE_URL }}
+          CLINIC_WS_URL: ${{ secrets.CLINIC_WS_URL }}
+          CLINIC_CERT_PIN_1: ${{ secrets.CLINIC_CERT_PIN_1 }}
+          CLINIC_CERT_PIN_2: ${{ secrets.CLINIC_CERT_PIN_2 }}
+          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -z "${CLINIC_BASE_URL}" ] && missing+=("CLINIC_BASE_URL")
+          [ -z "${CLINIC_WS_URL}" ]   && missing+=("CLINIC_WS_URL")
+          [ -z "${CLINIC_CERT_PIN_1}" ] && missing+=("CLINIC_CERT_PIN_1")
+          [ -z "${CLINIC_CERT_PIN_2}" ] && missing+=("CLINIC_CERT_PIN_2")
+          [ -z "${KEYSTORE_PATH}" ]  && missing+=("KEYSTORE_PATH")
+          [ -z "${STORE_PASSWORD}" ] && missing+=("STORE_PASSWORD")
+          [ -z "${KEY_PASSWORD}" ]   && missing+=("KEY_PASSWORD")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "❌ Missing required release secrets:"
+            printf '  - %s\n' "${missing[@]}"
+            echo ""
+            echo "Configure these in GitHub repo Settings → Secrets and variables → Actions:"
+            echo "  CLINIC_BASE_URL     — https://api.clinic.tld/"
+            echo "  CLINIC_WS_URL       — wss://api.clinic.tld/ws/queue"
+            echo "  CLINIC_CERT_PIN_1   — sha256/AAAA... (current public key pin)"
+            echo "  CLINIC_CERT_PIN_2   — sha256/BBBB... (backup pin for rotation)"
+            echo "  KEYSTORE_PATH       — base64-encoded .jks keystore"
+            echo "  STORE_PASSWORD      — keystore store password"
+            echo "  KEY_PASSWORD        — key alias password"
+            exit 1
+          fi
+          echo "✅ All 7 required release secrets present"
+
       - name: Run ktlint
         run: ./gradlew ktlintCheck --max-workers=2
 
@@ -51,14 +91,49 @@ jobs:
           JAVA_TOOL_OPTIONS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
 
       - name: Assemble release APK
-        run: ./gradlew assembleRelease --max-workers=2
+        # P0-4 audit fix: pass clinic.baseUrl/wsUrl/certPin1/certPin2 via
+        # gradle properties (sourced from GitHub secrets). Without these,
+        # BuildConfig.BASE_URL would be "https://INVALID.unset-base-url.example/"
+        # and certificate pinning would be disabled (pins = "UNSET").
+        run: |
+          ./gradlew assembleRelease --max-workers=2 \
+            -Pclinic.baseUrl='${{ secrets.CLINIC_BASE_URL }}' \
+            -Pclinic.wsUrl='${{ secrets.CLINIC_WS_URL }}' \
+            -Pclinic.certPin1='${{ secrets.CLINIC_CERT_PIN_1 }}' \
+            -Pclinic.certPin2='${{ secrets.CLINIC_CERT_PIN_2 }}'
         env:
           KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
+      - name: Verify release BuildConfig has no placeholder URLs
+        # P0-4 audit fix: post-build assertion that the secrets actually
+        # propagated into BuildConfig. If this step fails, the release APK
+        # would have INVALID URLs / disabled pinning — must not ship.
+        run: |
+          set -euo pipefail
+          BUILD_CONFIG=app/build/generated/source/buildConfig/release/com/aistudio/clinicsystem/BuildConfig.java
+          if grep -q 'example.com' "$BUILD_CONFIG"; then
+            echo "❌ Release BuildConfig contains 'example.com' — secret leak"
+            exit 1
+          fi
+          if grep -q 'INVALID' "$BUILD_CONFIG"; then
+            echo "❌ Release BuildConfig contains 'INVALID' — secret did not propagate"
+            exit 1
+          fi
+          if grep -q '"UNSET"' "$BUILD_CONFIG"; then
+            echo "❌ Release BuildConfig has UNSET cert pin — pinning disabled"
+            exit 1
+          fi
+          echo "✅ Release BuildConfig verified: real URLs, pins set"
+
       - name: Bundle release AAB
-        run: ./gradlew bundleRelease --max-workers=2
+        run: |
+          ./gradlew bundleRelease --max-workers=2 \
+            -Pclinic.baseUrl='${{ secrets.CLINIC_BASE_URL }}' \
+            -Pclinic.wsUrl='${{ secrets.CLINIC_WS_URL }}' \
+            -Pclinic.certPin1='${{ secrets.CLINIC_CERT_PIN_1 }}' \
+            -Pclinic.certPin2='${{ secrets.CLINIC_CERT_PIN_2 }}'
         env:
           KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
