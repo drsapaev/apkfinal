@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -205,5 +206,115 @@ class AuthViewModelTest {
     fun `updatePasswordInput updates otpInput state`() {
         viewModel.updatePasswordInput("testpass")
         assertEquals("testpass", viewModel.otpInput.value)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // P0-1 audit fix: biometric login tests
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun `loginWithBiometrics with null cipher sets biometric unavailable error and does not call repository`() = runTest {
+        viewModel.loginWithBiometrics("+77771112233", cipher = null); advanceUntilIdle()
+
+        assertEquals(
+            "Биометрический ключ недоступен. Войдите по паролю.",
+            viewModel.authError.value,
+        )
+        // Repository must NOT be called when cipher is null — fail closed.
+        coEvery { authRepository.verifyCurrentSession() } returns Result.success(testUser)
+    }
+
+    @Test
+    fun `loginWithBiometrics success invokes onLoginSuccess callback`() = runTest {
+        var called = false
+        viewModel.onLoginSuccess = { called = true }
+
+        // User cached in Room with biometricEnabled = true — passes the local guard.
+        every { repository.getUserByPhone(testUser.phone) } returns com.aistudio.clinicsystem.data.db.UserEntity(
+            id = 1,
+            phone = testUser.phone,
+            fullName = testUser.fullName,
+            role = testUser.role,
+            dateOfBirth = testUser.dateOfBirth,
+            biometricEnabled = true,
+            telegramChatId = null,
+        )
+
+        val cipher = mockk<javax.crypto.Cipher>(relaxed = true)
+        coEvery { authRepository.loginWithBiometricRefreshToken(any(), any()) } returns
+            Result.success(testUser)
+
+        viewModel.loginWithBiometrics(testUser.phone, cipher); advanceUntilIdle()
+
+        assertTrue("onLoginSuccess should be called on biometric success", called)
+        assertNull("authError should be null on success", viewModel.authError.value)
+    }
+
+    @Test
+    fun `loginWithBiometrics fails closed when user is not biometric-enabled in local cache`() = runTest {
+        var called = false
+        viewModel.onLoginSuccess = { called = true }
+
+        // User has biometricEnabled = false locally — even if backend accepted the
+        // refresh-token exchange, the local guard must reject the login.
+        every { repository.getUserByPhone(testUser.phone) } returns com.aistudio.clinicsystem.data.db.UserEntity(
+            id = 1,
+            phone = testUser.phone,
+            fullName = testUser.fullName,
+            role = testUser.role,
+            dateOfBirth = testUser.dateOfBirth,
+            biometricEnabled = false,
+            telegramChatId = null,
+        )
+
+        val cipher = mockk<javax.crypto.Cipher>(relaxed = true)
+        coEvery { authRepository.loginWithBiometricRefreshToken(any(), any()) } returns
+            Result.success(testUser)
+
+        viewModel.loginWithBiometrics(testUser.phone, cipher); advanceUntilIdle()
+
+        assertFalse("onLoginSuccess must NOT be called when local biometricEnabled=false", called)
+        assertEquals(
+            "Биометрический вход заблокирован во внешнем профиле клиники",
+            viewModel.authError.value,
+        )
+    }
+
+    @Test
+    fun `loginWithBiometrics repository failure sets token failure error`() = runTest {
+        var called = false
+        viewModel.onLoginSuccess = { called = true }
+
+        val cipher = mockk<javax.crypto.Cipher>(relaxed = true)
+        coEvery { authRepository.loginWithBiometricRefreshToken(any(), any()) } returns
+            Result.failure(IllegalStateException("Не удалось расшифровать refresh token"))
+
+        viewModel.loginWithBiometrics(testUser.phone, cipher); advanceUntilIdle()
+
+        assertFalse(called)
+        assertNotNull(viewModel.authError.value)
+        assertTrue(viewModel.authError.value!!.contains("Сбой биометрического токена"))
+    }
+
+    @Test
+    fun `loginWithBiometrics repository failure when user not in local cache sets token failure error`() = runTest {
+        // User not in local cache — local guard rejects, but this branch should
+        // still surface the repository error to the user.
+        var called = false
+        viewModel.onLoginSuccess = { called = true }
+
+        every { repository.getUserByPhone(any()) } returns null
+
+        val cipher = mockk<javax.crypto.Cipher>(relaxed = true)
+        coEvery { authRepository.loginWithBiometricRefreshToken(any(), any()) } returns
+            Result.success(testUser)
+
+        viewModel.loginWithBiometrics(testUser.phone, cipher); advanceUntilIdle()
+
+        assertFalse(called)
+        assertEquals(
+            "Биометрический вход заблокирован во внешнем профиле клиники",
+            viewModel.authError.value,
+        )
     }
 }

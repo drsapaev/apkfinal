@@ -359,6 +359,138 @@ class AuthRepository(
     }
 
     /**
+     * P0-1 audit fix: completes biometric login using the [cipher] unlocked
+     * by BiometricPrompt.
+     *
+     * Flow:
+     *   1. Read the encrypted refresh-token blob from EncryptedSharedPreferences
+     *      via [com.aistudio.clinicsystem.utils.TokenManager.getEncryptedRefreshTokenBlob].
+     *      If absent → user has never enrolled in biometric, fail closed.
+     *   2. Parse the blob into [com.aistudio.clinicsystem.utils.BiometricCryptoHelper.EncryptedData]
+     *      (Base64 IV + ciphertext).
+     *   3. Use [cipher] to decrypt the ciphertext → plaintext refresh token.
+     *      If decryption fails → keystore key was invalidated by new fingerprint
+     *      enrollment, caller must re-login with password and re-enroll.
+     *   4. Exchange the plaintext refresh token for a fresh access token via
+     *      `POST /api/v1/authentication/refresh`. If the backend returns 401
+     *      → refresh token expired server-side, session cleared, user must re-login.
+     *   5. On success, persist both new tokens via [SessionRepository.onTokensRefreshed],
+     *      fetch the user profile, cache it in Room, return the [UserDto].
+     *
+     * Security property: the refresh token is never stored in plaintext.
+     * Without the cipher (which requires biometric auth to unlock), the
+     * encrypted blob is useless.
+     */
+    override suspend fun loginWithBiometricRefreshToken(
+        phone: String,
+        cipher: javax.crypto.Cipher,
+    ): Result<UserDto> = withContext(Dispatchers.IO) {
+        try {
+            // 1. Read encrypted blob
+            val blob = com.aistudio.clinicsystem.utils.TokenManager
+                .getEncryptedRefreshTokenBlob(context)
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Биометрический вход не настроен — войдите по паролю.")
+                )
+
+            // 2. Parse IV + ciphertext
+            val encryptedData = com.aistudio.clinicsystem.utils.BiometricCryptoHelper.EncryptedData
+                .fromStorageString(blob)
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Повреждённое хранилище биометрического токена.")
+                )
+
+            // 3. Decrypt with the cipher unlocked by BiometricPrompt
+            val plaintextRefreshToken = com.aistudio.clinicsystem.utils.BiometricCryptoHelper
+                .decryptRefreshToken(cipher, encryptedData)
+                ?: return@withContext Result.failure(
+                    IllegalStateException(
+                        "Не удалось расшифровать refresh token — возможно, отпечаток изменён. " +
+                            "Войдите по паролю и повторите активацию биометрии."
+                    )
+                )
+
+            // 4. Exchange refresh token for a fresh access token
+            val refreshResponse = mobileApiService.refreshToken(
+                com.aistudio.clinicsystem.data.api.RefreshTokenRequest(plaintextRefreshToken)
+            )
+
+            if (!refreshResponse.isSuccessful) {
+                // 401 → refresh token expired server-side; clear session
+                if (refreshResponse.code() == 401) {
+                    sessionRepository.clearSession()
+                    com.aistudio.clinicsystem.utils.TokenManager.clearEncryptedRefreshTokenBlob(context)
+                    com.aistudio.clinicsystem.utils.BiometricCryptoHelper.deleteBiometricKey()
+                }
+                return@withContext Result.failure(
+                    IllegalStateException(
+                        "Сессия истекла на сервере (HTTP ${refreshResponse.code()}). Войдите заново."
+                    )
+                )
+            }
+
+            val refreshBody = refreshResponse.body()
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Пустой ответ сервера при обновлении токена.")
+                )
+
+            val newAccessToken = refreshBody.accessToken
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Ответ /refresh не содержит access_token.")
+                )
+            val newRefreshToken = refreshBody.refreshToken
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Ответ /refresh не содержит refresh_token.")
+                )
+
+            // Persist the refreshed tokens
+            sessionRepository.onTokensRefreshed(newAccessToken, newRefreshToken)
+
+            // 5. Fetch profile, cache in Room, return UserDto
+            val profileResponse = mobileApiService.getProfile()
+            if (!profileResponse.isSuccessful) {
+                return@withContext Result.failure(retrofit2.HttpException(profileResponse))
+            }
+            val userProfile = profileResponse.body()!!
+            sessionRepository.onProfileLoaded(
+                phone = userProfile.phone ?: "",
+                role = userProfile.role ?: "PATIENT"
+            )
+
+            val cachedUser = UserEntity(
+                phone = userProfile.phone ?: "",
+                fullName = userProfile.fullName ?: "",
+                role = userProfile.role ?: "PATIENT",
+                dateOfBirth = userProfile.dateOfBirth ?: "",
+                biometricEnabled = userProfile.biometricEnabled ?: false,
+                telegramChatId = userProfile.telegramChatId
+            )
+            val existing = userDao.getUserByPhone(cachedUser.phone)
+            if (existing == null) {
+                userDao.insertUser(cachedUser)
+            } else {
+                userDao.updateUser(cachedUser.copy(id = existing.id))
+            }
+
+            Result.success(
+                UserDto(
+                    id = userProfile.id,
+                    phone = userProfile.phone ?: "",
+                    fullName = userProfile.fullName ?: "",
+                    role = userProfile.role ?: "PATIENT",
+                    dateOfBirth = userProfile.dateOfBirth,
+                    biometricEnabled = userProfile.biometricEnabled ?: false,
+                    telegramChatId = userProfile.telegramChatId,
+                    clinicId = userProfile.clinicId
+                )
+            )
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "loginWithBiometricRefreshToken error: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Links telegram notifications to this user profile
      */
     suspend fun linkTelegram(telegramId: String): Result<Unit> = withContext(Dispatchers.IO) {
