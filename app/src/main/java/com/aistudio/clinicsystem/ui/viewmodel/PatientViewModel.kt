@@ -8,7 +8,6 @@ import com.aistudio.clinicsystem.data.repository.ClinicRepository
 import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.data.session.SessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -160,24 +159,44 @@ class PatientViewModel @Inject constructor(
         val user = currentUser.value ?: return
         if (chatId.isBlank()) return
         viewModelScope.launch {
-            // Stage 6 (H-19 fix): replace `delay(800)` with real API call.
-            delay(800)
-            val updatedUser = user.copy(telegramChatId = chatId)
-            sessionRepository.onProfileLoaded(updatedUser)
-            repository.updateUser(updatedUser)
-            repository.addSyncLog("Linked Telegram Account with Chat ID.", "PATIENT_TO_STAFF")
+            // High-4 audit fix: replaced `delay(800)` with real API call.
+            // Previously the ViewModel simulated the API call with a delay,
+            // then updated local state — the backend was never notified,
+            // so the user's Telegram was never actually linked.
+            val result = authRepository.linkTelegram(chatId)
+            result.onSuccess {
+                val updatedUser = user.copy(telegramChatId = chatId)
+                sessionRepository.onProfileLoaded(updatedUser)
+                repository.updateUser(updatedUser)
+                repository.addSyncLog("🟢 Telegram привязан (chat_id: $chatId).", "PATIENT_TO_STAFF")
+            }.onFailure { error ->
+                repository.addSyncLog(
+                    "🔴 Ошибка привязки Telegram: ${error.localizedMessage ?: "неизвестная ошибка"}",
+                    "SYSTEM_SYNC",
+                )
+            }
         }
     }
 
     fun unlinkTelegramChatId() {
         val user = currentUser.value ?: return
         viewModelScope.launch {
-            // Stage 6 (H-19 fix): replace `delay(600)` with real API call.
-            delay(600)
-            val updatedUser = user.copy(telegramChatId = null)
-            sessionRepository.onProfileLoaded(updatedUser)
-            repository.updateUser(updatedUser)
-            repository.addSyncLog("Unlinked Telegram Chat ID for user.", "PATIENT_TO_STAFF")
+            // High-4 audit fix: replaced `delay(600)` with real API call.
+            // Previously the ViewModel simulated the unlink with a delay,
+            // but the backend was never notified — the user kept receiving
+            // Telegram notifications even after "unlinking".
+            val result = authRepository.unlinkTelegram()
+            result.onSuccess {
+                val updatedUser = user.copy(telegramChatId = null)
+                sessionRepository.onProfileLoaded(updatedUser)
+                repository.updateUser(updatedUser)
+                repository.addSyncLog("🟢 Telegram отвязан.", "PATIENT_TO_STAFF")
+            }.onFailure { error ->
+                repository.addSyncLog(
+                    "🔴 Ошибка отвязки Telegram: ${error.localizedMessage ?: "неизвестная ошибка"}",
+                    "SYSTEM_SYNC",
+                )
+            }
         }
     }
 
@@ -185,9 +204,22 @@ class PatientViewModel @Inject constructor(
         val user = currentUser.value ?: return
         val chatId = user.telegramChatId ?: return
         viewModelScope.launch {
-            // Stage 6 (H-19 fix): replace `delay(700)` with real API call.
-            delay(700)
-            repository.addSyncLog("💬 TELEGRAM TEST: Тестовое уведомление успешно отправлено.", "SYSTEM_SYNC")
+            // High-4 audit fix: replaced `delay(700)` with real API call.
+            // Previously the ViewModel simulated the send with a delay,
+            // but no actual notification was ever delivered to the user's
+            // Telegram chat.
+            val result = authRepository.sendTestTelegramNotification()
+            result.onSuccess {
+                repository.addSyncLog(
+                    "💬 TELEGRAM TEST: Тестовое уведомление успешно отправлено (chat_id: $chatId).",
+                    "SYSTEM_SYNC",
+                )
+            }.onFailure { error ->
+                repository.addSyncLog(
+                    "🔴 TELEGRAM TEST: Ошибка отправки — ${error.localizedMessage ?: "неизвестная ошибка"}",
+                    "SYSTEM_SYNC",
+                )
+            }
         }
     }
 
@@ -212,9 +244,17 @@ class PatientViewModel @Inject constructor(
                 // P-17 fix: emit event for Snackbar
                 _appointmentCreatedEvent.tryEmit("Запись к врачу $doctorName на $date в $time создана. Ожидает подтверждения клиники.")
 
+                // High-4 audit fix: replaced `delay(400)` + fake sync log
+                // with a note that the backend's book endpoint already
+                // sends a Telegram notification via notification_sender_service
+                // (see mobile_api.py:336). We don't double-send from the
+                // client — the backend is the source of truth for notification
+                // delivery.
                 if (user.telegramChatId != null) {
-                    delay(400)
-                    repository.addSyncLog("⚡ TELEGRAM BOT ALERT: Новая запись к врачу в очереди на подтверждение.", "SYSTEM_SYNC")
+                    repository.addSyncLog(
+                        "⚡ Запись создана. Telegram-уведомление отправлено backend-ом (notification_sender_service).",
+                        "SYSTEM_SYNC",
+                    )
                 }
             } finally {
                 _isBookingInProgress.value = false
@@ -247,9 +287,14 @@ class PatientViewModel @Inject constructor(
                 // a dedicated NotificationController. Skipping the notification
                 // call here to keep the build compiling without AndroidViewModel.
 
+                // High-4 audit fix: replaced `delay(400)` + fake sync log
+                // with a note that the backend's cancel endpoint already
+                // sends a Telegram notification (see mobile_api_extended.py:401-406).
                 if (patientUser?.telegramChatId != null) {
-                    delay(400)
-                    repository.addSyncLog("❌ TELEGRAM BOT ALERT: Приём к врачу ОТМЕНЕН (детали скрыты).", "SYSTEM_SYNC")
+                    repository.addSyncLog(
+                        "❌ Приём отменён. Telegram-уведомление отправлено backend-ом.",
+                        "SYSTEM_SYNC",
+                    )
                 }
             }
         }

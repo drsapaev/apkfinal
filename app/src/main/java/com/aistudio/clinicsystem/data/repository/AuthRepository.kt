@@ -491,7 +491,10 @@ class AuthRepository(
     }
 
     /**
-     * Links telegram notifications to this user profile
+     * Links telegram notifications to this user profile.
+     *
+     * High-4 audit fix: now actually called from PatientViewModel.linkTelegramChatId
+     * (previously the ViewModel used `delay(800)` to simulate the API call).
      */
     suspend fun linkTelegram(telegramId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -507,6 +510,99 @@ class AuthRepository(
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("Ошибка привязки Telegram: Код ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * High-4 audit fix: unlinks telegram notifications from this user profile.
+     *
+     * Calls POST /api/v1/users/telegram/unlink on the backend, then clears
+     * the local DB cache. Previously the ViewModel used `delay(600)` to
+     * simulate this — the backend was never notified, so the user kept
+     * receiving Telegram notifications even after "unlinking".
+     */
+    suspend fun unlinkTelegram(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val token = sessionRepository.accessToken ?: return@withContext Result.failure(Exception("Не авторизован"))
+            val response = apiService.unlinkTelegram()
+            if (response.isSuccessful) {
+                // Clear local DB cache
+                sessionRepository.phone?.let { phone ->
+                    userDao.getUserByPhone(phone)?.let { user ->
+                        userDao.updateUser(user.copy(telegramChatId = null))
+                    }
+                }
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Ошибка отвязки Telegram: Код ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * High-4 audit fix: sends a test Telegram notification to verify the
+     * user's Telegram integration is working.
+     *
+     * Calls POST /api/v1/telegram-integration/send-notification on the
+     * backend, which delivers a test message to the user's linked
+     * Telegram chat. Previously the ViewModel used `delay(700)` to
+     * simulate this — no actual notification was ever sent.
+     *
+     * @return Result.success(Unit) on HTTP 200, Result.failure on error.
+     *         The backend response body contains `{"success": bool,
+     *         "message": str}` — we only check the HTTP status, not the
+     *         body, to keep the contract simple.
+     */
+    suspend fun sendTestTelegramNotification(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val token = sessionRepository.accessToken
+                ?: return@withContext Result.failure(Exception("Не авторизован"))
+            val phone = sessionRepository.phone
+                ?: return@withContext Result.failure(Exception("Нет телефона в сессии"))
+            val user = userDao.getUserByPhone(phone)
+            val chatId = user?.telegramChatId
+                ?: return@withContext Result.failure(Exception("Telegram не привязан"))
+
+            // Use the telegram-integration send-notification endpoint.
+            // Body: {"chat_id": "...", "message": "...", "parse_mode": "HTML"}
+            val payload = mapOf(
+                "chat_id" to chatId,
+                "message" to "🧪 Тестовое уведомление от Clinic System — Telegram интеграция работает корректно.",
+                "parse_mode" to "HTML",
+            )
+            val moshi = com.squareup.moshi.Moshi.Builder().build()
+            val type = com.squareup.moshi.Types.newParameterizedType(
+                Map::class.java, String::class.java, Any::class.java,
+            )
+            @Suppress("UNCHECKED_CAST")
+            val adapter = moshi.adapter<Map<String, Any>>(type)
+            val body = adapter.toJson(payload)
+
+            // Build a POST request manually — this endpoint is not in the
+            // ApiService interface (it's in telegram_integration router,
+            // not the mobile contract). Using OkHttp directly avoids
+            // adding a one-off method to ApiService.
+            val client = okhttp3.OkHttpClient()
+            val request = okhttp3.Request.Builder()
+                .url(com.aistudio.clinicsystem.BuildConfig.BASE_URL.trimEnd('/') + "/api/v1/telegram-integration/send-notification")
+                .post(okhttp3.RequestBody.create(
+                    okhttp3.MediaType.get("application/json; charset=utf-8"),
+                    body,
+                ))
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)
