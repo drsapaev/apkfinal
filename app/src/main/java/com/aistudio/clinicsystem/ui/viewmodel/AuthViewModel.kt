@@ -234,20 +234,53 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun loginWithBiometrics(phone: String) {
+    /**
+     * Stage 4.4 (P0-1 audit fix): completes biometric login by decrypting
+     * the stored refresh-token blob with the [cipher] unlocked by
+     * BiometricPrompt, then exchanging the plaintext refresh token for
+     * a fresh access token via the backend's `/authentication/refresh`
+     * endpoint.
+     *
+     * The [cipher] parameter is the one returned by
+     * `BiometricPrompt.AuthenticationResult.cryptoObject?.cipher` in
+     * `AuthScreen.kt`. It was initialised for DECRYPTION with the IV
+     * stored alongside the encrypted refresh-token blob.
+     *
+     * If [cipher] is null, the caller did not supply a CryptoObject —
+     * this is a programming error and the login fails closed.
+     *
+     * If decryption fails (e.g. key invalidated by new fingerprint
+     * enrollment), the user is prompted to re-login with password and
+     * re-enroll biometric.
+     *
+     * If the refresh-token exchange fails (network error, 401 on
+     * refresh), the session is cleared and the user must re-login.
+     *
+     * Security property: prior to this fix the cipher was silently
+     * discarded and `verifyCurrentSession()` was called with the
+     * already-stored access token — biometric auth added no protection
+     * (root/ADB backup exploit could retrieve the JWT without biometric).
+     * Now the refresh token is encrypted at rest with a key that
+     * requires biometric auth to use; without biometric, the refresh
+     * token cannot be decrypted and no session can be established.
+     */
+    fun loginWithBiometrics(phone: String, cipher: javax.crypto.Cipher?) {
+        if (cipher == null) {
+            _authError.value = "Биометрический ключ недоступен. Войдите по паролю."
+            return
+        }
         viewModelScope.launch {
             _isSyncing.value = true
             _authError.value = null
 
-            // Validate the biometric local signature against real APIs
-            val result = authRepository.verifyCurrentSession()
+            val result = authRepository.loginWithBiometricRefreshToken(phone, cipher)
             _isSyncing.value = false
 
             result.onSuccess { userDto ->
                 val cached = repository.getUserByPhone(userDto.phone)
                 if (cached != null && cached.biometricEnabled) {
                     repository.addSyncLog(
-                        logMessage = "🟢 Биологическая верификация пройдена.",
+                        logMessage = "🟢 Биометрическая верификация пройдена (refresh token расшифрован).",
                         direction = "SYSTEM_SYNC"
                     )
 
@@ -257,6 +290,10 @@ class AuthViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 _authError.value = "Сбой биометрического токена: ${error.localizedMessage ?: "Необходимо войти заново"}"
+                repository.addSyncLog(
+                    logMessage = "🔴 Сбой биометрического входа: ${error.message}",
+                    direction = "SYSTEM_SYNC"
+                )
             }
         }
     }
