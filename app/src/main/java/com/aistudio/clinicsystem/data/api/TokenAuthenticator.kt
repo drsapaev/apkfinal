@@ -1,6 +1,5 @@
 package com.aistudio.clinicsystem.data.api
 
-import android.util.Log
 import com.aistudio.clinicsystem.utils.SessionManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -11,6 +10,7 @@ import okhttp3.Request
 import okhttp3.Response
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import timber.log.Timber
 import java.io.IOException
 
 /**
@@ -59,7 +59,7 @@ class TokenAuthenticator(
         // Guard against infinite retry loops: if we already retried 2 times,
         // give up. OkHttp also has its own guard, but this is belt-and-braces.
         if (responseCount(response) >= 2) {
-            Log.w(TAG, "authenticate: too many retries, giving up")
+            Timber.w("authenticate: too many retries, giving up")
             return null
         }
 
@@ -77,7 +77,7 @@ class TokenAuthenticator(
                 // token while we were waiting for the mutex. Just retry
                 // with the new token.
                 if (currentAccessToken != null && currentAccessToken != failingRequestToken) {
-                    Log.d(TAG, "authenticate: token already refreshed by another request, retrying")
+                    Timber.d("authenticate: token already refreshed by another request, retrying")
                     return@withLock response.request.newBuilder()
                         .header("Authorization", "Bearer $currentAccessToken")
                         .build()
@@ -86,7 +86,7 @@ class TokenAuthenticator(
                 // Case B: we need to refresh ourselves.
                 val refreshToken = sessionManager.getRefreshToken()
                 if (refreshToken.isNullOrBlank()) {
-                    Log.w(TAG, "authenticate: no refresh token, cannot refresh — clearing session")
+                    Timber.w("authenticate: no refresh token, cannot refresh — clearing session")
                     sessionManager.clearSession()
                     onSessionInvalidated()
                     return@withLock null
@@ -95,7 +95,7 @@ class TokenAuthenticator(
                 val newTokens = try {
                     performRefresh(refreshToken)  // suspend call — OK inside runBlocking
                 } catch (e: Exception) {
-                    Log.e(TAG, "authenticate: refresh failed: ${e.message}", e)
+                    Timber.e("authenticate: refresh failed: ${e.message}", e)
                     sessionManager.clearSession()
                     onSessionInvalidated()
                     return@withLock null
@@ -106,7 +106,7 @@ class TokenAuthenticator(
                     accessToken = newTokens.accessToken,
                     refreshToken = newTokens.refreshToken
                 )
-                Log.d(TAG, "authenticate: refresh succeeded, retrying original request")
+                Timber.d("authenticate: refresh succeeded, retrying original request")
 
                 response.request.newBuilder()
                     .header("Authorization", "Bearer ${newTokens.accessToken}")
@@ -156,9 +156,5 @@ class TokenAuthenticator(
             prior = prior.priorResponse
         }
         return count
-    }
-
-    companion object {
-        private const val TAG = "TokenAuthenticator"
     }
 }

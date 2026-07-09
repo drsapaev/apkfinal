@@ -1,7 +1,6 @@
 package com.aistudio.clinicsystem.data.repository
 
 import android.content.Context
-import android.util.Log
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.data.api.ApiService
@@ -13,6 +12,7 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 /**
  * AuthRepository manages network authentication workflows with the backend FastAPI 'final' server,
@@ -126,7 +126,7 @@ class AuthRepository(
                 )
             )
         } catch (e: Exception) {
-            Log.e("AuthRepository", "login error: ${e.message}", e)
+            Timber.e("login error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -209,7 +209,7 @@ class AuthRepository(
                 )
             )
         } catch (e: Exception) {
-            Log.e("AuthRepository", "verify2FA error: ${e.message}", e)
+            Timber.e("verify2FA error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -237,7 +237,7 @@ class AuthRepository(
                 ?: return@withContext Result.failure(IllegalStateException("Empty recovery response body"))
             Result.success(body.recoveryToken)
         } catch (e: Exception) {
-            Log.e("AuthRepository", "request2FARecovery error: ${e.message}", e)
+            Timber.e("request2FARecovery error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -297,7 +297,7 @@ class AuthRepository(
                 )
             )
         } catch (e: Exception) {
-            Log.e("AuthRepository", "verify2FARecovery error: ${e.message}", e)
+            Timber.e("verify2FARecovery error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -353,7 +353,7 @@ class AuthRepository(
                 Result.failure(Exception("Срок действия сессии истек"))
             }
         } catch (e: Exception) {
-            Log.e("AuthRepository", "verifyCurrentSession error: ${e.message}", e)
+            Timber.e("verifyCurrentSession error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -485,7 +485,7 @@ class AuthRepository(
                 )
             )
         } catch (e: Exception) {
-            Log.e("AuthRepository", "loginWithBiometricRefreshToken error: ${e.message}", e)
+            Timber.e("loginWithBiometricRefreshToken error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -634,7 +634,7 @@ class AuthRepository(
                 val response = mobileApiService.logout(LogoutRequest(refreshToken))
                 if (!response.isSuccessful && response.code() != 401) {
                     // Network/5xx error — keep local tokens so user can retry
-                    Log.w("AuthRepository", "logout server call failed: ${response.code()}")
+                    Timber.w("logout server call failed: ${response.code()}")
                     return@withContext Result.failure(
                         Exception("Не удалось связаться с сервером: ${response.code()}")
                     )
@@ -642,7 +642,7 @@ class AuthRepository(
                 // 401 here means the refresh token is already invalid — that's fine,
                 // we'll clear local state below.
             } catch (e: Exception) {
-                Log.w("AuthRepository", "logout network error: ${e.message}")
+                Timber.w("logout network error: ${e.message}")
                 return@withContext Result.failure(e)
             }
         }

@@ -1,7 +1,6 @@
 package com.aistudio.clinicsystem.utils
 
 import android.content.Context
-import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -9,6 +8,7 @@ import com.aistudio.clinicsystem.data.repository.ClinicRepository
 import com.aistudio.clinicsystem.data.session.SessionRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import timber.log.Timber
 
 /**
  * Stage 3.12: SyncWorker is now @HiltWorker — dependencies injected via
@@ -41,7 +41,7 @@ class SyncWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        Log.d("SyncWorker", "Запущен фоновый процесс обработки отложенных транзакций (WorkManager)...")
+        Timber.d("Запущен фоновый процесс обработки отложенных транзакций (WorkManager)...")
         val startTime = System.currentTimeMillis()
         return try {
             // Stage 2.2: token comes from the SSOT SessionRepository.
@@ -52,11 +52,11 @@ class SyncWorker @AssistedInject constructor(
 
             if (success) {
                 SyncMetricsManager.recordSuccess(latency)
-                Log.d("SyncWorker", "Фоновая синхронизация завершена успешно за ${latency}мс")
+                Timber.d("Фоновая синхронизация завершена успешно за ${latency}мс")
                 Result.success()
             } else {
                 SyncMetricsManager.recordFailure()
-                Log.w("SyncWorker", "Сбой фоновой синхронизации, планируем повтор.")
+                Timber.w("Сбой фоновой синхронизации, планируем повтор.")
                 // Stage 3.6: retry is safe — claimForProcessing is atomic,
                 // so retried rows won't be double-processed. Non-retriable
                 // rows are already in DEAD_LETTER and won't be picked up.
@@ -64,7 +64,7 @@ class SyncWorker @AssistedInject constructor(
             }
         } catch (e: Exception) {
             SyncMetricsManager.recordFailure()
-            Log.e("SyncWorker", "Исключение в фоновом воркере WorkManager", e)
+            Timber.e("Исключение в фоновом воркере WorkManager", e)
             Result.retry()
         }
     }

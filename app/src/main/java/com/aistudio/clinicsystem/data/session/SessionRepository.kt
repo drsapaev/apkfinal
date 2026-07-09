@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,9 +60,7 @@ class SessionRepository @Inject constructor(
     // (for verifyCurrentSession on restore). Hilt resolves this with
     // Lazy<AuthRepository> — see AppModule.provideSessionRepository.
 ) {
-    companion object {
-        private const val TAG = "SessionRepository"
-    }
+    // Medium-1 audit fix: TAG constant removed — Timber auto-tags with class name.
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -138,15 +137,15 @@ class SessionRepository @Inject constructor(
                     val isNetworkError = error is java.io.IOException
                     if (isNetworkError) {
                         // Keep the cached session — offline-first
-                        android.util.Log.i(TAG, "Network error during session verify; keeping cached session")
+                        Timber.i("Network error during session verify; keeping cached session")
                     } else {
                         // Token definitively rejected by server
-                        android.util.Log.w(TAG, "Session rejected by server: ${error.localizedMessage}")
+                        Timber.w("Session rejected by server: ${error.localizedMessage}")
                         invalidate()
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e(TAG, "Session restore failed", e)
+                Timber.e("Session restore failed", e)
                 // Keep cached session on any unexpected error — don't log user out
             }
         }
