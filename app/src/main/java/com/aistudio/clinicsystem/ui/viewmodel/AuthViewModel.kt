@@ -4,11 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.data.repository.AuthError
-import com.aistudio.clinicsystem.data.repository.AuthRepository
 import com.aistudio.clinicsystem.data.repository.ClinicRepository
 import com.aistudio.clinicsystem.data.repository.LoginOutcome
 import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.data.session.SessionState
+import com.aistudio.clinicsystem.domain.usecase.auth.LoginUseCase
+import com.aistudio.clinicsystem.domain.usecase.auth.LoginWithBiometricsUseCase
+import com.aistudio.clinicsystem.domain.usecase.auth.Request2FARecoveryUseCase
+import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FARecoveryUseCase
+import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FAUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,12 +28,31 @@ import javax.inject.Inject
  * are injected; no more manual construction of ClinicDatabase / SessionManager /
  * ApiClient. The ViewModel reads session state from [SessionRepository]
  * (the SSOT) instead of maintaining its own.
+ *
+ * High-5 audit fix: AuthViewModel now delegates to auth use cases
+ * (LoginUseCase, Verify2FAUseCase, etc.) instead of calling
+ * AuthRepository directly. This restores the intended Clean Architecture
+ * layering: ViewModel → UseCase → Repository. Use cases encapsulate
+ * input validation (blank checks, TOTP code format, etc.) so the
+ * ViewModel focuses on UI state management.
+ *
+ * The [ClinicRepository] is still injected for side effects (sync log
+ * writes, user cache lookups for biometric verification).
+ * [AuthRepository] is no longer injected — all auth operations go
+ * through use cases. [LogoutUseCase] is not injected here because
+ * logout is initiated from PatientViewModel/StaffViewModel/ClinicViewModel
+ * (the screens that have a logout button), not from AuthViewModel.
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repository: ClinicRepository,
-    private val authRepository: AuthRepository,
     private val sessionRepository: SessionRepository,
+    // High-5 audit fix: use cases replace direct authRepository calls.
+    private val loginUseCase: LoginUseCase,
+    private val verify2FAUseCase: Verify2FAUseCase,
+    private val request2FARecoveryUseCase: Request2FARecoveryUseCase,
+    private val verify2FARecoveryUseCase: Verify2FARecoveryUseCase,
+    private val loginWithBiometricsUseCase: LoginWithBiometricsUseCase,
 ) : ViewModel() {
 
     private val _usernameInput = MutableStateFlow("+7 ")
@@ -87,6 +110,12 @@ class AuthViewModel @Inject constructor(
      *  1. Success → user is logged in, navigate to main screen
      *  2. TwoFactorRequired → set [_pending2FAChallenge], UI shows 2FA input
      *  3. Failure → set [_authError]
+     *
+     * High-5 audit fix: now delegates to [LoginUseCase] which validates
+     * input (blank username/password) before calling the repository.
+     * The ViewModel previously did its own blank-check here AND the
+     * repository would have rejected blank inputs anyway — the use
+     * case centralises validation in one place.
      */
     fun login() {
         val username = _usernameInput.value.trim()
@@ -101,7 +130,7 @@ class AuthViewModel @Inject constructor(
             _authError.value = null
             _isSyncing.value = true
 
-            val result = authRepository.login(username, password)
+            val result = loginUseCase(username, password)
             _isSyncing.value = false
 
             result.onSuccess { outcome ->
@@ -138,6 +167,12 @@ class AuthViewModel @Inject constructor(
     /**
      * M1/E3.4: completes a 2FA challenge using a 6-digit TOTP code.
      * [totpCode] is what the user typed; [rememberDevice] is a UI checkbox.
+     *
+     * High-5 audit fix: now delegates to [Verify2FAUseCase] which
+     * validates the TOTP code format (6 digits) before calling the
+     * repository. The ViewModel still does a pre-check for the
+     * challenge token existence (UI feedback), but the code-length
+     * validation is the use case's responsibility.
      */
     fun verify2FA(totpCode: String, rememberDevice: Boolean) {
         val challenge = _pending2FAChallenge.value
@@ -145,16 +180,12 @@ class AuthViewModel @Inject constructor(
             _authError.value = "Сессия 2FA истекла, войдите заново"
             return
         }
-        if (totpCode.length != 6) {
-            _authError.value = "Код должен состоять из 6 цифр"
-            return
-        }
 
         viewModelScope.launch {
             _authError.value = null
             _isSyncing.value = true
 
-            val result = authRepository.verify2FA(challenge, totpCode, rememberDevice)
+            val result = verify2FAUseCase(challenge, totpCode, rememberDevice)
             _isSyncing.value = false
 
             result.onSuccess { outcome ->
@@ -175,6 +206,8 @@ class AuthViewModel @Inject constructor(
             }.onFailure { error ->
                 _authError.value = when (error) {
                     is AuthError.InvalidTwoFACode -> "Неверный код 2FA"
+                    // Use case validates code length — surface that error too.
+                    is IllegalArgumentException -> error.message ?: "Неверный формат кода"
                     else -> "Ошибка 2FA: ${error.localizedMessage ?: "неизвестная ошибка"}"
                 }
             }
@@ -197,7 +230,8 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authError.value = null
             _isSyncing.value = true
-            val result = authRepository.request2FARecovery(challenge, method)
+            // High-5 audit fix: delegate to use case (validates method ∈ {email, sms}).
+            val result = request2FARecoveryUseCase(challenge, method)
             _isSyncing.value = false
             result.onSuccess { token ->
                 pendingRecoveryToken = token
@@ -217,7 +251,8 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authError.value = null
             _isSyncing.value = true
-            val result = authRepository.verify2FARecovery(token, code)
+            // High-5 audit fix: delegate to use case.
+            val result = verify2FARecoveryUseCase(token, code)
             _isSyncing.value = false
             result.onSuccess { outcome ->
                 if (outcome is LoginOutcome.Success) {
@@ -265,15 +300,14 @@ class AuthViewModel @Inject constructor(
      * token cannot be decrypted and no session can be established.
      */
     fun loginWithBiometrics(phone: String, cipher: javax.crypto.Cipher?) {
-        if (cipher == null) {
-            _authError.value = "Биометрический ключ недоступен. Войдите по паролю."
-            return
-        }
+        // High-5 audit fix: delegate to LoginWithBiometricsUseCase which
+        // validates cipher != null and phone.isNotBlank() before calling
+        // the repository. The use case fails closed on null cipher.
         viewModelScope.launch {
             _isSyncing.value = true
             _authError.value = null
 
-            val result = authRepository.loginWithBiometricRefreshToken(phone, cipher)
+            val result = loginWithBiometricsUseCase(phone, cipher)
             _isSyncing.value = false
 
             result.onSuccess { userDto ->
