@@ -1,7 +1,12 @@
 # Detekt configuration for ClinicSystemMobile.
 #
-# Stage 0.2 of the remediation plan: baseline file (config/detekt-baseline.xml)
-# has been DELETED. All previously suppressed smells are now either:
+# Stage 0.2 / Medium-2 audit fix: no baseline file. The previous
+# `app/detekt-baseline.xml` (149 lines, 150 suppressed issues) has
+# been physically deleted — it was never connected to the detekt task
+# (no `baseline = file(...)` call in build.gradle.kts), but its
+# existence created confusion about which issues were suppressed.
+#
+# All previously suppressed smells are now either:
 #   (a) explicitly excluded below (Compose-related false positives), or
 #   (b) tracked as cleanup tickets — new code must not add new violations.
 #
@@ -109,12 +114,40 @@ style:
     active: true
   UtilityClassWithPublicConstructor:
     active: true
-  # New rule: forbid `Log.d/i/w/e/v` directly — must use Timber (Stage 4.1)
+  # Stage 4.1 / Medium-2 audit fix: forbid `Log.d/i/w/e/v` directly —
+  # must use Timber. Direct Log.* calls bypass ReleaseTree's PHI
+  # redaction in release builds, leaking phone numbers, JWT tokens,
+  # diagnosis, and prescription fields to Logcat.
+  #
+  # Allowed exceptions:
+  #   - ReleaseTree.kt — IS the Timber Tree implementation; needs Log
+  #     to write to Logcat after redacting PHI.
+  #   - ClinicSystemApplication.kt — uses Log.INFO as a level constant
+  #     for Timber config, not as a log call.
   ForbiddenMethodCall:
     active: true
     methods:
       - 'kotlin.io.print'
       - 'kotlin.io.println'
+      - 'android.util.Log.d'
+      - 'android.util.Log.i'
+      - 'android.util.Log.w'
+      - 'android.util.Log.e'
+      - 'android.util.Log.v'
+      - 'android.util.Log.println'
+    excludes:
+      - '**/utils/ReleaseTree.kt'
+      - '**/ClinicSystemApplication.kt'
+  # Medium-2 audit fix: forbid `import android.util.Log` — all logging
+  # must go through Timber. ReleaseTree and ClinicSystemApplication are
+  # exempt (see ForbiddenMethodCall above for rationale).
+  ForbiddenImport:
+    active: true
+    imports:
+      - 'android.util.Log'
+    excludes:
+      - '**/utils/ReleaseTree.kt'
+      - '**/ClinicSystemApplication.kt'
 
 empty-blocks:
   active: true
