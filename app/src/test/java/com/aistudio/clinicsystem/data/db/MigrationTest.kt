@@ -14,34 +14,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Stage 10.2 (C-14 fix): Real migration tests.
+ * Stage 10.2 (C-14 fix) + Medium-4 audit fix: Real migration tests.
  *
  * Closes audit finding C-14: "MigrationTest tests NOTHING — it tests data
  * persistence at the SAME version, not migration. Passes even if you delete
  * the migration SQL."
  *
- * The previous tests opened a v7 database, inserted data, closed it, and
- * reopened it at v7 — no migration was ever triggered. These tests:
- *
- * 1. Create a database at a LOWER version (simulating an old install)
- * 2. Insert test data at that version
- * 3. Close the database
- * 4. Reopen with ALL migrations registered (4→5, 5→6, 6→7)
- * 5. Verify data is preserved AND new columns exist with correct defaults
- *
- * Since we can't easily create a v4 database with the old schema (the entity
- * classes already define v7 schema), we test the migration path differently:
- *
- * - Test that ALL migrations are registered and non-null
- * - Test that migrations 4→5, 5→6, 6→7 exist with correct version ranges
- * - Test that the `etag`, `version`, `lastHttpCode`, `updatedAt` columns
- *   exist in the current schema (added by migration 6→7)
- * - Test data persistence across close/reopen with migrations registered
- *   (exercises the migration code path even if the DB is already at v7)
- *
- * Full MigrationTestHelper-based tests with schema JSON comparison
- * require androidTest (instrumented tests) and committed schema files.
- * These are added as Stage 10 instrumentation tests.
+ * Medium-4 audit fix: added tests for migrations 7→8 (doctors table) and
+ * 8→9 (lab_results table). Updated `allMigrationsAreRegistered` to expect
+ * 5 migrations (was 3 — stale after 7→8 and 8→9 were added).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
@@ -66,7 +47,8 @@ class MigrationTest {
     @Test
     fun allMigrationsAreRegistered() {
         assertNotNull(Migrations.ALL)
-        assertEquals("Should have 3 migrations registered", 3, Migrations.ALL.size)
+        // Medium-4 audit fix: was 3, now 5 (7→8 doctors + 8→9 lab_results).
+        assertEquals("Should have 5 migrations registered", 5, Migrations.ALL.size)
     }
 
     @Test
@@ -87,11 +69,22 @@ class MigrationTest {
         assertNotNull("MIGRATION_6_7 must exist", migration)
     }
 
+    @Test
+    fun migration_7_to_8_exists() {
+        val migration = Migrations.ALL.find { it.startVersion == 7 && it.endVersion == 8 }
+        assertNotNull("MIGRATION_7_8 must exist (doctors table)", migration)
+    }
+
+    @Test
+    fun migration_8_to_9_exists() {
+        val migration = Migrations.ALL.find { it.startVersion == 8 && it.endVersion == 9 }
+        assertNotNull("MIGRATION_8_9 must exist (lab_results table)", migration)
+    }
+
     // ── Data persistence with migrations registered ──
 
     @Test
     fun dataPersistsAcrossReopenWithMigrationsRegistered() {
-        // Create DB with all migrations registered
         val db = Room.databaseBuilder(
             context,
             ClinicDatabase::class.java,
@@ -102,7 +95,6 @@ class MigrationTest {
             .build()
 
         kotlinx.coroutines.runBlocking {
-            // Insert test data
             db.userDao().insertUser(
                 UserEntity(
                     phone = "+77071234567",
@@ -133,7 +125,6 @@ class MigrationTest {
         }
         db.close()
 
-        // Reopen with migrations
         val dbReopened = Room.databaseBuilder(
             context,
             ClinicDatabase::class.java,
@@ -161,17 +152,11 @@ class MigrationTest {
         dbReopened.close()
     }
 
-    // ── Stage 3.1: verify new columns added by MIGRATION_6_7 ──
+    // ── Stage 3.1: verify columns added by MIGRATION_6_7 ──
 
     @Test
     fun appointmentEntity_hasEtagColumn() {
-        // The `etag` column was added by MIGRATION_6_7 (Stage 3.1).
-        // If the column doesn't exist, Room will throw on access.
-        val db = Room.databaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-            dbName,
-        )
+        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
             .allowMainThreadQueries()
             .addMigrations(*Migrations.ALL)
             .build()
@@ -199,11 +184,7 @@ class MigrationTest {
 
     @Test
     fun medicalRecordEntity_hasVersionAndUpdateAtColumns() {
-        val db = Room.databaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-            dbName,
-        )
+        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
             .allowMainThreadQueries()
             .addMigrations(*Migrations.ALL)
             .build()
@@ -230,11 +211,7 @@ class MigrationTest {
 
     @Test
     fun pendingSyncEntity_hasLastHttpCodeColumn() {
-        val db = Room.databaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-            dbName,
-        )
+        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
             .allowMainThreadQueries()
             .addMigrations(*Migrations.ALL)
             .build()
@@ -254,5 +231,154 @@ class MigrationTest {
             assertEquals(500, row?.lastHttpCode)
         }
         db.close()
+    }
+
+    // ── Medium-4: verify tables added by MIGRATION_7_8 and MIGRATION_8_9 ──
+
+    @Test
+    fun doctorEntity_tableCreatedByMigration_7_to_8() {
+        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
+            .allowMainThreadQueries()
+            .addMigrations(*Migrations.ALL)
+            .build()
+
+        kotlinx.coroutines.runBlocking {
+            db.doctorDao().insertDoctor(
+                DoctorEntity(
+                    id = "doc-test-001",
+                    serverId = 42,
+                    fullName = "Dr. Sapaev",
+                    specialty = "Стоматолог-терапевт",
+                    phone = "+77771112233",
+                    email = "sapaev@clinic.example",
+                    avatarUrl = "https://example.com/avatar.jpg",
+                    isActive = true,
+                    clinicId = "clinic_base",
+                ),
+            )
+            val doctors = db.doctorDao().getAllDoctorsOnce()
+            assertTrue("Doctors table must have at least 1 entry", doctors.isNotEmpty())
+            val doc = doctors.find { it.id == "doc-test-001" }
+            assertNotNull("Doctor must be stored", doc)
+            assertEquals(42, doc?.serverId)
+            assertEquals("Dr. Sapaev", doc?.fullName)
+            assertEquals("Стоматолог-терапевт", doc?.specialty)
+            assertEquals("+77771112233", doc?.phone)
+            assertEquals("sapaev@clinic.example", doc?.email)
+            assertEquals("https://example.com/avatar.jpg", doc?.avatarUrl)
+            assertTrue("Doctor must be active", doc?.isActive == true)
+            assertEquals("clinic_base", doc?.clinicId)
+        }
+        db.close()
+    }
+
+    @Test
+    fun labResultEntity_tableCreatedByMigration_8_to_9() {
+        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
+            .allowMainThreadQueries()
+            .addMigrations(*Migrations.ALL)
+            .build()
+
+        kotlinx.coroutines.runBlocking {
+            db.labResultDao().insertAll(
+                listOf(
+                    LabResultEntity(
+                        id = "lab-test-001",
+                        serverId = 55,
+                        patientPhone = "+77771112233",
+                        testName = "Глюкоза крови",
+                        result = "5.4",
+                        unit = "ммоль/л",
+                        referenceRange = "3.3 - 6.1",
+                        status = "normal",
+                        performedAt = "2026-07-01T08:15:00Z",
+                        doctorName = "Д-р Сапаев",
+                    ),
+                ),
+            )
+            val results = db.labResultDao().getResultsByPatientOnce("+77771112233")
+            assertTrue("Lab results table must have at least 1 entry", results.isNotEmpty())
+            val lab = results.find { it.id == "lab-test-001" }
+            assertNotNull("Lab result must be stored", lab)
+            assertEquals(55, lab?.serverId)
+            assertEquals("+77771112233", lab?.patientPhone)
+            assertEquals("Глюкоза крови", lab?.testName)
+            assertEquals("5.4", lab?.result)
+            assertEquals("ммоль/л", lab?.unit)
+            assertEquals("3.3 - 6.1", lab?.referenceRange)
+            assertEquals("normal", lab?.status)
+            assertEquals("2026-07-01T08:15:00Z", lab?.performedAt)
+            assertEquals("Д-р Сапаев", lab?.doctorName)
+        }
+        db.close()
+    }
+
+    @Test
+    fun doctorDataPersistsAcrossReopen() {
+        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
+            .allowMainThreadQueries()
+            .addMigrations(*Migrations.ALL)
+            .build()
+
+        kotlinx.coroutines.runBlocking {
+            db.doctorDao().insertDoctors(
+                listOf(
+                    DoctorEntity(fullName = "Dr. A", specialty = "Cardio", phone = "+1"),
+                    DoctorEntity(fullName = "Dr. B", specialty = "Dental", phone = "+2"),
+                ),
+            )
+        }
+        db.close()
+
+        val dbReopened = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
+            .allowMainThreadQueries()
+            .addMigrations(*Migrations.ALL)
+            .build()
+
+        kotlinx.coroutines.runBlocking {
+            val doctors = dbReopened.doctorDao().getAllDoctorsOnce()
+            assertEquals("Doctors must survive close/reopen", 2, doctors.size)
+            assertTrue(doctors.any { it.fullName == "Dr. A" })
+            assertTrue(doctors.any { it.fullName == "Dr. B" })
+        }
+        dbReopened.close()
+    }
+
+    @Test
+    fun labResultDataPersistsAcrossReopen() {
+        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
+            .allowMainThreadQueries()
+            .addMigrations(*Migrations.ALL)
+            .build()
+
+        kotlinx.coroutines.runBlocking {
+            db.labResultDao().insertAll(
+                listOf(
+                    LabResultEntity(
+                        id = "lab-persist-001",
+                        serverId = 1,
+                        patientPhone = "+77771112233",
+                        testName = "Test A",
+                        result = "Result A",
+                        unit = "U",
+                        referenceRange = "R",
+                        status = "normal",
+                    ),
+                ),
+            )
+        }
+        db.close()
+
+        val dbReopened = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
+            .allowMainThreadQueries()
+            .addMigrations(*Migrations.ALL)
+            .build()
+
+        kotlinx.coroutines.runBlocking {
+            val results = dbReopened.labResultDao().getResultsByPatientOnce("+77771112233")
+            assertEquals("Lab results must survive close/reopen", 1, results.size)
+            assertEquals("Test A", results[0].testName)
+        }
+        dbReopened.close()
     }
 }
