@@ -389,9 +389,15 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     dependsOn("testDebugUnitTest")
 }
 
-// Stage 0.2: detekt configuration — baseline DELETED, all rules enforced.
-// Previous ~100 suppressed smells are now either excluded via config
-// (Compose FunctionNaming false positives) or tracked as cleanup tickets.
+// Stage 0.2 / Medium-2 audit fix: detekt configuration — no baseline
+// file. All rules are enforced; existing violations surface on the
+// files they live in. PRs must keep NEW code clean.
+//
+// Medium-2: the stale `app/detekt-baseline.xml` (149 lines, 150
+// suppressed issues) has been physically deleted — it was not
+// connected to the detekt task (no `baseline = file(...)` call),
+// but its existence created confusion about which issues were
+// actually suppressed.
 detekt {
     buildUponDefaultConfig = true
     config.setFrom("$rootDir/config/detekt.yml")
