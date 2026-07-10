@@ -3,8 +3,26 @@ name: Android CI
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'CONTRIBUTING.md'
+      - 'README.md'
+      - 'RELEASE_NOTES.md'
+      - 'SMOKE_TEST_PROTOCOL.md'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'CONTRIBUTING.md'
+      - 'README.md'
+      - 'RELEASE_NOTES.md'
+      - 'SMOKE_TEST_PROTOCOL.md'
 
 concurrency:
   group: android-${{ github.ref }}
@@ -102,11 +120,11 @@ jobs:
           ROBOLECTRIC_SDK_DOWNLOAD_TIMEOUT: "600"
 
       - name: Coverage gate
-        # Stage 14: coverage gate is informational — JaCoCo XML generation
-        # is flaky in CI (depends on whether testDebugUnitTest actually
-        # wrote .exec files). The gate runs if the XML exists; if not,
-        # it's skipped. Hard-fail will be re-enabled after investigating
-        # the JaCoCo executionData path issue.
+        # Medium-6 audit fix: kept continue-on-error — JaCoCo XML generation
+        # is flaky in CI (executionData path issue). TODO: investigate why
+        # testDebugUnitTest .exec files are not always written, then remove
+        # continue-on-error to make coverage a hard gate.
+        # Tracked as: cleanup/jacoco-executiondata-fix
         continue-on-error: true
         run: |
           XML="app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
@@ -128,6 +146,11 @@ jobs:
           fail_ci_if_error: false
 
       - name: Run Roborazzi screenshot tests
+        # Medium-6 audit fix: kept continue-on-error — Roborazzi baseline
+        # screenshots are not committed (only greeting.png exists). TODO:
+        # generate and commit baseline screenshots for all @Composable
+        # tests, then remove continue-on-error.
+        # Tracked as: cleanup/roborazzi-baseline-generation
         run: ./gradlew verifyRoborazziDebug --max-workers=2
         continue-on-error: true
 
@@ -185,12 +208,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Decode CI-only release keystore
-        # Soft-fail until CI secrets are configured (Issue #14).
-        # When secrets are missing, the keystore file will be empty and
-        # the subsequent signing step will fail — but the R8 smoke test
-        # (assembleRelease) will still succeed because the signing config
-        # is conditional on STORE_PASSWORD being set.
-        continue-on-error: true
+        # Medium-6 audit fix: removed continue-on-error — P0-4 configured
+        # the required GitHub secrets (CLINIC_BASE_URL, CLINIC_WS_URL,
+        # CLINIC_CERT_PIN_1/2, KEYSTORE_PATH, STORE_PASSWORD, KEY_PASSWORD).
+        # If secrets are missing, this step fails fast with a clear error.
         run: |
           mkdir -p ${{ github.workspace }}
           echo "${{ secrets.CI_RELEASE_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/ci-release.jks
@@ -203,12 +224,9 @@ jobs:
         # and assert that BuildConfig.BASE_URL does NOT contain `example.com` or `INVALID`.
         # This step runs `assembleRelease` which includes R8/ProGuard + resource shrinking.
         #
-        # Soft-fail until CI secrets are configured (Issue #14). Without secrets,
-        # `packageRelease` fails because the keystore is empty. The R8/ProGuard
-        # minification still runs successfully before packageRelease — so R8
-        # correctness is verified even without signing. Once secrets are set,
-        # remove `continue-on-error: true` to make this a hard requirement.
-        continue-on-error: true
+        # Medium-6 audit fix: removed continue-on-error — P0-3 (SyncConsoleView
+        # release stub) fixed the release compile error, P0-4 configured the
+        # required GitHub secrets. Release build is now a hard CI requirement.
         run: |
           ./gradlew :app:assembleRelease --max-workers=2 -Pclinic.baseUrl=https://staging.clinic.internal/ -Pclinic.wsUrl=wss://staging.clinic.internal/ws/queue
           # Inspect the generated BuildConfig.java
@@ -224,17 +242,14 @@ jobs:
           echo "✅ Release BASE_URL is a real production-style URL"
 
       - name: Lint release
-        # Soft-fail until the remaining lint warnings are fixed.
-        # Current state: 1 error (BiometricCryptoHelper WrongConstant —
-        # fixed in this commit), 179 warnings (pre-existing, will be
-        # addressed in Stage 5-6). Once the error count reaches 0 and
-        # warning count is below 50, remove continue-on-error.
-        continue-on-error: true
+        # Medium-6 audit fix: removed continue-on-error — lint errors
+        # must block the PR. Warnings are acceptable (lint does not fail
+        # on warnings by default); errors are not.
         run: ./gradlew lintRelease --max-workers=2
 
       - name: Bundle release AAB
-        # Soft-fail until CI secrets are configured — bundleRelease requires signing.
-        continue-on-error: true
+        # Medium-6 audit fix: removed continue-on-error — P0-4 configured
+        # the signing secrets. bundleRelease now requires a valid keystore.
         run: ./gradlew bundleRelease --max-workers=2
 
       - name: Cleanup keystore
@@ -269,13 +284,14 @@ jobs:
   # Job 4: Instrumentation tests on emulator (API 30 + 33)
   # ─────────────────────────────────────────────────────────────
   instrumentation:
-    # Stage 4: instrumentation tests require Hilt codegen for androidTest
-    # (kspAndroidTest) + a properly configured HiltTestRunner. The current
-    # HiltTestRunner crashes with ClassNotFoundException because the test
-    # APK doesn't include the Hilt-generated test application. This will be
-    # fixed in Stage 10 (Test fund) when we add @HiltAndroidTest classes
-    # with proper @TestInstallIn modules. Until then, this job runs but
-    # its failure does NOT block the PR.
+    # Medium-6 audit fix: kept continue-on-error — instrumentation tests
+    # require Hilt codegen for androidTest (kspAndroidTest) + a properly
+    # configured HiltTestRunner. The current HiltTestRunner crashes with
+    # ClassNotFoundException because the test APK doesn't include the
+    # Hilt-generated test application. TODO: add @HiltAndroidTest classes
+    # with proper @TestInstallIn modules (Stage 10 test fund), then remove
+    # continue-on-error.
+    # Tracked as: cleanup/hilt-instrumentation-setup
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 60
