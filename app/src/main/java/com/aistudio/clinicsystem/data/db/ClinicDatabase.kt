@@ -249,6 +249,9 @@ interface DoctorDao {
 
     @Query("SELECT COUNT(*) FROM doctors")
     suspend fun getDoctorCount(): Int
+
+    @Query("SELECT * FROM doctors WHERE isActive = 1 ORDER BY fullName")
+    suspend fun getAllDoctorsOnce(): List<DoctorEntity>
 }
 
 /**
@@ -274,6 +277,9 @@ interface LabResultDao {
 
     @Query("DELETE FROM lab_results")
     suspend fun clearAll()
+
+    @Query("SELECT * FROM lab_results WHERE patientPhone = :patientPhone ORDER BY performedAt DESC")
+    suspend fun getResultsByPatientOnce(patientPhone: String): List<LabResultEntity>
 }
 
 @Database(
