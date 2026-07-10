@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -147,19 +148,18 @@ class MainActivity : ComponentActivity() {
 
                                     is SessionState.SessionExpired -> {
                                         // Stage 6 (UI-6 fix): show "Session expired" dialog.
-                                        // For now, acknowledge immediately and route to auth.
+                                        // Medium-5 audit fix: i18n strings.
                                         AlertDialog(
                                             onDismissRequest = { viewModel.acknowledgeSessionExpired() },
-                                            title = { Text("Сессия истекла") },
+                                            title = { Text(stringResource(R.string.auth_session_expired_title)) },
                                             text = {
                                                 Text(
-                                                    "Ваша сессия истекла или была отозвана. " +
-                                                        "Пожалуйста, войдите в систему заново.",
+                                                    stringResource(R.string.auth_session_expired_text),
                                                 )
                                             },
                                             confirmButton = {
                                                 TextButton(onClick = { viewModel.acknowledgeSessionExpired() }) {
-                                                    Text("Войти заново")
+                                                    Text(stringResource(R.string.auth_login_again))
                                                 }
                                             },
                                         )

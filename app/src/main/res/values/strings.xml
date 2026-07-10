@@ -57,8 +57,17 @@
     <string name="notif_appointment_cancelled">Прием отменен ❌</string>
     <string name="notif_appointment_update">Обновление записи на прием ⚡</string>
     <string name="notif_medical_record">Новая запись в медицинской карте</string>
-    <string name="notif_channel_appointments">Уведомления о записях</string>
-    <string name="notif_channel_medical">Медицинские записи</string>
+    <string name="notif_channel_appointments">Статус записей на прием</string>
+    <string name="notif_channel_appointments_desc">Оповещения об одобрении или переносе приемов пациентов</string>
+    <string name="notif_channel_medical">Медицинские отчеты и выписки</string>
+    <string name="notif_channel_medical_desc">Импорт новых медицинских заключений и рецептов врача</string>
+    <string name="notif_appointment_approved_text">Ваша запись на прием была успешно ПОДТВЕРЖДЕНА клиникой.</string>
+    <string name="notif_appointment_cancelled_text">Внимание! Ваша запись на прием была отменена. Пожалуйста, откройте приложение для просмотра подробностей.</string>
+    <string name="notif_appointment_update_text">У вас есть обновления по вашей записи на прием.</string>
+    <string name="notif_public_title">Новое уведомление от клиники</string>
+    <string name="notif_public_text">Откройте приложение для просмотра</string>
+    <string name="notif_medical_record_title">Новая запись в медкарте! 📋</string>
+    <string name="notif_medical_record_text">В вашей медицинской карте появилась новая запись врача. Ознакомьтесь с назначениями и скачайте отчёт в личном кабинете.</string>
 
     <!-- Profile -->
     <string name="profile_edit">Редактировать профиль</string>
@@ -516,6 +525,9 @@
     <string name="auth_hide_password">Скрыть пароль</string>
     <string name="auth_session_ending">Сессия пользователя завершается...</string>
     <string name="auth_session_ended">Сессия пользователя успешно завершена.</string>
+    <string name="auth_session_expired_title">Сессия истекла</string>
+    <string name="auth_session_expired_text">Ваша сессия истекла или была отозвана. Пожалуйста, войдите в систему заново.</string>
+    <string name="auth_login_again">Войти заново</string>
     <string name="auth_biometric_blocked">Биометрический вход заблокирован во внешнем профиле клиники</string>
     <string name="auth_biometric_token_failed">Сбой биометрического токена</string>
     <string name="auth_biometric_verified">Биологическая верификация пройдена.</string>
@@ -731,4 +743,74 @@
     <string name="misc_unlinked_telegram">Unlinked Telegram Chat ID for user.</string>
     <string name="misc_new_appointment_btn">New Record entry</string>
     <string name="misc_appointment_number">Приём #</string>
+
+    <!-- Medium-5 (i18n): hardcoded Russian strings extracted from UI composables. -->
+    <!-- StaffAppointmentCardItem -->
+    <string name="staff_appt_patient_phone">Телефон: %1$s</string>
+    <string name="staff_appt_doctor_name">Доктор: %1$s</string>
+    <string name="staff_appt_session_datetime">Сеанс: %1$s в %2$s</string>
+    <string name="staff_appt_complaints">Жалобы: %1$s</string>
+    <string name="staff_appt_note_reply">Заметка / Ответ: %1$s</string>
+    <!-- StaffAppointmentsSection -->
+    <string name="staff_search_placeholder">Поиск по ФИО или номеру телефона…</string>
+    <string name="staff_all_appointments_count">Все записи (%1$d)</string>
+    <string name="staff_today_appointments_count">На Сегодня (%1$d)</string>
+    <!-- StaffQueueSection -->
+    <string name="queue_patients_count">Пациентов: %1$d</string>
+    <string name="queue_empty_text">В коридоре ожидания пока никого нет.\nЗарегистрируйте подтвержденного пациента ниже.</string>
+    <string name="queue_appointment_id">Приём #%1$d</string>
+    <!-- StaffPatientCardItem / ProfileCabinetCard -->
+    <string name="phone_label_short">Тел: %1$s</string>
+    <string name="records_count_label">Записей в медкарте: %1$d</string>
+    <string name="staff_patient_a11y_description">%1$s, телефон %2$s, записей в медкарте %3$d</string>
+    <!-- StaffScreen -->
+    <string name="staff_analytics_approved">Одобрено</string>
+    <string name="staff_default_doctor_name">Доктор</string>
+    <string name="staff_unsaved_warning_text">Введенная информация будет сохранена в локальный черновик на этом экране, чтобы вы не потеряли данные при случайном клике. Вы хотите закрыть окно?</string>
+    <string name="staff_create_unsaved_warning_text">Данные приёма сохранены во временный черновик в целях безопасности. Вы действительно хотите закрыть окно создания записи к врачу?</string>
+    <string name="staff_topbar_user_label">Сотрудник: %1$s</string>
+    <!-- AuthScreen -->
+    <string name="auth_error_message">Ошибка: %1$s</string>
+    <!-- MedicalHistoryCardItem -->
+    <string name="med_record_doctor">Доктор: %1$s</string>
+    <string name="med_electronic_signature">✓ Электронная подпись подтверждена врачом клиники.</string>
+    <string name="med_download_success">Файл \'%1$s\' успешно сохранен на устройство в каталог Загрузки приложения.</string>
+    <string name="med_download_path">Путь: AppData/Downloads/%1$s</string>
+    <string name="med_document_preview">Превью документа:</string>
+    <string name="med_share_intent_title">Медицинское заключение от %1$s</string>
+    <string name="med_doc_clinic_header">       КЛИНИКА: ИНТЕЛЛЕКТ-КЛИНИК (FASTAPI)     </string>
+    <string name="med_doc_conclusion_header">МЕДИЦИНСКОЕ ЗАКЛЮЧЕНИЕ ПАЦИЕНТА</string>
+    <string name="med_doc_visit_date">Дата визита:    %1$s</string>
+    <string name="med_doc_doctor">Лечащий врач:   %1$s</string>
+    <string name="med_doc_record_number">Номер записи:   #%1$s</string>
+    <string name="med_doc_diagnosis_header">ДИАГНОЗ:</string>
+    <string name="med_doc_prescription_header">НАЗНАЧЕНИЯ И ПРЕПАРАТЫ:</string>
+    <string name="med_doc_recommendations_header">ДОПОЛНИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ:</string>
+    <string name="med_doc_signature_line">Электронная подпись подтверждена врачом клиники.</string>
+    <string name="med_doc_copyright">Все права защищены © 2026 IntellectClinic</string>
+    <!-- AppointmentCardItem -->
+    <string name="pat_appointment_datetime">%1$s  в  %2$s</string>
+    <!-- CachedQueueSnapshotsCard -->
+    <string name="cached_queue_empty">Нет данных об очереди в кэше устройства. Выполните синхронизацию.</string>
+    <string name="cached_queue_status">Статус: %1$s</string>
+    <!-- AppointmentsSessionList -->
+    <string name="pat_use_green_button_hint">Используйте зеленую кнопку \'+\' для быстрой записи.</string>
+    <!-- TelegramBotCard -->
+    <string name="tg_bot_description">Бот автоматически информирует об изменениях статуса записей на прием и моментально доставляет назначения врачей.</string>
+    <string name="tg_connect_instructions">Для подключения бота запустите @IntellectClinicBot в Telegram и введите ваш Chat ID сюда:</string>
+    <!-- LabResultsSection -->
+    <string name="lab_results_title">Лабораторные результаты</string>
+    <string name="lab_results_refresh">Обновить</string>
+    <string name="lab_results_empty">Лабораторные результаты отсутствуют</string>
+    <string name="lab_result_value">Результат: %1$s%2$s</string>
+    <string name="lab_result_reference">Референс: %1$s</string>
+    <string name="lab_result_date">Дата: %1$s%2$s</string>
+    <!-- BookAppointmentDialog -->
+    <string name="ui_select_date">2. ВЫБЕРИТЕ ДАТУ ПРИЁМА</string>
+    <!-- AppointmentCardItem -->
+    <string name="pat_appointment_symptoms">Симптомы: %1$s</string>
+    <!-- TwoFactorAuthContent -->
+    <string name="ui_2fa_recovery_method_placeholder">user@example.com или +7…</string>
+    <!-- MedicalReportsSection -->
+    <string name="pat_reports_empty_hint">После приёма врачи внесут результаты в карту, результаты отобразятся тут.</string>
 </resources>

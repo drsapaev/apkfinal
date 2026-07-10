@@ -10,9 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.data.db.LabResultEntity
 
 /**
@@ -50,7 +52,7 @@ fun LabResultsSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Лабораторные результаты",
+                    text = stringResource(R.string.lab_results_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -68,7 +70,7 @@ fun LabResultsSection(
                     } else {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Обновить",
+                            contentDescription = stringResource(R.string.lab_results_refresh),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -79,7 +81,7 @@ fun LabResultsSection(
 
             if (labResults.isEmpty()) {
                 Text(
-                    text = "Лабораторные результаты отсутствуют",
+                    text = stringResource(R.string.lab_results_empty),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp),
@@ -134,7 +136,11 @@ private fun LabResultCard(result: LabResultEntity) {
             // Result + unit
             if (!result.result.isNullOrBlank()) {
                 Text(
-                    text = "Результат: ${result.result}${result.unit?.let { " $it" } ?: ""}",
+                    text = stringResource(
+                        R.string.lab_result_value,
+                        result.result,
+                        result.unit?.let { " $it" } ?: ""
+                    ),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -143,7 +149,7 @@ private fun LabResultCard(result: LabResultEntity) {
             // Reference range
             if (!result.referenceRange.isNullOrBlank()) {
                 Text(
-                    text = "Референс: ${result.referenceRange}",
+                    text = stringResource(R.string.lab_result_reference, result.referenceRange),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -152,7 +158,11 @@ private fun LabResultCard(result: LabResultEntity) {
             // Performed date + doctor
             if (!result.performedAt.isNullOrBlank()) {
                 Text(
-                    text = "Дата: ${result.performedAt}${result.doctorName?.let { " — $it" } ?: ""}",
+                    text = stringResource(
+                        R.string.lab_result_date,
+                        result.performedAt,
+                        result.doctorName?.let { " — $it" } ?: ""
+                    ),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

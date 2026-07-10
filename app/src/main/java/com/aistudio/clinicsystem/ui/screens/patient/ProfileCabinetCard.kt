@@ -92,7 +92,7 @@ fun ProfileCabinetCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Тел: ${user?.phone ?: ""}",
+                        text = stringResource(R.string.phone_label_short, user?.phone ?: ""),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

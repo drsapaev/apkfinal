@@ -410,7 +410,7 @@ private fun PatientScreenContent(
                         specialty = selectedSpecialty,
                         date = bookingDatesList[selectedDateIdx],
                         time = selectedTimeSlot,
-                        reason = bookingReasonInput.ifBlank { "Консультация врача" }
+                        reason = bookingReasonInput.ifBlank { stringResource(R.string.ui_default_reason) }
                     )
                     showBookDialog = false
                     bookingReasonInput = ""

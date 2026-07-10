@@ -102,7 +102,7 @@ fun CachedQueueSnapshotsCard(
             Spacer(modifier = Modifier.height(Spacing.m))
             if (snapshots.isEmpty()) {
                 Text(
-                    text = "Нет данных об очереди в кэше устройства. Выполните синхронизацию.",
+                    text = stringResource(R.string.cached_queue_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -136,7 +136,7 @@ fun CachedQueueSnapshotsCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Статус: ${item.status}",
+                                text = stringResource(R.string.cached_queue_status, item.status),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )

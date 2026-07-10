@@ -68,27 +68,27 @@ fun MedicalHistoryCardItem(
     // P-25 fix: extracted report text builder so Share button can use it without downloading
     fun buildReportText(record: MedicalRecordEntity): String = buildString {
         appendLine("==============================================")
-        appendLine("       КЛИНИКА: ИНТЕЛЛЕКТ-КЛИНИК (FASTAPI)     ")
+        appendLine(context.getString(R.string.med_doc_clinic_header))
         appendLine("==============================================")
-        appendLine("МЕДИЦИНСКОЕ ЗАКЛЮЧЕНИЕ ПАЦИЕНТА")
+        appendLine(context.getString(R.string.med_doc_conclusion_header))
         appendLine("----------------------------------------------")
-        appendLine("Дата визита:    ${record.visitDate}")
-        appendLine("Лечащий врач:   ${record.doctorName}")
-        appendLine("Номер записи:   #${record.id}")
+        appendLine(context.getString(R.string.med_doc_visit_date, record.visitDate))
+        appendLine(context.getString(R.string.med_doc_doctor, record.doctorName))
+        appendLine(context.getString(R.string.med_doc_record_number, record.id))
         appendLine("----------------------------------------------")
-        appendLine("ДИАГНОЗ:")
+        appendLine(context.getString(R.string.med_doc_diagnosis_header))
         appendLine(record.diagnosis)
         appendLine("----------------------------------------------")
-        appendLine("НАЗНАЧЕНИЯ И ПРЕПАРАТЫ:")
+        appendLine(context.getString(R.string.med_doc_prescription_header))
         appendLine(record.prescription)
         appendLine("----------------------------------------------")
         if (record.recommendations.isNotEmpty()) {
-            appendLine("ДОПОЛНИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ:")
+            appendLine(context.getString(R.string.med_doc_recommendations_header))
             appendLine(record.recommendations)
             appendLine("----------------------------------------------")
         }
-        appendLine("Электронная подпись подтверждена врачом клиники.")
-        appendLine("Все права защищены © 2026 IntellectClinic")
+        appendLine(context.getString(R.string.med_doc_signature_line))
+        appendLine(context.getString(R.string.med_doc_copyright))
         appendLine("==============================================")
     }
 
@@ -121,7 +121,7 @@ fun MedicalHistoryCardItem(
         try {
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_TITLE, "Медицинское заключение от ${record.visitDate}")
+                putExtra(android.content.Intent.EXTRA_TITLE, context.getString(R.string.med_share_intent_title, record.visitDate))
                 putExtra(android.content.Intent.EXTRA_TEXT, text)
             }
             context.startActivity(android.content.Intent.createChooser(intent, stringResource(R.string.med_share_report)))
@@ -154,13 +154,13 @@ fun MedicalHistoryCardItem(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Файл '$downloadedFileName' успешно сохранен на устройство в каталог Загрузки приложения.",
+                        text = stringResource(R.string.med_download_success, downloadedFileName),
                         fontSize = AppFontSize.body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
                     Text(
-                        text = "Путь: AppData/Downloads/$downloadedFileName",
+                        text = stringResource(R.string.med_download_path, downloadedFileName),
                         fontSize = AppFontSize.caption,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
@@ -168,7 +168,7 @@ fun MedicalHistoryCardItem(
 
                     Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(
-                        text = "Превью документа:",
+                        text = stringResource(R.string.med_document_preview),
                         fontSize = AppFontSize.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -267,7 +267,7 @@ fun MedicalHistoryCardItem(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Доктор: ${record.doctorName}",
+                            text = stringResource(R.string.med_record_doctor, record.doctorName),
                             fontSize = AppFontSize.body,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -295,7 +295,7 @@ fun MedicalHistoryCardItem(
             // Primary Highlighted diagnosis always visible
             Row(verticalAlignment = Alignment.Top) {
                 Text(
-                    text = "Диагноз: ",
+                    text = stringResource(R.string.ui_diagnoz),
                     fontWeight = FontWeight.Bold,
                     fontSize = AppFontSize.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -446,7 +446,7 @@ fun MedicalHistoryCardItem(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "✓ Электронная подпись подтверждена врачом клиники.",
+                            text = stringResource(R.string.med_electronic_signature),
                             fontSize = AppFontSize.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(Spacing.s),

@@ -120,7 +120,7 @@ fun BookAppointmentDialog(
                 Spacer(modifier = Modifier.height(Spacing.m))
 
                 Text(
-                    text = "1. ВЫБЕРИТЕ СПЕЦИАЛИСТА",
+                    text = stringResource(R.string.ui_select_specialist),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = tealPrimary
                 )
@@ -172,7 +172,7 @@ fun BookAppointmentDialog(
                 Spacer(modifier = Modifier.height(Spacing.l))
 
                 Text(
-                    text = "2. ВЫБЕРИТЕ ДАТУ ПРИЁМА",
+                    text = stringResource(R.string.ui_select_date),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = tealPrimary
                 )
@@ -232,7 +232,7 @@ fun BookAppointmentDialog(
                 Spacer(modifier = Modifier.height(Spacing.l))
 
                 Text(
-                    text = "3. ВЫБЕРИТЕ ВРЕМЯ",
+                    text = stringResource(R.string.ui_select_time),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = tealPrimary
                 )
@@ -273,7 +273,7 @@ fun BookAppointmentDialog(
                 Spacer(modifier = Modifier.height(Spacing.l))
 
                 Text(
-                    text = "4. ОПИШИТЕ ЖАЛОБЫ / ПРИЧИНУ",
+                    text = stringResource(R.string.ui_describe_complaint),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = tealPrimary
                 )
@@ -283,7 +283,7 @@ fun BookAppointmentDialog(
                 OutlinedTextField(
                     value = bookingReasonInput,
                     onValueChange = onReasonInputChange,
-                    placeholder = { Text("Например: плановый осмотр, острая боль...") },
+                    placeholder = { Text(stringResource(R.string.ui_complaint_placeholder)) },
                     maxLines = 3,
                     modifier = Modifier
                         .fillMaxWidth()

@@ -57,8 +57,17 @@
     <string name="notif_appointment_cancelled">Appointment cancelled ❌</string>
     <string name="notif_appointment_update">Appointment update ⚡</string>
     <string name="notif_medical_record">New medical record</string>
-    <string name="notif_channel_appointments">Appointment notifications</string>
-    <string name="notif_channel_medical">Medical records</string>
+    <string name="notif_channel_appointments">Appointment status</string>
+    <string name="notif_channel_appointments_desc">Notifications about appointment approvals and rescheduling</string>
+    <string name="notif_channel_medical">Medical reports and transcripts</string>
+    <string name="notif_channel_medical_desc">New medical reports and doctor prescriptions</string>
+    <string name="notif_appointment_approved_text">Your appointment has been successfully CONFIRMED by the clinic.</string>
+    <string name="notif_appointment_cancelled_text">Attention! Your appointment has been cancelled. Please open the app for details.</string>
+    <string name="notif_appointment_update_text">You have updates on your appointment.</string>
+    <string name="notif_public_title">New notification from clinic</string>
+    <string name="notif_public_text">Open the app to view</string>
+    <string name="notif_medical_record_title">New medical record! 📋</string>
+    <string name="notif_medical_record_text">A new doctor\'s entry has been added to your medical record. Review the prescriptions and download the report from your dashboard.</string>
 
     <!-- Profile -->
     <string name="profile_edit">Edit Profile</string>
@@ -341,6 +350,9 @@ Register an approved patient below.</string>
     <string name="auth_hide_password">Hide password</string>
     <string name="auth_session_ending">User session ending...</string>
     <string name="auth_session_ended">User session ended successfully.</string>
+    <string name="auth_session_expired_title">Session expired</string>
+    <string name="auth_session_expired_text">Your session has expired or was revoked. Please log in again.</string>
+    <string name="auth_login_again">Log in again</string>
     <string name="auth_biometric_blocked">Biometric login blocked in external clinic profile</string>
     <string name="auth_biometric_token_failed">Biometric token failed</string>
     <string name="auth_biometric_verified">Biometric verification passed.</string>
@@ -556,4 +568,74 @@ Register an approved patient below.</string>
     <string name="misc_unlinked_telegram">Unlinked Telegram Chat ID for user.</string>
     <string name="misc_new_appointment_btn">New Record entry</string>
     <string name="misc_appointment_number">Appointment #</string>
+
+    <!-- Medium-5 (i18n): hardcoded Russian strings extracted from UI composables. -->
+    <!-- StaffAppointmentCardItem -->
+    <string name="staff_appt_patient_phone">Phone: %1$s</string>
+    <string name="staff_appt_doctor_name">Doctor: %1$s</string>
+    <string name="staff_appt_session_datetime">Session: %1$s at %2$s</string>
+    <string name="staff_appt_complaints">Complaints: %1$s</string>
+    <string name="staff_appt_note_reply">Note / Reply: %1$s</string>
+    <!-- StaffAppointmentsSection -->
+    <string name="staff_search_placeholder">Search by full name or phone number…</string>
+    <string name="staff_all_appointments_count">All appointments (%1$d)</string>
+    <string name="staff_today_appointments_count">Today (%1$d)</string>
+    <!-- StaffQueueSection -->
+    <string name="queue_patients_count">Patients: %1$d</string>
+    <string name="queue_empty_text">The waiting room is currently empty.\nRegister a confirmed patient below.</string>
+    <string name="queue_appointment_id">Appointment #%1$d</string>
+    <!-- StaffPatientCardItem / ProfileCabinetCard -->
+    <string name="phone_label_short">Phone: %1$s</string>
+    <string name="records_count_label">Records in chart: %1$d</string>
+    <string name="staff_patient_a11y_description">%1$s, phone %2$s, %3$d records in chart</string>
+    <!-- StaffScreen -->
+    <string name="staff_analytics_approved">Approved</string>
+    <string name="staff_default_doctor_name">Doctor</string>
+    <string name="staff_unsaved_warning_text">The entered information will be saved as a local draft on this screen, so you won\'t lose data on an accidental click. Do you want to close the window?</string>
+    <string name="staff_create_unsaved_warning_text">Appointment data has been saved as a temporary draft for security. Are you sure you want to close the appointment creation window?</string>
+    <string name="staff_topbar_user_label">Staff: %1$s</string>
+    <!-- AuthScreen -->
+    <string name="auth_error_message">Error: %1$s</string>
+    <!-- MedicalHistoryCardItem -->
+    <string name="med_record_doctor">Doctor: %1$s</string>
+    <string name="med_electronic_signature">✓ Electronic signature confirmed by the clinic doctor.</string>
+    <string name="med_download_success">File \'%1$s\' successfully saved to the device in the app\'s Downloads directory.</string>
+    <string name="med_download_path">Path: AppData/Downloads/%1$s</string>
+    <string name="med_document_preview">Document preview:</string>
+    <string name="med_share_intent_title">Medical report from %1$s</string>
+    <string name="med_doc_clinic_header">       CLINIC: INTELLECT-CLINIC (FASTAPI)     </string>
+    <string name="med_doc_conclusion_header">MEDICAL CONCLUSION OF THE PATIENT</string>
+    <string name="med_doc_visit_date">Visit date:    %1$s</string>
+    <string name="med_doc_doctor">Attending doctor:   %1$s</string>
+    <string name="med_doc_record_number">Record number:   #%1$s</string>
+    <string name="med_doc_diagnosis_header">DIAGNOSIS:</string>
+    <string name="med_doc_prescription_header">PRESCRIPTIONS AND MEDICATIONS:</string>
+    <string name="med_doc_recommendations_header">ADDITIONAL RECOMMENDATIONS:</string>
+    <string name="med_doc_signature_line">Electronic signature confirmed by the clinic doctor.</string>
+    <string name="med_doc_copyright">All rights reserved © 2026 IntellectClinic</string>
+    <!-- AppointmentCardItem -->
+    <string name="pat_appointment_datetime">%1$s  at  %2$s</string>
+    <!-- CachedQueueSnapshotsCard -->
+    <string name="cached_queue_empty">No queue data in device cache. Please synchronize.</string>
+    <string name="cached_queue_status">Status: %1$s</string>
+    <!-- AppointmentsSessionList -->
+    <string name="pat_use_green_button_hint">Use the green \'+\' button for quick booking.</string>
+    <!-- TelegramBotCard -->
+    <string name="tg_bot_description">The bot automatically notifies you about appointment status changes and instantly delivers doctor prescriptions.</string>
+    <string name="tg_connect_instructions">To connect the bot, start @IntellectClinicBot in Telegram and enter your Chat ID here:</string>
+    <!-- LabResultsSection -->
+    <string name="lab_results_title">Lab results</string>
+    <string name="lab_results_refresh">Refresh</string>
+    <string name="lab_results_empty">No lab results available</string>
+    <string name="lab_result_value">Result: %1$s%2$s</string>
+    <string name="lab_result_reference">Reference: %1$s</string>
+    <string name="lab_result_date">Date: %1$s%2$s</string>
+    <!-- BookAppointmentDialog -->
+    <string name="ui_select_date">2. SELECT APPOINTMENT DATE</string>
+    <!-- AppointmentCardItem -->
+    <string name="pat_appointment_symptoms">Symptoms: %1$s</string>
+    <!-- TwoFactorAuthContent -->
+    <string name="ui_2fa_recovery_method_placeholder">user@example.com or +7…</string>
+    <!-- MedicalReportsSection -->
+    <string name="pat_reports_empty_hint">After the appointment, doctors will add the results to the chart, and they will appear here.</string>
 </resources>

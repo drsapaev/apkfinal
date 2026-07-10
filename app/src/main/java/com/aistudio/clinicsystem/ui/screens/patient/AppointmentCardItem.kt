@@ -207,7 +207,7 @@ fun AppointmentCardItem(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "${appointment.date}  в  ${appointment.time}",
+                        text = stringResource(R.string.pat_appointment_datetime, appointment.date, appointment.time),
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = AppFontSize.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -229,7 +229,7 @@ fun AppointmentCardItem(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Симптомы: ${appointment.reason}",
+                        text = stringResource(R.string.pat_appointment_symptoms, appointment.reason),
                         fontSize = AppFontSize.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

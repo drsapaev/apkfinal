@@ -162,7 +162,7 @@ fun MedicalReportsSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "После приёма врачи внесут результаты в карту, результаты отобразятся тут.",
+                        text = stringResource(R.string.pat_reports_empty_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
