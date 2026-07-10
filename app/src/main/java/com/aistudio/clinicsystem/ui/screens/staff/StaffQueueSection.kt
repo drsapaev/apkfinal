@@ -97,7 +97,7 @@ fun StaffQueueSection(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "Пациентов: ${cachedQueueSnapshots.size}",
+                    text = stringResource(R.string.queue_patients_count, cachedQueueSnapshots.size),
                     fontSize = AppFontSize.bodySmall,
                     color = adminColor,
                     fontWeight = FontWeight.Bold
@@ -114,7 +114,7 @@ fun StaffQueueSection(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "В коридоре ожидания пока никого нет.\nЗарегистрируйте подтвержденного пациента ниже.",
+                    text = stringResource(R.string.queue_empty_text),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = AppFontSize.body,
                     textAlign = TextAlign.Center
@@ -158,7 +158,7 @@ fun StaffQueueSection(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "Приём #${q.appointmentId}",
+                                            text = stringResource(R.string.queue_appointment_id, q.appointmentId),
                                             fontSize = AppFontSize.caption,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

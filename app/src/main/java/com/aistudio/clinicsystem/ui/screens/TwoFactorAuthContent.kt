@@ -1,6 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens
 
 import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -130,7 +131,7 @@ fun TwoFactorAuthContent(
             )
 
             Text(
-                text = "Введите 6-значный код из приложения-аутентификатора",
+                text = stringResource(R.string.ui_2fa_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -216,7 +217,7 @@ private fun TwoFactorTotpCard(
             OutlinedTextField(
                 value = totpCode,
                 onValueChange = onTotpCodeChange,
-                label = { Text("6-значный код") },
+                label = { Text(stringResource(R.string.ui_2fa_code_hint)) },
                 placeholder = { Text("123456") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -341,7 +342,7 @@ private fun TwoFactorRecoveryCard(
             Spacer(modifier = Modifier.height(Spacing.s))
 
             Text(
-                text = "Укажите email или телефон — мы отправим recovery-код",
+                text = stringResource(R.string.ui_2fa_recovery_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -351,8 +352,8 @@ private fun TwoFactorRecoveryCard(
             OutlinedTextField(
                 value = recoveryMethod,
                 onValueChange = onRecoveryMethodChange,
-                label = { Text("Email или телефон") },
-                placeholder = { Text("user@example.com или +7...") },
+                label = { Text(stringResource(R.string.ui_2fa_recovery_method)) },
+                placeholder = { Text(stringResource(R.string.ui_2fa_recovery_method_placeholder)) },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tealPrimary,
@@ -392,7 +393,7 @@ private fun TwoFactorRecoveryCard(
             OutlinedTextField(
                 value = recoveryCode,
                 onValueChange = onRecoveryCodeChange,
-                label = { Text("Recovery-код") },
+                label = { Text(stringResource(R.string.ui_2fa_recovery_code)) },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = tealPrimary,
@@ -437,7 +438,7 @@ private fun TwoFactorRecoveryCard(
 
             TextButton(onClick = onBackToTotp) {
                 Text(
-                    "← Назад к TOTP",
+                    stringResource(R.string.ui_2fa_back_to_totp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

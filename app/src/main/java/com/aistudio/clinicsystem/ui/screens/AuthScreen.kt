@@ -405,7 +405,7 @@ private fun AuthScreenContent(
                     // new fingerprint enrollment. Fall back to password login.
                     Toast.makeText(
                         context,
-                        "Биометрический ключ недоступен. Войдите по паролю.",
+                        context.getString(R.string.ui_biometric_key_unavailable),
                         Toast.LENGTH_LONG,
                     ).show()
                     showVerificationDialog = false
@@ -418,7 +418,11 @@ private fun AuthScreenContent(
                     object : BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                             super.onAuthenticationError(errorCode, errString)
-                            Toast.makeText(context, "Ошибка: $errString", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.auth_error_message, errString.toString()),
+                                Toast.LENGTH_SHORT
+                            ).show()
                             showVerificationDialog = false
                         }
 

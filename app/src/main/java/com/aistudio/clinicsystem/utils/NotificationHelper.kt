@@ -19,20 +19,20 @@ object NotificationHelper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val appointmentChan = NotificationChannel(
                 APPOINTMENT_CHANNEL_ID,
-                "Статус записей на прием",
+                context.getString(R.string.notif_channel_appointments),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Оповещения об одобрении или переносе приемов пациентов"
+                description = context.getString(R.string.notif_channel_appointments_desc)
                 enableLights(true)
                 enableVibration(true)
             }
 
             val medicalChan = NotificationChannel(
                 MEDICAL_CHANNEL_ID,
-                "Медицинские отчеты и выписки",
+                context.getString(R.string.notif_channel_medical),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Импорт новых медицинских заключений и рецептов врача"
+                description = context.getString(R.string.notif_channel_medical_desc)
                 enableLights(true)
                 enableVibration(true)
             }
@@ -62,15 +62,15 @@ object NotificationHelper {
         )
 
         val title = when (newStatus.uppercase()) {
-            "APPROVED" -> "Прием одобрен! ✔"
-            "CANCELLED", "REJECTED" -> "Прием отменен ❌"
-            else -> "Обновление записи на прием ⚡"
+            "APPROVED" -> context.getString(R.string.notif_appointment_approved)
+            "CANCELLED", "REJECTED" -> context.getString(R.string.notif_appointment_cancelled)
+            else -> context.getString(R.string.notif_appointment_update)
         }
 
         val statusText = when (newStatus.uppercase()) {
-            "APPROVED" -> "Ваша запись на прием была успешно ПОДТВЕРЖДЕНА клиникой."
-            "CANCELLED", "REJECTED" -> "Внимание! Ваша запись на прием была отменена. Пожалуйста, откройте приложение для просмотра подробностей."
-            else -> "У вас есть обновления по вашей записи на прием."
+            "APPROVED" -> context.getString(R.string.notif_appointment_approved_text)
+            "CANCELLED", "REJECTED" -> context.getString(R.string.notif_appointment_cancelled_text)
+            else -> context.getString(R.string.notif_appointment_update_text)
         }
 
         val builder = NotificationCompat.Builder(context, APPOINTMENT_CHANNEL_ID)
@@ -90,8 +90,8 @@ object NotificationHelper {
             .setPublicVersion(
                 NotificationCompat.Builder(context, APPOINTMENT_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notification_appointment)
-                    .setContentTitle("Новое уведомление от клиники")
-                    .setContentText("Откройте приложение для просмотра")
+                    .setContentTitle(context.getString(R.string.notif_public_title))
+                    .setContentText(context.getString(R.string.notif_public_text))
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .build()
             )
@@ -122,13 +122,13 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val contentText = "В вашей медицинской карте появилась новая запись врача. Ознакомьтесь с назначениями и скачайте отчёт в личном кабинете."
+        val contentText = context.getString(R.string.notif_medical_record_text)
 
         val builder = NotificationCompat.Builder(context, MEDICAL_CHANNEL_ID)
             // Stage 4.7 (UI-34 fix): branded clipboard icon instead of
             // android.R.drawable.ic_menu_agenda (generic system list icon).
             .setSmallIcon(R.drawable.ic_notification_medical)
-            .setContentTitle("Новая запись в медкарте! 📋")
+            .setContentTitle(context.getString(R.string.notif_medical_record_title))
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -140,8 +140,8 @@ object NotificationHelper {
             .setPublicVersion(
                 NotificationCompat.Builder(context, MEDICAL_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notification_medical)
-                    .setContentTitle("Новое уведомление от клиники")
-                    .setContentText("Откройте приложение для просмотра")
+                    .setContentTitle(context.getString(R.string.notif_public_title))
+                    .setContentText(context.getString(R.string.notif_public_text))
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .build()
             )

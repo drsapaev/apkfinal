@@ -57,8 +57,17 @@
     <string name="notif_appointment_cancelled">Qabul bekor qilindi ❌</string>
     <string name="notif_appointment_update">Qabul yangilanishi ⚡</string>
     <string name="notif_medical_record">Yangi tibbiy yozuv</string>
-    <string name="notif_channel_appointments">Qabul bildirishnomalari</string>
-    <string name="notif_channel_medical">Tibbiy yozuvlar</string>
+    <string name="notif_channel_appointments">Qabul holati</string>
+    <string name="notif_channel_appointments_desc">Qabullarni tasdiqlash va qayta rejalashtirish haqida bildirishnomalar</string>
+    <string name="notif_channel_medical">Tibbiy hisobotlar va bayonnomalar</string>
+    <string name="notif_channel_medical_desc">Yangi tibbiy xulosalar va shifokor retseptlari</string>
+    <string name="notif_appointment_approved_text">Sizning qabulingiz klinikada muvaffaqiyatli TASDIQLANDI.</string>
+    <string name="notif_appointment_cancelled_text">Diqqat! Sizning qabulingiz bekor qilindi. Tafsilotlar uchun ilovani oching.</string>
+    <string name="notif_appointment_update_text">Qabulingiz bo\'yicha yangilanishlar bor.</string>
+    <string name="notif_public_title">Klinikadan yangi bildirishnoma</string>
+    <string name="notif_public_text">Ko\'rish uchun ilovani oching</string>
+    <string name="notif_medical_record_title">Yangi tibbiy yozuv! 📋</string>
+    <string name="notif_medical_record_text">Tibbiy kartangizga shifokorning yangi yozuvi qo\'shildi. Retseptlarni ko\'rib chiqing va hisobotni shaxsiy kabinetdan yuklab oling.</string>
 
     <!-- Profile -->
     <string name="profile_edit">Profilni tahrirlash</string>
@@ -341,6 +350,9 @@ Tasdiqlangan bemorni ro\'yxatdan o\'tkazing.</string>
     <string name="auth_hide_password">Parolni yashirish</string>
     <string name="auth_session_ending">Foydalanuvchi sessiyasi tugatilmoqda...</string>
     <string name="auth_session_ended">Foydalanuvchi sessiyasi muvaffaqiyatli tugatildi.</string>
+    <string name="auth_session_expired_title">Sessiya muddati tugadi</string>
+    <string name="auth_session_expired_text">Sessiyangiz muddati tugadi yoki bekor qilindi. Iltimos, qayta tizimga kiring.</string>
+    <string name="auth_login_again">Qayta kirish</string>
     <string name="auth_biometric_blocked">Biometrik kirish tashqi klinika profilida bloklangan</string>
     <string name="auth_biometric_token_failed">Biometrik token xatosi</string>
     <string name="auth_biometric_verified">Biometrik tasdiqlash muvaffaqiyatli.</string>
@@ -556,4 +568,74 @@ Tasdiqlangan bemorni ro\'yxatdan o\'tkazing.</string>
     <string name="misc_unlinked_telegram">Telegram Chat ID uzib qo\'yildi.</string>
     <string name="misc_new_appointment_btn">Yangi yozuv</string>
     <string name="misc_appointment_number">Uchrashuv #</string>
+
+    <!-- Medium-5 (i18n): hardcoded Russian strings extracted from UI composables. -->
+    <!-- StaffAppointmentCardItem -->
+    <string name="staff_appt_patient_phone">Telefon: %1$s</string>
+    <string name="staff_appt_doctor_name">Shifokor: %1$s</string>
+    <string name="staff_appt_session_datetime">Seans: %1$s va %2$s</string>
+    <string name="staff_appt_complaints">Shikoyatlar: %1$s</string>
+    <string name="staff_appt_note_reply">Eslatma / Javob: %1$s</string>
+    <!-- StaffAppointmentsSection -->
+    <string name="staff_search_placeholder">F.I.O. yoki telefon raqami bo\'yicha qidirish…</string>
+    <string name="staff_all_appointments_count">Barcha yozuvlar (%1$d)</string>
+    <string name="staff_today_appointments_count">Bugun (%1$d)</string>
+    <!-- StaffQueueSection -->
+    <string name="queue_patients_count">Bemorlar: %1$d</string>
+    <string name="queue_empty_text">Kutish xonasida hozircha hech kim yo\'q.\nTasdiqlangan bemorni quyida ro\'yxatdan o\'tkazing.</string>
+    <string name="queue_appointment_id">Uchrashuv #%1$d</string>
+    <!-- StaffPatientCardItem / ProfileCabinetCard -->
+    <string name="phone_label_short">Telefon: %1$s</string>
+    <string name="records_count_label">Kartadagi yozuvlar: %1$d</string>
+    <string name="staff_patient_a11y_description">%1$s, telefon %2$s, kartada %3$d yozuv</string>
+    <!-- StaffScreen -->
+    <string name="staff_analytics_approved">Tasdiqlangan</string>
+    <string name="staff_default_doctor_name">Shifokor</string>
+    <string name="staff_unsaved_warning_text">Kiritilgan ma\'lumotlar ekranda mahalliy qoralama sifatida saqlanadi, shu sababli tasodifiy bosishda ma\'lumotlarni yo\'qotmaysiz. Oynani yopmoqchimisiz?</string>
+    <string name="staff_create_unsaved_warning_text">Uchrashuv ma\'lumotlari xavfsizlik uchun vaqtinchalik qoralama sifatida saqlandi. Uchrashuv yaratish oynasini yopmoqchimisiz?</string>
+    <string name="staff_topbar_user_label">Xodim: %1$s</string>
+    <!-- AuthScreen -->
+    <string name="auth_error_message">Xato: %1$s</string>
+    <!-- MedicalHistoryCardItem -->
+    <string name="med_record_doctor">Shifokor: %1$s</string>
+    <string name="med_electronic_signature">✓ Elektron imzo klinik shifokori tomonidan tasdiqlangan.</string>
+    <string name="med_download_success">\'%1$s\' fayli qurilmadagi ilovaning Yuklamalar jildiga muvaffaqiyatli saqlandi.</string>
+    <string name="med_download_path">Yo\'l: AppData/Downloads/%1$s</string>
+    <string name="med_document_preview">Hujjatning oldindan ko\'rinishi:</string>
+    <string name="med_share_intent_title">%1$s sanasidagi tibbiy xulosa</string>
+    <string name="med_doc_clinic_header">       KLINIKA: INTELLECT-CLINIC (FASTAPI)     </string>
+    <string name="med_doc_conclusion_header">BEMORNING TIBBIY XULOSASI</string>
+    <string name="med_doc_visit_date">Tashrif sanasi:    %1$s</string>
+    <string name="med_doc_doctor">Davolovchi shifokor:   %1$s</string>
+    <string name="med_doc_record_number">Yozuv raqami:   #%1$s</string>
+    <string name="med_doc_diagnosis_header">DIAGNOZ:</string>
+    <string name="med_doc_prescription_header">RETSEPTLAR VA DORI-DARMONLAR:</string>
+    <string name="med_doc_recommendations_header">QO\'SHIMCHA TAVSIYALAR:</string>
+    <string name="med_doc_signature_line">Elektron imzo klinik shifokori tomonidan tasdiqlangan.</string>
+    <string name="med_doc_copyright">Barcha huquqlar himoyalangan © 2026 IntellectClinic</string>
+    <!-- AppointmentCardItem -->
+    <string name="pat_appointment_datetime">%1$s  va  %2$s</string>
+    <!-- CachedQueueSnapshotsCard -->
+    <string name="cached_queue_empty">Qurilma keshida navbat ma\'lumotlari yo\'q. Sinxronizatsiyani amalga oshiring.</string>
+    <string name="cached_queue_status">Holat: %1$s</string>
+    <!-- AppointmentsSessionList -->
+    <string name="pat_use_green_button_hint">Tezkor yozish uchun yashil \'+\' tugmasidan foydalaning.</string>
+    <!-- TelegramBotCard -->
+    <string name="tg_bot_description">Bot uchrashuv holati o\'zgarishlari haqida avtomatik xabar beradi va shifokor tavsiyalarini darhol yetkazib beradi.</string>
+    <string name="tg_connect_instructions">Botni ulash uchun Telegram\'da @IntellectClinicBot\'ni ishga tushiring va Chat ID\'ingizni shu yerga kiriting:</string>
+    <!-- LabResultsSection -->
+    <string name="lab_results_title">Laboratoriya natijalari</string>
+    <string name="lab_results_refresh">Yangilash</string>
+    <string name="lab_results_empty">Laboratoriya natijalari mavjud emas</string>
+    <string name="lab_result_value">Natija: %1$s%2$s</string>
+    <string name="lab_result_reference">Reference: %1$s</string>
+    <string name="lab_result_date">Sana: %1$s%2$s</string>
+    <!-- BookAppointmentDialog -->
+    <string name="ui_select_date">2. UCHRASHUV SANASINI TANLANG</string>
+    <!-- AppointmentCardItem -->
+    <string name="pat_appointment_symptoms">Simptomlar: %1$s</string>
+    <!-- TwoFactorAuthContent -->
+    <string name="ui_2fa_recovery_method_placeholder">user@example.com yoki +7…</string>
+    <!-- MedicalReportsSection -->
+    <string name="pat_reports_empty_hint">Uchrashuvdan so\'ng shifokorlar natijalarni kartaga kiritadi, natijalar shu yerda ko\'rinadi.</string>
 </resources>

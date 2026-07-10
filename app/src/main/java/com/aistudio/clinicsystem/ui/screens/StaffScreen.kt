@@ -293,7 +293,7 @@ private fun StaffScreenContent(
                             modifier = Modifier.weight(1f),
                         )
                         AnalyticsCard(
-                            title = "Одобрено",
+                            title = stringResource(R.string.staff_analytics_approved),
                             count = "${approvedAppts.size}",
                             icon = Icons.Default.CheckCircle,
                             indicatorColor = MaterialTheme.colorScheme.primary,
@@ -590,8 +590,7 @@ private fun StaffScreenContent(
             title = { Text(stringResource(R.string.dialog_exit_editor)) },
             text = {
                 Text(
-                    "Введенная информация будет сохранена в локальный черновик на этом экране, " +
-                        "чтобы вы не потеряли данные при случайном клике. Вы хотите закрыть окно?",
+                    stringResource(R.string.staff_unsaved_warning_text),
                 )
             },
             confirmButton = {
@@ -619,8 +618,7 @@ private fun StaffScreenContent(
             title = { Text(stringResource(R.string.dialog_close_form)) },
             text = {
                 Text(
-                    "Данные приёма сохранены во временный черновик в целях безопасности. " +
-                        "Вы действительно хотите закрыть окно создания записи к врачу?",
+                    stringResource(R.string.staff_create_unsaved_warning_text),
                 )
             },
             confirmButton = {
@@ -667,7 +665,7 @@ private fun StaffTopAppBar(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Сотрудник: ${currentUser?.fullName ?: "Доктор"}",
+                    text = stringResource(R.string.staff_topbar_user_label, currentUser?.fullName ?: stringResource(R.string.staff_default_doctor_name)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )

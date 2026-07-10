@@ -160,7 +160,7 @@ fun StaffAppointmentsSection(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("Поиск по ФИО или номеру телефона...") },
+            placeholder = { Text(stringResource(R.string.staff_search_placeholder)) },
             leadingIcon = {
                 Icon(
                     Icons.Default.Search,
@@ -192,14 +192,17 @@ fun StaffAppointmentsSection(
             modifier = Modifier.fillMaxWidth(),
         ) {
             FilterChipBox(
-                text = "Все записи (${allAppointments.size})",
+                text = stringResource(R.string.staff_all_appointments_count, allAppointments.size),
                 isSelected = !filterTodayOnly,
                 accentColor = adminColor,
                 onClick = { onFilterTodayOnlyChange(false) },
                 testTag = "all_appointments_tab",
             )
             FilterChipBox(
-                text = "На Сегодня (${allAppointments.count { it.date == todayDateStr }})",
+                text = stringResource(
+                    R.string.staff_today_appointments_count,
+                    allAppointments.count { it.date == todayDateStr }
+                ),
                 isSelected = filterTodayOnly,
                 accentColor = adminColor,
                 onClick = { onFilterTodayOnlyChange(true) },

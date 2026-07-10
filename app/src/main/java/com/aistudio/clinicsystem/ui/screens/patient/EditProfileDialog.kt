@@ -59,7 +59,7 @@ fun EditProfileDialog(
         text = {
             Column {
                 Text(
-                    text = "Пожалуйста, введите ваше настоящее ФИО для корректного ведения электронной медицинской карты.",
+                    text = stringResource(R.string.pat_edit_name_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 12.dp)

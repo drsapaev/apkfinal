@@ -84,7 +84,7 @@ fun AppointmentsSessionList(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Используйте зеленую кнопку '+' для быстрой записи.",
+                    text = stringResource(R.string.pat_use_green_button_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

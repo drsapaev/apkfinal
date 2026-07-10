@@ -99,7 +99,7 @@ fun StaffAppointmentCardItem(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Телефон: ${appt.patientPhone}",
+                        text = stringResource(R.string.staff_appt_patient_phone, appt.patientPhone),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -166,14 +166,14 @@ fun StaffAppointmentCardItem(
             HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
 
             Text(
-                text = "Доктор: ${appt.doctorName}",
+                text = stringResource(R.string.staff_appt_doctor_name, appt.doctorName),
                 fontSize = AppFontSize.body,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
-                text = "Сеанс: ${appt.date} в ${appt.time}",
+                text = stringResource(R.string.staff_appt_session_datetime, appt.date, appt.time),
                 fontSize = AppFontSize.body,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -182,7 +182,7 @@ fun StaffAppointmentCardItem(
             Spacer(modifier = Modifier.height(Spacing.xs))
 
             Text(
-                text = "Жалобы: ${appt.reason}",
+                text = stringResource(R.string.staff_appt_complaints, appt.reason),
                 fontSize = AppFontSize.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -197,7 +197,7 @@ fun StaffAppointmentCardItem(
                         .padding(Spacing.s)
                 ) {
                     Text(
-                        text = "Заметка / Ответ: ${appt.notes}",
+                        text = stringResource(R.string.staff_appt_note_reply, appt.notes),
                         fontSize = AppFontSize.body,
                         color = accentColor,
                         fontWeight = FontWeight.Medium

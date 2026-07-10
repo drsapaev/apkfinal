@@ -120,7 +120,7 @@ fun TelegramBotCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "Бот автоматически информирует об изменениях статуса записей на прием и моментально доставляет назначения врачей.",
+                text = stringResource(R.string.tg_bot_description),
                 fontSize = AppFontSize.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 14.sp
@@ -132,7 +132,7 @@ fun TelegramBotCard(
                 // Unlinked state UI
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
                     Text(
-                        text = "Для подключения бота запустите @IntellectClinicBot в Telegram и введите ваш Chat ID сюда:",
+                        text = stringResource(R.string.tg_connect_instructions),
                         fontSize = AppFontSize.caption,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 13.sp
@@ -145,7 +145,7 @@ fun TelegramBotCard(
                         OutlinedTextField(
                             value = chatIdInput,
                             onValueChange = { if (it.all { char -> char.isDigit() }) chatIdInput = it },
-                            placeholder = { Text("ID чата (например: 5040112)") },
+                            placeholder = { Text(stringResource(R.string.tg_chat_id_placeholder)) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = telegramBlue,

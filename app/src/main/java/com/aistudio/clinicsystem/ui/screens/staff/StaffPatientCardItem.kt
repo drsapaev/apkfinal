@@ -90,11 +90,17 @@ fun StaffPatientCardItem(
             Spacer(modifier = Modifier.width(Spacing.m))
 
             // P-23 fix: mergeDescendants so TalkBack announces patient info as one group
+            val a11yDescription = stringResource(
+                R.string.staff_patient_a11y_description,
+                patient.fullName,
+                patient.phone,
+                recordsCount
+            )
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .semantics(mergeDescendants = true) {
-                        contentDescription = "${patient.fullName}, телефон ${patient.phone}, записей в медкарте $recordsCount"
+                        contentDescription = a11yDescription
                     }
             ) {
                 Text(
@@ -104,12 +110,12 @@ fun StaffPatientCardItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Тел: ${patient.phone}",
+                    text = stringResource(R.string.phone_label_short, patient.phone),
                     fontSize = AppFontSize.body,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Записей в медкарте: $recordsCount",
+                    text = stringResource(R.string.records_count_label, recordsCount),
                     fontSize = AppFontSize.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
