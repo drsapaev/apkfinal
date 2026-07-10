@@ -29,12 +29,12 @@
 - RealtimeManager (unified WebSocket)
 - Outbox pattern with UUID primary keys
 - NetworkBoundResource for offline-first sync
-- 92 unit tests, ktlint + detekt static analysis
+- 268 unit + android tests, ktlint + detekt static analysis
 - GitHub Actions CI pipeline
 
 ### Tech Stack
-- Kotlin 2.2.10, Jetpack Compose (BOM 2025.04.00)
-- Room 2.7.0 + SQLCipher 4.5.4
+- Kotlin 2.1.0, Jetpack Compose (BOM 2025.04.00)
+- Room 2.7.0 + SQLCipher 4.6.0
 - Retrofit 2.12.0 + Moshi 1.15.2 + OkHttp 4.12.0
 - WorkManager 2.9.1 (background sync)
 - Robolectric 4.14.1 (unit testing)
