@@ -24,12 +24,12 @@ Built with **Kotlin** and **Jetpack Compose**.
 
 | Component | Technology |
 |---|---|
-| Language | Kotlin 2.2.10 |
+| Language | Kotlin 2.1.0 |
 | UI | Jetpack Compose (BOM 2025.04.00), Material 3 |
 | Architecture | Clean Architecture (data / domain / ui) |
 | DI | Hilt 2.51.1 (KSP) |
 | Networking | Retrofit 2.12 + OkHttp 4.12 + Moshi 1.15 |
-| Database | Room 2.7 + SQLCipher 4.5.4 (encrypted) |
+| Database | Room 2.7 + SQLCipher 4.6.0 (encrypted) |
 | Real-time | OkHttp WebSocket via RealtimeManager |
 | Background | WorkManager 2.9 (SyncWorker) |
 | Security | EncryptedSharedPreferences, FLAG_SECURE, HTTPS-only |
@@ -53,7 +53,7 @@ Built with **Kotlin** and **Jetpack Compose**.
 app/src/main/java/com/aistudio/clinicsystem/
 ├── data/
 │   ├── api/                  # MobileApiService, ApiService, TokenAuthenticator, ApiClient
-│   ├── db/                   # ClinicDatabase, DAOs, Entities, Migrations (v4→v7)
+│   ├── db/                   # ClinicDatabase, DAOs, Entities, Migrations (v4→v9)
 │   ├── outbox/               # OutboxStatus, OutboxRetryPolicy, UUID generator
 │   ├── realtime/             # RealtimeManager, RealtimeEvent
 │   ├── repository/           # AuthRepository, ClinicRepository, NetworkBoundResource
@@ -62,7 +62,8 @@ app/src/main/java/com/aistudio/clinicsystem/
 ├── domain/
 │   ├── model/                # Pure Kotlin domain models
 │   ├── repository/           # Repository interfaces
-│   ├── usecase/              # 11 UseCases (auth, appointment, queue, medical, sync)
+│   ├── usecase/              # 6 UseCases (Login, Verify2FA, Logout, Request2FARecovery,
+│   │                        # Verify2FARecovery, LoginWithBiometrics)
 │   └── mapper/               # Entity↔Domain mappers
 ├── di/                       # Hilt modules (AppModule, etc.)
 ├── ui/
@@ -165,11 +166,13 @@ domain.
 - **2FA tokens** — sent in request body, not query string
 - **allowBackup=false** — no cloud backup of app data
 
-See [Security Audit](#) (PR #8) for full audit results (8/8 checks passed).
+See [2026-07-10 Audit Report](docs/AUDIT_2026-07-10.md) for the latest
+comprehensive audit (5 P0, 16 High, 28 Medium, 18 Low findings — all
+P0 and High findings resolved in PRs #102-#113).
 
 ## 🧪 Testing
 
-### Unit Tests (166+ tests)
+### Unit Tests (268 tests)
 
 Test coverage areas:
 - TokenAuthenticator (8 tests) — refresh, session clear, retry loop, Mutex coalescing
@@ -196,7 +199,7 @@ Test coverage:
 - 13 WebSocket tests (event handling, reconciliation guard, error resilience)
 - 14 AuthViewModel tests (login flow, 2FA, state management)
 - 6 SyncWorker tests (background sync, retry, error handling)
-- 4 Room migration tests (v4→v7)
+- 5 Room migration tests (v4→v9): 4→5, 5→6, 6→7, 7→8 (doctors), 8→9 (lab_results)
 - Additional tests (TokenAuthenticator, ClinicRepositorySync, PatientViewModel, StaffViewModel)
 
 ### Static Analysis
