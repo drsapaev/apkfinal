@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload detekt reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: detekt-reports
           path: app/build/reports/detekt/
@@ -156,7 +156,7 @@ jobs:
 
       - name: Upload screenshot diff on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: screenshot-diff
           path: app/build/outputs/roborazzi/
@@ -164,7 +164,7 @@ jobs:
 
       - name: Upload test results on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-test-results
           path: |
@@ -258,7 +258,7 @@ jobs:
 
       - name: Upload release APK
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apk-release
           path: app/build/outputs/apk/release/*.apk
@@ -266,7 +266,7 @@ jobs:
 
       - name: Upload release AAB
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aab-release
           path: app/build/outputs/bundle/release/*.aab
@@ -274,7 +274,7 @@ jobs:
 
       - name: Upload lint report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lint-release-report
           path: app/build/reports/lint-results-release.html
@@ -342,7 +342,7 @@ jobs:
 
       - name: Upload instrumentation test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: instrumentation-results-api${{ matrix.api-level }}
           path: |
