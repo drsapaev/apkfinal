@@ -348,7 +348,7 @@ testing guidelines, and PR process.
 ## 👥 Related Projects
 
 - [**Clinic Management System (Backend)**](https://github.com/drsapaev/final) — FastAPI backend
-  - [Backend Audit Status](https://github.com/drsapaev/final/blob/main/docs/BACKEND_AUDIT_STATUS_2026-07-12.md) — 50 находок, 26 исправлено в 28 PRs
+  - [Backend Audit Status](https://github.com/drsapaev/final/blob/main/docs/BACKEND_AUDIT_STATUS_2026-07-12.md) — 50 находок, все закрыты в 34 PRs
 
 ## 📄 Documentation
 
