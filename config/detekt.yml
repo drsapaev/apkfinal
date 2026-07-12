@@ -208,6 +208,10 @@ potential-bugs:
     active: true
   EqualsAlwaysReturnsTrueOrFalse:
     active: true
+  PrintStackTrace:
+    active: true
+    excludes:
+      - '**/data/repository/ClinicRepository.kt'
 
 performance:
   active: true
@@ -215,16 +219,11 @@ performance:
     active: true
   SpreadOperator:
     active: true
+    # Spread operator is allowed in ClinicDatabase.Companion for Migrations.ALL
+    # — this is the idiomatic Room API. Also allowed in test files.
     excludes:
       - '**/test/**'
       - '**/data/db/ClinicDatabase.kt'
-    # Spread operator is allowed in ClinicDatabase.Companion for Migrations.ALL
-    # — this is the idiomatic Room API.
-    excludes: ['**/data/db/ClinicDatabase.kt']
-  PrintStackTrace:
-    active: true
-    excludes:
-      - '**/data/repository/ClinicRepository.kt'
   UnnecessaryTemporaryInstantiation:
     active: true
 
