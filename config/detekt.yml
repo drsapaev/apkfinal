@@ -122,10 +122,6 @@ style:
     excludes:
       - '**/test/**'
       - '**/androidTest/**'
-  MatchingDeclarationName:
-    active: true
-    excludes:
-      - '**/data/repository/NetworkBoundResource.kt'
       - '**/debug/**'
       - '**/ui/screens/StaffScreen.kt'
       - '**/ui/screens/staff/StaffQueueSection.kt'
@@ -194,10 +190,6 @@ potential-bugs:
     active: true
   EqualsAlwaysReturnsTrueOrFalse:
     active: true
-  PrintStackTrace:
-    active: true
-    excludes:
-      - '**/data/repository/ClinicRepository.kt'
 
 performance:
   active: true
