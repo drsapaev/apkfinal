@@ -106,6 +106,11 @@ complexity:
       - '**/data/repository/AuthRepository.kt'
   TooManyFunctions:
     active: false
+  NestedBlockDepth:
+    active: true
+    threshold: 4
+    excludes:
+      - '**/data/repository/ClinicRepository.kt'
   LargeClass:
     active: true
     threshold: 250
@@ -193,6 +198,10 @@ exceptions:
   active: true
   SwallowedException:
     active: false
+  UnusedParameter:
+    active: true
+    excludes:
+      - '**/utils/NotificationHelper.kt'
   TooGenericExceptionCaught:
     active: false
   TooGenericExceptionThrown:
@@ -205,6 +214,10 @@ potential-bugs:
     active: true
   EqualsAlwaysReturnsTrueOrFalse:
     active: true
+  PrintStackTrace:
+    active: true
+    excludes:
+      - '**/data/repository/ClinicRepository.kt'
 
 performance:
   active: true
