@@ -23,6 +23,7 @@ import java.util.Locale
  * get queue, update appointment status, create medical record).
  */
 @javax.inject.Singleton
+@Suppress("NestedBlockDepth", "PrintStackTrace")
 class ClinicRepository @javax.inject.Inject constructor(
     private val database: ClinicDatabase,
     // Stage 2.6: services injected via Hilt (provided by AppModule).
