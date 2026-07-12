@@ -348,9 +348,11 @@ testing guidelines, and PR process.
 ## 👥 Related Projects
 
 - [**Clinic Management System (Backend)**](https://github.com/drsapaev/final) — FastAPI backend
+  - [Backend Audit Status](https://github.com/drsapaev/final/blob/main/docs/BACKEND_AUDIT_STATUS_2026-07-12.md) — 50 находок, 26 исправлено в 28 PRs
 
 ## 📄 Documentation
 
+- [Audit Report 2026-07-10](docs/AUDIT_2026-07-10.md) — 86 находок, все закрыты в PRs #102-#121
 - [Refactoring Roadmap](docs/REFACTORING_ROADMAP.md) — 16-week plan (M0–M5)
 - [Smoke Test Protocol](SMOKE_TEST_PROTOCOL.md) — 29-scenario pre-release checklist
 - [Release Notes](RELEASE_NOTES.md) — Version history
