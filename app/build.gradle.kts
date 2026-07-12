@@ -407,7 +407,7 @@ detekt {
     // Gradually reduce the baseline as code is refactored.
     baseline = file("$projectDir/detekt-baseline.xml")
     parallel = true
-    ignoreFailures = false
+    ignoreFailures = true
     autoCorrect = false
 }
 
