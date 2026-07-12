@@ -114,10 +114,6 @@ style:
     active: true
     # TODOs are allowed during remediation (Stages 1-7); STOPSHIP blocks release.
     values: ['STOPSHIP']
-  MatchingDeclarationName:
-    active: true
-    excludes:
-      - '**/data/repository/NetworkBoundResource.kt'
   MaxLineLength:
     active: true
     maxLineLength: 160
@@ -126,6 +122,10 @@ style:
     excludes:
       - '**/test/**'
       - '**/androidTest/**'
+  MatchingDeclarationName:
+    active: true
+    excludes:
+      - '**/data/repository/NetworkBoundResource.kt'
       - '**/debug/**'
       - '**/ui/screens/StaffScreen.kt'
       - '**/ui/screens/staff/StaffQueueSection.kt'
@@ -232,3 +232,7 @@ naming:
       - '**/ui/theme/**'
       - '**/test/**'
       - '**/androidTest/**'
+  MatchingDeclarationName:
+    active: true
+    excludes:
+      - '**/data/repository/NetworkBoundResource.kt'
