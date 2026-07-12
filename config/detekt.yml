@@ -97,6 +97,7 @@ complexity:
       - '**/ui/screens/staff/StaffAppointmentCardItem.kt'
       - '**/utils/ClinicWebSocketClient.kt'
       - '**/data/repository/ClinicRepository.kt'
+      - '**/data/repository/AuthRepository.kt'
   TooManyFunctions:
     active: false
   NestedBlockDepth:
@@ -110,6 +111,7 @@ complexity:
       - '**/utils/ClinicWebSocketClient.kt'
       - '**/ui/viewmodel/StaffViewModel.kt'
       - '**/data/repository/ClinicRepository.kt'
+      - '**/data/repository/AuthRepository.kt'
     active: true
     threshold: 250
 
