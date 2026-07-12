@@ -106,15 +106,15 @@ complexity:
     excludes:
       - '**/data/repository/ClinicRepository.kt'
   LargeClass:
-    # Re-audit: ClinicWebSocketClient is a large class by nature (WS protocol handling)
+    active: true
+    threshold: 250
+    # Re-audit: large classes are pre-existing, tracked in REFACTORING_ROADMAP.md
     excludes:
       - '**/utils/ClinicWebSocketClient.kt'
       - '**/ui/viewmodel/StaffViewModel.kt'
       - '**/data/repository/ClinicRepository.kt'
       - '**/data/repository/AuthRepository.kt'
       - '**/test/**'
-    active: true
-    threshold: 250
 
 style:
   active: true
