@@ -10,6 +10,8 @@ import com.aistudio.clinicsystem.data.session.SessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 /**
@@ -18,6 +20,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class PatientViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val repository: ClinicRepository,
     private val authRepository: AuthRepository,
     private val sessionRepository: SessionRepository,
@@ -126,7 +129,7 @@ class PatientViewModel @Inject constructor(
         viewModelScope.launch {
             val user = currentUser.value
             if (user != null) {
-                repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
+                repository.addSyncLog(appContext.getString(com.aistudio.clinicsystem.R.string.vm_session_ended), "SYSTEM_SYNC")
                 repository.clearSensitiveDataForPatient(user.phone)
             }
             authRepository.logout()
@@ -171,7 +174,7 @@ class PatientViewModel @Inject constructor(
                 repository.addSyncLog("🟢 Telegram привязан (chat_id: $chatId).", "PATIENT_TO_STAFF")
             }.onFailure { error ->
                 repository.addSyncLog(
-                    "🔴 Ошибка привязки Telegram: ${error.localizedMessage ?: "неизвестная ошибка"}",
+                    appContext.getString(com.aistudio.clinicsystem.R.string.vm_tg_link_error) + ": " + (error.localizedMessage ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_error_unknown)),
                     "SYSTEM_SYNC",
                 )
             }
@@ -193,7 +196,7 @@ class PatientViewModel @Inject constructor(
                 repository.addSyncLog("🟢 Telegram отвязан.", "PATIENT_TO_STAFF")
             }.onFailure { error ->
                 repository.addSyncLog(
-                    "🔴 Ошибка отвязки Telegram: ${error.localizedMessage ?: "неизвестная ошибка"}",
+                    appContext.getString(com.aistudio.clinicsystem.R.string.vm_tg_unlink_error) + ": " + (error.localizedMessage ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_error_unknown)),
                     "SYSTEM_SYNC",
                 )
             }
@@ -216,7 +219,7 @@ class PatientViewModel @Inject constructor(
                 )
             }.onFailure { error ->
                 repository.addSyncLog(
-                    "🔴 TELEGRAM TEST: Ошибка отправки — ${error.localizedMessage ?: "неизвестная ошибка"}",
+                    appContext.getString(com.aistudio.clinicsystem.R.string.vm_tg_test_error) + " — " + (error.localizedMessage ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_error_unknown)),
                     "SYSTEM_SYNC",
                 )
             }
@@ -280,7 +283,7 @@ class PatientViewModel @Inject constructor(
                 }
 
                 val patientUser = repository.getUserByPhone(updated.patientPhone)
-                val patientName = patientUser?.fullName ?: "Пациент"
+                val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
                 // Stage 6 TODO: NotificationHelper should accept a Context
                 // from Hilt-provided ApplicationContext, not via getApplication().
                 // For now, the UI can pass the context or this method moves to

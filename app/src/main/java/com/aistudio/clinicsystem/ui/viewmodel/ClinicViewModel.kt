@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 /**
@@ -46,6 +48,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ClinicViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val repository: ClinicRepository,
     private val authRepository: AuthRepository,
     private val sessionRepository: SessionRepository,
@@ -186,7 +189,7 @@ class ClinicViewModel @Inject constructor(
             val state = sessionRepository.sessionState.value
             val user = (state as? SessionState.Authenticated)?.user
             if (user != null) {
-                repository.addSyncLog("Сессия пользователя завершается...", "SYSTEM_SYNC")
+                repository.addSyncLog(appContext.getString(com.aistudio.clinicsystem.R.string.vm_session_ending), "SYSTEM_SYNC")
                 if (user.role == "PATIENT") {
                     repository.clearSensitiveDataForPatient(user.phone)
                 }

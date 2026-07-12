@@ -120,7 +120,7 @@ jobs:
           ROBOLECTRIC_SDK_DOWNLOAD_TIMEOUT: "600"
 
       - name: Coverage gate
-        # Medium-6 audit fix: kept continue-on-error — JaCoCo XML generation
+        # Re-audit R-5: kept continue-on-error (Medium-6 audit fix). See AUDIT_2026-07-10.md for rationale. — JaCoCo XML generation
         # is flaky in CI (executionData path issue). TODO: investigate why
         # testDebugUnitTest .exec files are not always written, then remove
         # continue-on-error to make coverage a hard gate.
@@ -146,7 +146,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Run Roborazzi screenshot tests
-        # Medium-6 audit fix: kept continue-on-error — Roborazzi baseline
+        # Re-audit R-5: kept continue-on-error (Medium-6 audit fix). See AUDIT_2026-07-10.md for rationale. — Roborazzi baseline
         # screenshots are not committed (only greeting.png exists). TODO:
         # generate and commit baseline screenshots for all @Composable
         # tests, then remove continue-on-error.
@@ -284,7 +284,7 @@ jobs:
   # Job 4: Instrumentation tests on emulator (API 30 + 33)
   # ─────────────────────────────────────────────────────────────
   instrumentation:
-    # Medium-6 audit fix: kept continue-on-error — instrumentation tests
+    # Re-audit R-5: kept continue-on-error (Medium-6 audit fix). See AUDIT_2026-07-10.md for rationale. — instrumentation tests
     # require Hilt codegen for androidTest (kspAndroidTest) + a properly
     # configured HiltTestRunner. The current HiltTestRunner crashes with
     # ClassNotFoundException because the test APK doesn't include the
