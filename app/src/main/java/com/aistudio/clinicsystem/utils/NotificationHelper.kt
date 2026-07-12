@@ -1,3 +1,4 @@
+@file:Suppress("UnusedParameter")
 package com.aistudio.clinicsystem.utils
 
 import android.app.NotificationChannel

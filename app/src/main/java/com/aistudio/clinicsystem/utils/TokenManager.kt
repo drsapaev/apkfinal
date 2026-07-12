@@ -1,3 +1,4 @@
+@file:Suppress("UnusedPrivateProperty", "FunctionOnlyReturningConstant", "UnusedParameter")
 package com.aistudio.clinicsystem.utils
 
 import android.content.Context
