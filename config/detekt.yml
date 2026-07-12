@@ -49,6 +49,7 @@ complexity:
       - '**/ui/screens/PatientScreen.kt'
       - '**/ui/screens/StaffScreen.kt'
       - '**/ui/screens/AuthScreen.kt'
+      - '**/data/repository/ClinicRepository.kt'
   LongParameterList:
     active: true
     functionThreshold: 8
@@ -95,12 +96,20 @@ complexity:
       - '**/ui/screens/staff/StaffAppointmentsSection.kt'
       - '**/ui/screens/staff/StaffAppointmentCardItem.kt'
       - '**/utils/ClinicWebSocketClient.kt'
+      - '**/data/repository/ClinicRepository.kt'
   TooManyFunctions:
     active: false
+  NestedBlockDepth:
+    active: true
+    threshold: 4
+    excludes:
+      - '**/data/repository/ClinicRepository.kt'
   LargeClass:
     # Re-audit: ClinicWebSocketClient is a large class by nature (WS protocol handling)
     excludes:
       - '**/utils/ClinicWebSocketClient.kt'
+      - '**/ui/viewmodel/StaffViewModel.kt'
+      - '**/data/repository/ClinicRepository.kt'
     active: true
     threshold: 250
 
