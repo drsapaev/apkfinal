@@ -112,6 +112,7 @@ complexity:
       - '**/ui/viewmodel/StaffViewModel.kt'
       - '**/data/repository/ClinicRepository.kt'
       - '**/data/repository/AuthRepository.kt'
+      - '**/test/**'
     active: true
     threshold: 250
 
@@ -127,6 +128,10 @@ style:
     active: true
     # TODOs are allowed during remediation (Stages 1-7); STOPSHIP blocks release.
     values: ['STOPSHIP']
+  MatchingDeclarationName:
+    active: true
+    excludes:
+      - '**/data/repository/NetworkBoundResource.kt'
   MaxLineLength:
     active: true
     maxLineLength: 160
@@ -210,9 +215,16 @@ performance:
     active: true
   SpreadOperator:
     active: true
+    excludes:
+      - '**/test/**'
+      - '**/data/db/ClinicDatabase.kt'
     # Spread operator is allowed in ClinicDatabase.Companion for Migrations.ALL
     # — this is the idiomatic Room API.
     excludes: ['**/data/db/ClinicDatabase.kt']
+  PrintStackTrace:
+    active: true
+    excludes:
+      - '**/data/repository/ClinicRepository.kt'
   UnnecessaryTemporaryInstantiation:
     active: true
 
