@@ -13,9 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.data.db.LabResultEntity
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
 
 /**
  * Stage 6: LabResultsSection — displays lab results from lab_results table.
@@ -35,7 +37,7 @@ fun LabResultsSection(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(Radius.large),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -43,7 +45,7 @@ fun LabResultsSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(Spacing.l),
         ) {
             // Header
             Row(
@@ -77,18 +79,18 @@ fun LabResultsSection(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.s))
 
             if (labResults.isEmpty()) {
                 Text(
                     text = stringResource(R.string.lab_results_empty),
-                    fontSize = 14.sp,
+                    fontSize = AppFontSize.title,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp),
                 )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.s),
                     modifier = Modifier.heightIn(max = 400.dp),
                 ) {
                     items(labResults, key = { it.id }) { result ->
@@ -104,7 +106,7 @@ fun LabResultsSection(
 private fun LabResultCard(result: LabResultEntity) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(Radius.medium),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
@@ -112,7 +114,7 @@ private fun LabResultCard(result: LabResultEntity) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(Spacing.m),
         ) {
             // Test name + status
             Row(
@@ -122,16 +124,16 @@ private fun LabResultCard(result: LabResultEntity) {
                 Text(
                     text = result.testName,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
+                    fontSize = AppFontSize.title,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 AssistChip(
                     onClick = {},
-                    label = { Text(result.status, fontSize = 10.sp) },
+                    label = { Text(result.status, fontSize = AppFontSize.caption) },
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(Spacing.xs))
 
             // Result + unit
             if (!result.result.isNullOrBlank()) {
@@ -141,7 +143,7 @@ private fun LabResultCard(result: LabResultEntity) {
                         result.result,
                         result.unit?.let { " $it" } ?: ""
                     ),
-                    fontSize = 13.sp,
+                    fontSize = AppFontSize.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -150,7 +152,7 @@ private fun LabResultCard(result: LabResultEntity) {
             if (!result.referenceRange.isNullOrBlank()) {
                 Text(
                     text = stringResource(R.string.lab_result_reference, result.referenceRange),
-                    fontSize = 12.sp,
+                    fontSize = AppFontSize.body,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -163,7 +165,7 @@ private fun LabResultCard(result: LabResultEntity) {
                         result.performedAt,
                         result.doctorName?.let { " — $it" } ?: ""
                     ),
-                    fontSize = 11.sp,
+                    fontSize = AppFontSize.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

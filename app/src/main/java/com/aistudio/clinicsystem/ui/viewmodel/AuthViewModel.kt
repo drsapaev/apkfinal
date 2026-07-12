@@ -13,7 +13,9 @@ import com.aistudio.clinicsystem.domain.usecase.auth.LoginWithBiometricsUseCase
 import com.aistudio.clinicsystem.domain.usecase.auth.Request2FARecoveryUseCase
 import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FARecoveryUseCase
 import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FAUseCase
+import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +47,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val repository: ClinicRepository,
     private val sessionRepository: SessionRepository,
     // High-5 audit fix: use cases replace direct authRepository calls.
@@ -54,6 +57,9 @@ class AuthViewModel @Inject constructor(
     private val verify2FARecoveryUseCase: Verify2FARecoveryUseCase,
     private val loginWithBiometricsUseCase: LoginWithBiometricsUseCase,
 ) : ViewModel() {
+
+    // R-2: helper for localized error messages
+    private fun getString(resId: Int) = appContext.getString(resId)
 
     private val _usernameInput = MutableStateFlow("+7 ")
     val usernameInput: StateFlow<String> = _usernameInput.asStateFlow()
@@ -153,8 +159,8 @@ class AuthViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 _authError.value = when (error) {
-                    is AuthError.InvalidCredentials -> "Неверный логин или пароль"
-                    else -> "Ошибка входа: ${error.localizedMessage ?: "неизвестная ошибка"}"
+                    is AuthError.InvalidCredentials -> getString(com.aistudio.clinicsystem.R.string.vm_error_invalid_credentials)
+                    else -> "Ошибка входа: ${error.localizedMessage ?: getString(com.aistudio.clinicsystem.R.string.vm_error_unknown)}"
                 }
                 repository.addSyncLog(
                     logMessage = "🔴 Сбой авторизации: ${error.message}",
@@ -177,7 +183,7 @@ class AuthViewModel @Inject constructor(
     fun verify2FA(totpCode: String, rememberDevice: Boolean) {
         val challenge = _pending2FAChallenge.value
         if (challenge.isNullOrBlank()) {
-            _authError.value = "Сессия 2FA истекла, войдите заново"
+            _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_expired)
             return
         }
 
@@ -205,10 +211,10 @@ class AuthViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 _authError.value = when (error) {
-                    is AuthError.InvalidTwoFACode -> "Неверный код 2FA"
+                    is AuthError.InvalidTwoFACode -> getString(com.aistudio.clinicsystem.R.string.vm_2fa_error_invalid)
                     // Use case validates code length — surface that error too.
-                    is IllegalArgumentException -> error.message ?: "Неверный формат кода"
-                    else -> "Ошибка 2FA: ${error.localizedMessage ?: "неизвестная ошибка"}"
+                    is IllegalArgumentException -> error.message ?: getString(com.aistudio.clinicsystem.R.string.vm_2fa_error_format)
+                    else -> "Ошибка 2FA: ${error.localizedMessage ?: getString(com.aistudio.clinicsystem.R.string.vm_error_unknown)}"
                 }
             }
         }
@@ -224,7 +230,7 @@ class AuthViewModel @Inject constructor(
     fun request2FARecovery(method: String) {
         val challenge = _pending2FAChallenge.value
         if (challenge.isNullOrBlank()) {
-            _authError.value = "Сессия 2FA истекла, войдите заново"
+            _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_expired)
             return
         }
         viewModelScope.launch {
@@ -235,9 +241,9 @@ class AuthViewModel @Inject constructor(
             _isSyncing.value = false
             result.onSuccess { token ->
                 pendingRecoveryToken = token
-                _authError.value = "Код восстановления отправлен на $method"
+                _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_sent) + " " + method
             }.onFailure { error ->
-                _authError.value = "Ошибка запроса кода: ${error.localizedMessage}"
+                _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_error) + ": " + (error.localizedMessage ?: "")
             }
         }
     }
@@ -245,7 +251,7 @@ class AuthViewModel @Inject constructor(
     fun verify2FARecovery(code: String) {
         val token = pendingRecoveryToken
         if (token.isNullOrBlank()) {
-            _authError.value = "Сначала запросите код восстановления"
+            _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_first)
             return
         }
         viewModelScope.launch {
@@ -262,8 +268,8 @@ class AuthViewModel @Inject constructor(
                 }
             }.onFailure { error ->
                 _authError.value = when (error) {
-                    is AuthError.InvalidTwoFACode -> "Неверный код восстановления"
-                    else -> "Ошибка: ${error.localizedMessage}"
+                    is AuthError.InvalidTwoFACode -> getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_invalid)
+                    else -> getString(com.aistudio.clinicsystem.R.string.vm_error_generic) + ": " + (error.localizedMessage ?: "")
                 }
             }
         }
@@ -323,7 +329,7 @@ class AuthViewModel @Inject constructor(
                     _authError.value = "Биометрический вход заблокирован во внешнем профиле клиники"
                 }
             }.onFailure { error ->
-                _authError.value = "Сбой биометрического токена: ${error.localizedMessage ?: "Необходимо войти заново"}"
+                _authError.value = "Сбой биометрического токена: ${error.localizedMessage ?: getString(com.aistudio.clinicsystem.R.string.vm_biometric_relogin)}"
                 repository.addSyncLog(
                     logMessage = "🔴 Сбой биометрического входа: ${error.message}",
                     direction = "SYSTEM_SYNC"

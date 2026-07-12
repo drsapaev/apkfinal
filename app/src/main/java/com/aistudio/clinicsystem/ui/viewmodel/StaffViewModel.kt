@@ -91,11 +91,11 @@ class StaffViewModel @Inject constructor(
 
     val draftCreatePatientPhone = MutableStateFlow(prefs.getString("draft_create_patient_phone", "") ?: "")
     val draftCreatePatientName = MutableStateFlow(prefs.getString("draft_create_patient_name", "") ?: "")
-    val draftCreateDoctorSelected = MutableStateFlow(prefs.getString("draft_create_doctor_selected", "Д-р Сапаев (Стоматолог-терапевт)") ?: "Д-р Сапаев (Стоматолог-терапевт)")
-    val draftCreateSpecialtySelected = MutableStateFlow(prefs.getString("draft_create_specialty_selected", "Стоматология") ?: "Стоматология")
+    val draftCreateDoctorSelected = MutableStateFlow(prefs.getString("draft_create_doctor_selected", appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev)) ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev))
+    val draftCreateSpecialtySelected = MutableStateFlow(prefs.getString("draft_create_specialty_selected", appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry)) ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry))
     val draftCreateDate = MutableStateFlow(prefs.getString("draft_create_date", "2026-06-10") ?: "2026-06-10")
     val draftCreateTime = MutableStateFlow(prefs.getString("draft_create_time", "10:00") ?: "10:00")
-    val draftCreateReason = MutableStateFlow(prefs.getString("draft_create_reason", "Профилактический осмотр") ?: "Профилактический осмотр")
+    val draftCreateReason = MutableStateFlow(prefs.getString("draft_create_reason", appContext.getString(com.aistudio.clinicsystem.R.string.vm_routine_checkup)) ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_routine_checkup))
 
     fun setDraftDiagnosis(v: String) {
         draftDiagnosis.value = v
@@ -168,11 +168,11 @@ class StaffViewModel @Inject constructor(
             .apply()
         draftCreatePatientPhone.value = ""
         draftCreatePatientName.value = ""
-        draftCreateDoctorSelected.value = "Д-р Сапаев (Стоматолог-терапевт)"
-        draftCreateSpecialtySelected.value = "Стоматология"
+        draftCreateDoctorSelected.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev)
+        draftCreateSpecialtySelected.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry)
         draftCreateDate.value = "2026-06-10"
         draftCreateTime.value = "10:00"
-        draftCreateReason.value = "Профилактический осмотр"
+        draftCreateReason.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_routine_checkup)
     }
 
     val allUsers: StateFlow<List<UserEntity>> = repository.allUsers
@@ -212,7 +212,7 @@ class StaffViewModel @Inject constructor(
         viewModelScope.launch {
             val user = currentUser.value
             if (user != null) {
-                repository.addSyncLog("Сессия пользователя успешно завершена.", "SYSTEM_SYNC")
+                repository.addSyncLog(appContext.getString(com.aistudio.clinicsystem.R.string.vm_session_ended), "SYSTEM_SYNC")
             }
             authRepository.logout()
             // Stage 2.7: clear via SSOT — currentUser is derived from
@@ -237,7 +237,7 @@ class StaffViewModel @Inject constructor(
                     _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                 }
                 val patientUser = repository.getUserByPhone(updated.patientPhone)
-                val patientName = patientUser?.fullName ?: "Пациент"
+                val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
                 
                 com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
                     appContext, updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "APPROVED", patientName
@@ -274,7 +274,7 @@ class StaffViewModel @Inject constructor(
                     _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                 }
                 val patientUser = repository.getUserByPhone(updated.patientPhone)
-                val patientName = patientUser?.fullName ?: "Пациент"
+                val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
 
                 com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
                     appContext, updated.serverId ?: 0, updated.doctorName, "${updated.date} в ${updated.time}", "CANCELLED", patientName
@@ -306,7 +306,7 @@ class StaffViewModel @Inject constructor(
     fun createMedicalRecord(patientPhone: String, diagnosis: String, prescription: String, recommendations: String) {
         viewModelScope.launch {
             val activeUser = currentUser.value
-            val doctor = activeUser?.fullName ?: "Дежурный Врач"
+            val doctor = activeUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_duty_doctor)
             val token = sessionRepository.accessToken
 
             val saved = repository.createMedicalRecordOnServerAndLocal(
@@ -319,7 +319,7 @@ class StaffViewModel @Inject constructor(
             )
 
             val patientUser = repository.getUserByPhone(patientPhone)
-            val patientName = patientUser?.fullName ?: "Пациент"
+            val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
 
             com.aistudio.clinicsystem.utils.NotificationHelper.sendMedicalRecordNotification(
                 appContext, saved.serverId ?: 0, doctor, diagnosis, patientName

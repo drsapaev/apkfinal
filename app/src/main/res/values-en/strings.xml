@@ -638,4 +638,31 @@ Register an approved patient below.</string>
     <string name="ui_2fa_recovery_method_placeholder">user@example.com or +7…</string>
     <!-- MedicalReportsSection -->
     <string name="pat_reports_empty_hint">After the appointment, doctors will add the results to the chart, and they will appear here.</string>
+
+    <!-- R-2: ViewModel i18n strings -->
+    <string name="vm_error_invalid_credentials">Invalid username or password</string>
+    <string name="vm_error_login">Login error</string>
+    <string name="vm_error_unknown">unknown error</string>
+    <string name="vm_2fa_expired">2FA session expired, please log in again</string>
+    <string name="vm_2fa_error_invalid">Invalid 2FA code</string>
+    <string name="vm_2fa_error_format">Invalid code format</string>
+    <string name="vm_2fa_error_generic">2FA error</string>
+    <string name="vm_2fa_recovery_sent">Recovery code sent to</string>
+    <string name="vm_2fa_recovery_error">Recovery request error</string>
+    <string name="vm_2fa_recovery_first">Request recovery code first</string>
+    <string name="vm_2fa_recovery_invalid">Invalid recovery code</string>
+    <string name="vm_error_generic">Error</string>
+    <string name="vm_biometric_token_error">Biometric token failed</string>
+    <string name="vm_biometric_relogin">Must log in again</string>
+    <string name="vm_session_ending">User session ending...</string>
+    <string name="vm_session_ended">User session ended successfully.</string>
+    <string name="vm_patient_default">Patient</string>
+    <string name="vm_duty_doctor">Duty Doctor</string>
+    <string name="vm_doc_sapaev">Dr. Sapaev (Dentist)</string>
+    <string name="vm_spec_dentistry">Dentistry</string>
+    <string name="vm_routine_checkup">Routine checkup</string>
+    <string name="vm_tg_link_error">🔴 Telegram link error</string>
+    <string name="vm_tg_unlink_error">🔴 Telegram unlink error</string>
+    <string name="vm_tg_test_error">🔴 TELEGRAM TEST: Send error</string>
+    <string name="vm_people">people</string>
 </resources>

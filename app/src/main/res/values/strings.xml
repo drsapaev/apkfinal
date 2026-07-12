@@ -813,4 +813,31 @@
     <string name="ui_2fa_recovery_method_placeholder">user@example.com или +7…</string>
     <!-- MedicalReportsSection -->
     <string name="pat_reports_empty_hint">После приёма врачи внесут результаты в карту, результаты отобразятся тут.</string>
+
+    <!-- R-2: ViewModel i18n strings -->
+    <string name="vm_error_invalid_credentials">Неверный логин или пароль</string>
+    <string name="vm_error_login">Ошибка входа</string>
+    <string name="vm_error_unknown">неизвестная ошибка</string>
+    <string name="vm_2fa_expired">Сессия 2FA истекла, войдите заново</string>
+    <string name="vm_2fa_error_invalid">Неверный код 2FA</string>
+    <string name="vm_2fa_error_format">Неверный формат кода</string>
+    <string name="vm_2fa_error_generic">Ошибка 2FA</string>
+    <string name="vm_2fa_recovery_sent">Код восстановления отправлен на</string>
+    <string name="vm_2fa_recovery_error">Ошибка запроса кода</string>
+    <string name="vm_2fa_recovery_first">Сначала запросите код восстановления</string>
+    <string name="vm_2fa_recovery_invalid">Неверный код восстановления</string>
+    <string name="vm_error_generic">Ошибка</string>
+    <string name="vm_biometric_token_error">Сбой биометрического токена</string>
+    <string name="vm_biometric_relogin">Необходимо войти заново</string>
+    <string name="vm_session_ending">Сессия пользователя завершается...</string>
+    <string name="vm_session_ended">Сессия пользователя успешно завершена.</string>
+    <string name="vm_patient_default">Пациент</string>
+    <string name="vm_duty_doctor">Дежурный Врач</string>
+    <string name="vm_doc_sapaev">Д-р Сапаев (Стоматолог-терапевт)</string>
+    <string name="vm_spec_dentistry">Стоматология</string>
+    <string name="vm_routine_checkup">Профилактический осмотр</string>
+    <string name="vm_tg_link_error">🔴 Ошибка привязки Telegram</string>
+    <string name="vm_tg_unlink_error">🔴 Ошибка отвязки Telegram</string>
+    <string name="vm_tg_test_error">🔴 TELEGRAM TEST: Ошибка отправки</string>
+    <string name="vm_people">человек/человека/человек</string>
 </resources>
