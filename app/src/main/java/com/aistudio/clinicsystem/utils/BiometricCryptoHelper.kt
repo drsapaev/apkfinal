@@ -1,3 +1,4 @@
+@file:Suppress("UnusedPrivateProperty")
 package com.aistudio.clinicsystem.utils
 
 import android.content.Context
