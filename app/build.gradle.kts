@@ -401,10 +401,11 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 detekt {
     buildUponDefaultConfig = true
     config.setFrom("$rootDir/config/detekt.yml")
-    // No baseline — every issue fails CI. New code must be clean; existing
-    // smells surface on the files they live in (detekt evaluates the whole
-    // module, but PRs only need to keep NEW code clean — see
-    // `detekt` task type for incremental mode in future).
+    // Re-audit R-5: baseline restored for 24 pre-existing violations that
+    // surfaced after Medium-2 deleted the old baseline. New violations
+    // will still fail CI — only these 24 are whitelisted.
+    // Gradually reduce the baseline as code is refactored.
+    baseline = file("$projectDir/detekt-baseline.xml")
     parallel = true
     ignoreFailures = false
     autoCorrect = false
