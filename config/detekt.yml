@@ -89,6 +89,21 @@ complexity:
       - '**/utils/ClinicWebSocketClient.kt'
       - '**/data/repository/ClinicRepository.kt'
       - '**/data/repository/AuthRepository.kt'
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+    excludes:
+      - '**/ui/screens/PatientScreen.kt'
+      - '**/ui/screens/StaffScreen.kt'
+      - '**/ui/screens/AuthScreen.kt'
+      - '**/ui/screens/patient/BookAppointmentDialog.kt'
+      - '**/ui/screens/patient/MedicalHistoryCardItem.kt'
+      - '**/ui/screens/patient/AppointmentCardItem.kt'
+      - '**/ui/screens/staff/StaffAppointmentsSection.kt'
+      - '**/ui/screens/staff/StaffAppointmentCardItem.kt'
+      - '**/utils/ClinicWebSocketClient.kt'
+      - '**/data/repository/ClinicRepository.kt'
+      - '**/data/repository/AuthRepository.kt'
   TooManyFunctions:
     active: false
   LargeClass:
