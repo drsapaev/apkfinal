@@ -23,7 +23,7 @@ kotlin = "2.1.0"
 composeBom = "2025.04.00"
 googleDevtoolsKsp = "2.1.0-1.0.29"
 # Stage 2.1: Hilt DI — replaces manual singleton wiring
-hilt = "2.51.1"
+hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"
 hiltWork = "1.2.0"
 hiltCompiler = "1.2.0"
