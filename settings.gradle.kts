@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "ClinicSystemMobile"
+rootProject.name = "My Application"
 
 include(":app")

@@ -1,46 +1,20 @@
 [versions]
-# Stage 1.4 (Critical fix C3/C4 build): pin to real, mutually-compatible
-# versions. Previous pins (`agp = "9.1.1"`, `kotlin = "2.2.10"`,
-# `googleDevtoolsKsp = "2.3.5"`) did not exist or were mutually
-# incompatible — the project could not be built at all.
-#
-# Compatibility matrix:
-#   - AGP 8.13.0 → requires Gradle 8.13+ (we have 9.3.1, OK)
-#   - Kotlin 2.1.0 → KSP must be 2.1.0-1.0.29
-#   - Compose Compiler plugin 2.1.0 → matches Kotlin 2.1.0
-#   - Compose BOM 2025.04.00 → compatible with Kotlin 2.1.0
-#   - Hilt 2.51.1 → KSP processor, compatible with Kotlin 2.1.x
-agp = "8.13.0"
+agp = "9.1.1"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.9.1"
-lifecycleViewmodelCompose = "2.9.1"
-lifecycleRuntimeCompose = "2.9.1"
+lifecycleRuntimeKtx = "2.8.7"
+lifecycleViewmodelCompose = "2.8.7"
+lifecycleRuntimeCompose = "2.8.7"
 activityCompose = "1.10.1"
-kotlin = "2.1.0"
-composeBom = "2025.04.00"
-googleDevtoolsKsp = "2.1.0-1.0.29"
-# Stage 2.1: Hilt DI — replaces manual singleton wiring
-hilt = "2.51.1"
-hiltNavigationCompose = "1.2.0"
-hiltWork = "1.2.0"
-hiltCompiler = "1.2.0"
-
-# Stage 4.1: Timber — logger with BuildConfig.DEBUG gating
-timber = "5.0.1"
-
-# Stage 4.6: Play Integrity API
-playIntegrity = "1.4.0"
-
-# Stage 7.2: Baseline Profile installer
-profileinstaller = "1.4.1"
-navigationCompose = "2.9.0"
+kotlin = "2.2.10"
+composeBom = "2024.09.00"
+googleDevtoolsKsp = "2.3.5"
+navigationCompose = "2.8.9"
 roomRuntime = "2.7.0"
 roomKtx = "2.7.0"
 roomCompiler = "2.7.0"
-roomTesting = "2.7.0"
 kotlinxCoroutinesTest = "1.10.2"
 core = "1.6.1"
 runner = "1.6.2"
@@ -55,24 +29,16 @@ cameraCamera2 = "1.5.0"
 cameraLifecycle = "1.5.0"
 cameraView = "1.5.0"
 cameraCore = "1.5.0"
-loggingInterceptor = "4.12.0"
-okhttp = "4.12.0"
-mockwebserver = "4.12.0"
-mockk = "1.13.13"
+loggingInterceptor = "4.10.0"
+okhttp = "4.10.0"
 moshiKotlin = "1.15.2"
 moshiKotlinCodegen = "1.15.2"
 datastorePreferences = "1.1.7"
-robolectric = "4.14.1"
+robolectric = "4.16.1"
 roborazzi = "1.59.0"
+firebaseBom = "34.12.0"
 secretsGradlePlugin = "2.0.1"
 workRuntime = "2.9.1"
-ktlint = "12.1.1"
-detekt = "1.23.7"
-jacoco = "0.8.12"
-
-# Stage 0.3: Jacoco coverage gate
-# Used to enforce minimum coverage on `data/` and `domain/` packages.
-# CI runs `./gradlew jacocoTestReport` then `.github/scripts/coverage-gate.py`.
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -94,7 +60,6 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntime" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "roomCompiler" }
-androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "roomTesting" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
 androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
@@ -114,43 +79,18 @@ androidx-camera-view = { group = "androidx.camera", name = "camera-view", versio
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
 logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "loggingInterceptor" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "mockwebserver" }
-mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
-mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshiKotlin" }
 moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshiKotlinCodegen" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version = "1.1.0" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntime" }
-androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workRuntime" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
-
-# Stage 2.4: Firebase BOM / firestore / firebase-ai entries REMOVED.
-# FirestoreSyncManager was dead code (no-op shim); the real-time channel
-# is RealtimeManager (OkHttp WebSocket). Re-add only if a real Firebase
-# feature is reintroduced (with google-services plugin + config).
-
-# Stage 2.1: Hilt DI
-hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
-hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
-hilt-compiler-androidx = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltCompiler" }
-
-# Stage 2.9: ProcessLifecycleOwner for WebSocket lifecycle
-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleRuntimeKtx" }
-
-# Stage 4.1: Timber logger
-timber-lib = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
-
-# Stage 4.6: Play Integrity API
-play-integrity = { group = "com.google.android.play", name = "integrity", version.ref = "playIntegrity" }
-
-# Stage 7.2: Baseline Profile installer
-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -158,9 +98,3 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDevtoolsKsp" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }
-ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
-detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
-# Stage 0.3: Jacoco is a Gradle CORE plugin (no version, no artifact) — use `jacoco` directly.
-# jacoco = { id = "org.jacoco", version.ref = "jacoco" }  ← WRONG, removed
-# Stage 2.1: Hilt Gradle plugin — applied at top-level (false) + app module (true)
-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

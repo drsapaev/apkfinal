@@ -1,0 +1,131 @@
+package com.example.utils
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.example.MainActivity
+
+object NotificationHelper {
+    private const val APPOINTMENT_CHANNEL_ID = "clinic_appointment_channel"
+    private const val MEDICAL_CHANNEL_ID = "clinic_medical_channel"
+
+    fun createNotificationChannels(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val appointmentChan = NotificationChannel(
+                APPOINTMENT_CHANNEL_ID,
+                "Статус записей на прием",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Оповещения об одобрении или переносе приемов пациентов"
+                enableLights(true)
+                enableVibration(true)
+            }
+
+            val medicalChan = NotificationChannel(
+                MEDICAL_CHANNEL_ID,
+                "Медицинские отчеты и выписки",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Импорт новых медицинских заключений и рецептов врача"
+                enableLights(true)
+                enableVibration(true)
+            }
+
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(appointmentChan)
+            manager.createNotificationChannel(medicalChan)
+        }
+    }
+
+    fun sendAppointmentStatusNotification(
+        context: Context,
+        appointmentId: Int,
+        doctorName: String,
+        dateTimeString: String,
+        newStatus: String,
+        patientName: String
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            100 + appointmentId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val title = when (newStatus.uppercase()) {
+            "APPROVED" -> "Прием одобрен! ✔"
+            "CANCELLED", "REJECTED" -> "Прием отменен ❌"
+            else -> "Обновление записи на прием ⚡"
+        }
+
+        val statusText = when (newStatus.uppercase()) {
+            "APPROVED" -> "Ваша запись на прием была успешно ПОДТВЕРЖДЕНА клиникой."
+            "CANCELLED", "REJECTED" -> "Внимание! Ваша запись на прием была отменена. Пожалуйста, откройте приложение для просмотра подробностей."
+            else -> "У вас есть обновления по вашей записи на прием."
+        }
+
+        val builder = NotificationCompat.Builder(context, APPOINTMENT_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info) // Fallback standard system drawable icon
+            .setContentTitle(title)
+            .setContentText(statusText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(statusText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+
+        with(NotificationManagerCompat.from(context)) {
+            try {
+                notify(1000 + appointmentId, builder.build())
+            } catch (e: SecurityException) {
+                // Ignore missing permissions safely (runtime handle instead)
+            }
+        }
+    }
+
+    fun sendMedicalRecordNotification(
+        context: Context,
+        recordId: Int,
+        doctorName: String,
+        diagnosis: String,
+        patientName: String
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            200 + recordId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val contentText = "В вашей медицинской карте появилась новая запись врача. Ознакомьтесь с назначениями и скачайте отчёт в личном кабинете."
+
+        val builder = NotificationCompat.Builder(context, MEDICAL_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_agenda) // Fallback list/agenda icon
+            .setContentTitle("Новая запись в медкарте! 📋")
+            .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+
+        with(NotificationManagerCompat.from(context)) {
+            try {
+                notify(2000 + recordId, builder.build())
+            } catch (e: SecurityException) {
+                // Ignore missing permissions safely (runtime handle instead)
+            }
+        }
+    }
+}

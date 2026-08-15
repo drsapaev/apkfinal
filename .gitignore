@@ -10,23 +10,9 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
-/app/build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
-
-# Stage 0.3 / Stage 1.5: secrets and keystores must never be committed.
 .env
 debug.keystore
-my-upload-key.jks
-*.jks
-*.keystore
-
-# Release artifacts
-release_apk/
-
-# Stage 0.3 (H-7 fix): Room schema export directory MUST be committed.
-# The previous `schemas/` line prevented MigrationTestHelper from finding
-# the JSON baseline files — removing it so 5.json / 6.json can be added.
-# (Schemas are still under app/schemas/ — the path is relative to app/.)

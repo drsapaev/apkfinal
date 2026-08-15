@@ -1,6 +1,6 @@
 {
   "name": "Clinic System",
-  "description": "Clinic management application with username/password login, 2FA TOTP, biometric auth (CryptoObject), and real-time data sync between patients and clinic staff via WebSocket.",
+  "description": "Clinic management application with phone login, bio-auth, and real-time data sync between patients and clinic staff.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -5,9 +5,4 @@ plugins {
   alias(libs.plugins.google.devtools.ksp) apply false
   alias(libs.plugins.roborazzi) apply false
   alias(libs.plugins.secrets) apply false
-  alias(libs.plugins.ktlint) apply false
-  alias(libs.plugins.detekt) apply false
-  // Stage 2.1: Hilt — applied here (false) so the plugin is on the classpath
-  // for the app module to apply. Hilt 2.51.1 supports KSP (no kapt needed).
-  alias(libs.plugins.hilt) apply false
 }
