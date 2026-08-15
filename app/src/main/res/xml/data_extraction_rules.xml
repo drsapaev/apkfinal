@@ -1,19 +1,61 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Medium-3 audit fix: data extraction rules for API 31+ (Android 12+).
+
+  Replaces the old full-backup-content (backup_rules.xml) for devices
+  running API 31+. Supports two transfer types:
+    1. cloud-backup — backup to Google Drive (user's Google account)
+    2. device-transfer — device-to-device migration (e.g. Pixel to Pixel)
+
+  AndroidManifest has android:allowBackup="false" which disables both
+  by default. This file is defense-in-depth: if allowBackup is ever
+  re-enabled, these rules ensure sensitive data is NEVER transferred.
+
+  Sensitive files explicitly EXCLUDED from both cloud-backup and
+  device-transfer:
+    1. intellect_clinic_secure_prefs.xml — EncryptedSharedPreferences
+       with JWT tokens, SQLCipher passphrase, biometric refresh blob.
+       The keystore key is hardware-bound — a restored backup on a
+       new device would have encrypted data but no key to decrypt it.
+    2. clinic_database (+ -wal + -shm) — SQLCipher encrypted Room
+       database with PHI (appointments, medical records, lab results,
+       users, queue). Orphaned without the passphrase.
+    3. clinic_prefs.xml — StaffViewModel draft state (PHI if mid-edit).
+
+  Reference: https://developer.android.com/about/versions/12/backup-restore
 -->
 <data-extraction-rules>
+    <!-- Cloud backup (Google Drive) — exclude all sensitive data -->
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- EncryptedSharedPreferences: JWT tokens, DB passphrase, biometric blob -->
+        <exclude domain="sharedpref" path="intellect_clinic_secure_prefs.xml"/>
+
+        <!-- StaffViewModel draft state (PHI if mid-edit) -->
+        <exclude domain="sharedpref" path="clinic_prefs.xml"/>
+
+        <!-- SQLCipher encrypted Room database (PHI) -->
+        <exclude domain="database" path="clinic_database"/>
+        <exclude domain="database" path="clinic_database-wal"/>
+        <exclude domain="database" path="clinic_database-shm"/>
+
+        <!-- Room schema export directory (not sensitive, but no need to back up) -->
+        <exclude domain="file" path="schemas/"/>
     </cloud-backup>
-    <!--
+
+    <!-- Device-to-device transfer (e.g. Pixel → Pixel) — exclude all sensitive data -->
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <!-- EncryptedSharedPreferences: JWT tokens, DB passphrase, biometric blob -->
+        <exclude domain="sharedpref" path="intellect_clinic_secure_prefs.xml"/>
+
+        <!-- StaffViewModel draft state (PHI if mid-edit) -->
+        <exclude domain="sharedpref" path="clinic_prefs.xml"/>
+
+        <!-- SQLCipher encrypted Room database (PHI) -->
+        <exclude domain="database" path="clinic_database"/>
+        <exclude domain="database" path="clinic_database-wal"/>
+        <exclude domain="database" path="clinic_database-shm"/>
+
+        <!-- Room schema export directory (not sensitive, but no need to transfer) -->
+        <exclude domain="file" path="schemas/"/>
     </device-transfer>
-    -->
 </data-extraction-rules>

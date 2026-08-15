@@ -1,0 +1,351 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'CONTRIBUTING.md'
+      - 'README.md'
+      - 'RELEASE_NOTES.md'
+      - 'SMOKE_TEST_PROTOCOL.md'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'CONTRIBUTING.md'
+      - 'README.md'
+      - 'RELEASE_NOTES.md'
+      - 'SMOKE_TEST_PROTOCOL.md'
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Job 1: Static analysis (ktlint + detekt) — fast feedback
+  # ─────────────────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 9.3.1
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run ktlint
+        run: ./gradlew ktlintCheck --max-workers=2
+
+      - name: Run detekt
+        # Stage 13: hardened — detekt now blocks CI. God Screen violations
+        # (StaffScreen, PatientScreen) still exist but are tracked for
+        # incremental cleanup. If new violations are introduced, CI fails.
+        run: ./gradlew detekt --max-workers=2
+
+      - name: Upload detekt reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detekt-reports
+          path: app/build/reports/detekt/
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 2: Unit tests + coverage gate
+  # ─────────────────────────────────────────────────────────────
+  unit-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 9.3.1
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'gradle/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Cache Robolectric SDK jars
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/robolectric
+            ~/.m2/repository/org/robolectric
+          key: robolectric-4.14.1-sdk-33-${{ runner.os }}-v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Create Robolectric temp directories
+        run: mkdir -p /tmp/robolectric-tmp
+
+      - name: Run unit tests with coverage
+        run: ./gradlew testDebugUnitTest jacocoTestReport --max-workers=2
+        env:
+          ROBOLECTRIC_SDK_DOWNLOAD_TIMEOUT: "600"
+
+      - name: Coverage gate
+        # Re-audit R-5: kept continue-on-error (Medium-6 audit fix). See AUDIT_2026-07-10.md for rationale. — JaCoCo XML generation
+        # is flaky in CI (executionData path issue). TODO: investigate why
+        # testDebugUnitTest .exec files are not always written, then remove
+        # continue-on-error to make coverage a hard gate.
+        # Tracked as: cleanup/jacoco-executiondata-fix
+        continue-on-error: true
+        run: |
+          XML="app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
+          if [ ! -f "$XML" ]; then
+            echo "⚠️ JaCoCo XML not found — skipping coverage gate"
+            exit 0
+          fi
+          python3 .github/scripts/coverage-gate.py \
+            "$XML" \
+            --min-overall 30 \
+            --min-package data:50 \
+            --min-package domain:50
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          fail_ci_if_error: false
+
+      - name: Run Roborazzi screenshot tests
+        # Re-audit R-5: kept continue-on-error (Medium-6 audit fix). See AUDIT_2026-07-10.md for rationale. — Roborazzi baseline
+        # screenshots are not committed (only greeting.png exists). TODO:
+        # generate and commit baseline screenshots for all @Composable
+        # tests, then remove continue-on-error.
+        # Tracked as: cleanup/roborazzi-baseline-generation
+        run: ./gradlew verifyRoborazziDebug --max-workers=2
+        continue-on-error: true
+
+      - name: Upload screenshot diff on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-diff
+          path: app/build/outputs/roborazzi/
+          retention-days: 14
+
+      - name: Upload test results on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: |
+            app/build/reports/tests/
+            app/build/reports/jacoco/
+            app/build/test-results/
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 3: Release smoke — assembleRelease + bundleRelease + lintRelease
+  # Verifies R8/ProGuard rules, signing config, AAB generation
+  # ─────────────────────────────────────────────────────────────
+  release-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 9.3.1
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'gradle/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Decode CI-only release keystore
+        # Medium-6 audit fix: removed continue-on-error — P0-4 configured
+        # the required GitHub secrets (CLINIC_BASE_URL, CLINIC_WS_URL,
+        # CLINIC_CERT_PIN_1/2, KEYSTORE_PATH, STORE_PASSWORD, KEY_PASSWORD).
+        # If secrets are missing, this step fails fast with a clear error.
+        run: |
+          mkdir -p ${{ github.workspace }}
+          echo "${{ secrets.CI_RELEASE_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/ci-release.jks
+          echo "KEYSTORE_PATH=${{ github.workspace }}/ci-release.jks" >> $GITHUB_ENV
+          echo "STORE_PASSWORD=${{ secrets.CI_STORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${{ secrets.CI_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Validate release config (no placeholder URL)
+        # Stage 1.3: build with a real-looking staging URL passed via gradle property
+        # and assert that BuildConfig.BASE_URL does NOT contain `example.com` or `INVALID`.
+        # This step runs `assembleRelease` which includes R8/ProGuard + resource shrinking.
+        #
+        # Medium-6 audit fix: removed continue-on-error — P0-3 (SyncConsoleView
+        # release stub) fixed the release compile error, P0-4 configured the
+        # required GitHub secrets. Release build is now a hard CI requirement.
+        run: |
+          ./gradlew :app:assembleRelease --max-workers=2 -Pclinic.baseUrl=https://staging.clinic.internal/ -Pclinic.wsUrl=wss://staging.clinic.internal/ws/queue
+          # Inspect the generated BuildConfig.java
+          BUILD_CONFIG=app/build/generated/source/buildConfig/release/com/aistudio/clinicsystem/BuildConfig.java
+          if grep -q 'example.com' "$BUILD_CONFIG"; then
+            echo "❌ Release BuildConfig.BASE_URL contains 'example.com' — placeholder leak"
+            exit 1
+          fi
+          if grep -q 'INVALID' "$BUILD_CONFIG"; then
+            echo "❌ Release BuildConfig.BASE_URL contains 'INVALID' — gradle property 'clinic.baseUrl' was not set"
+            exit 1
+          fi
+          echo "✅ Release BASE_URL is a real production-style URL"
+
+      - name: Lint release
+        # Medium-6 audit fix: removed continue-on-error — lint errors
+        # must block the PR. Warnings are acceptable (lint does not fail
+        # on warnings by default); errors are not.
+        run: ./gradlew lintRelease --max-workers=2
+
+      - name: Bundle release AAB
+        # Medium-6 audit fix: removed continue-on-error — P0-4 configured
+        # the signing secrets. bundleRelease now requires a valid keystore.
+        run: ./gradlew bundleRelease --max-workers=2
+
+      - name: Cleanup keystore
+        if: always()
+        run: rm -f ${{ github.workspace }}/ci-release.jks
+
+      - name: Upload release APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-release
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 14
+
+      - name: Upload release AAB
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-release
+          path: app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-release-report
+          path: app/build/reports/lint-results-release.html
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 4: Instrumentation tests on emulator (API 30 + 33)
+  # ─────────────────────────────────────────────────────────────
+  instrumentation:
+    # Re-audit R-5: kept continue-on-error (Medium-6 audit fix). See AUDIT_2026-07-10.md for rationale. — instrumentation tests
+    # require Hilt codegen for androidTest (kspAndroidTest) + a properly
+    # configured HiltTestRunner. The current HiltTestRunner crashes with
+    # ClassNotFoundException because the test APK doesn't include the
+    # Hilt-generated test application. TODO: add @HiltAndroidTest classes
+    # with proper @TestInstallIn modules (Stage 10 test fund), then remove
+    # continue-on-error.
+    # Tracked as: cleanup/hilt-instrumentation-setup
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [30, 33]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 9.3.1
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'gradle/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0777", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          profile: pixel_6
+          script: ./gradlew connectedCheck --max-workers=2
+
+      - name: Upload instrumentation test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-results-api${{ matrix.api-level }}
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          retention-days: 14

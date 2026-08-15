@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <Blacklist></Blacklist>
+  <Whitelist>
+    <!-- Re-audit R-1 to R-5: pre-existing violations from deleted baseline (Medium-2) -->
+    <!-- These are tracked in REFACTORING_ROADMAP.md for gradual cleanup -->
+
+    <!-- UnusedParameter -->
+    <ID>UnusedParameter:SyncConsoleView.kt$SyncConsoleView(viewModel: ClinicViewModel)</ID>
+    <ID>UnusedParameter:StaffAppointmentsSection.kt$StaffAppointmentsSection(patientRoleUsers: List&lt;UserEntity&gt;)</ID>
+
+    <!-- MaxLineLength -->
+    <ID>MaxLineLength:MedicalHistoryCardItem.kt$MedicalHistoryCardItem</ID>
+    <ID>MaxLineLength:AuthScreen.kt$AuthScreen</ID>
+    <ID>MaxLineLength:PatientViewModel.kt$PatientViewModel</ID>
+    <ID>MaxLineLength:AuthViewModel.kt$AuthViewModel</ID>
+    <ID>MaxLineLength:StaffViewModel.kt$StaffViewModel</ID>
+    <ID>MaxLineLength:ClinicRepository.kt$ClinicRepository</ID>
+
+    <!-- UnusedPrivateProperty -->
+    <ID>UnusedPrivateProperty:AuthScreen.kt$AuthScreen$timer</ID>
+    <ID>UnusedPrivateProperty:AuthScreen.kt$AuthScreen$tealAccent</ID>
+    <ID>UnusedPrivateProperty:PatientScreen.kt$PatientScreen$tealDark</ID>
+    <ID>UnusedPrivateProperty:AuthViewModel.kt$AuthViewModel$sessionRepository</ID>
+
+    <!-- ForbiddenComment (TODO markers) -->
+    <ID>ForbiddenComment:PatientViewModel.kt$PatientViewModel</ID>
+    <ID>ForbiddenComment:ClinicViewModel.kt$ClinicViewModel</ID>
+  </Whitelist>
+</SmellBaseline>

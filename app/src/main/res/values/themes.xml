@@ -2,4 +2,13 @@
 <resources>
 
     <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar" />
+
+    <!-- Stage 7.3 (UI-18/37 fix): Splash screen theme for Android 12+.
+         Uses SplashScreen API (androidx.core:core-splashscreen).
+         The launcher icon is shown on a themed background during cold start. -->
+    <style name="Theme.MyApplication.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.MyApplication</item>
+    </style>
 </resources>

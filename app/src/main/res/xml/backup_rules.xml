@@ -1,13 +1,59 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Medium-3 audit fix: backup rules for API < 31 (full-backup-content).
+
+  AndroidManifest has android:allowBackup="false" which disables all
+  backup by default. This file is a defense-in-depth: if allowBackup
+  is ever re-enabled (e.g. for testing), these rules ensure sensitive
+  data is NEVER backed up to Google Drive or transferred via device-to-
+  device migration.
+
+  Sensitive files explicitly EXCLUDED from backup:
+    1. intellect_clinic_secure_prefs.xml — EncryptedSharedPreferences
+       containing:
+         - JWT access token
+         - JWT refresh token
+         - Biometric-encrypted refresh token blob (ciphertext + IV)
+         - SQLCipher database passphrase (32-byte AES key)
+         - User phone, role, biometricEnabled flag
+       Even though encrypted at rest with AES-256-GCM (StrongBox-backed
+       keystore key), backing this up to Google Drive would allow
+       offline brute-force attacks. The keystore key is hardware-bound
+       and does NOT transfer with the backup — so a restored backup
+       on a new device would have encrypted data but no key to decrypt
+       it. Excluding prevents this broken-restore scenario.
+
+    2. clinic_database, clinic_database-wal, clinic_database-shm —
+       SQLCipher encrypted Room database containing PHI:
+         - appointments (patient phone, name, doctor, diagnosis)
+         - medical_records (diagnosis, prescription, recommendations)
+         - lab_results (test results)
+         - users (phone, fullName, role, telegramChatId)
+         - queue_snapshots (patient names, positions)
+         - pending_syncs (outbox payload with PHI)
+       SQLCipher passphrase is stored in intellect_clinic_secure_prefs
+       (excluded above). Backing up the database without the passphrase
+       creates an orphaned encrypted blob.
+
+    3. clinic_prefs.xml — plain SharedPreferences for StaffViewModel
+       draft state (diagnosis, prescription, recommendations text
+       being edited). Contains PHI if staff was mid-edit when backup
+       triggered.
+
+  Reference: https://developer.android.com/guide/topics/data/autobackup
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- EncryptedSharedPreferences: JWT tokens, DB passphrase, biometric blob -->
+    <exclude domain="sharedpref" path="intellect_clinic_secure_prefs.xml"/>
+
+    <!-- StaffViewModel draft state (PHI if mid-edit) -->
+    <exclude domain="sharedpref" path="clinic_prefs.xml"/>
+
+    <!-- SQLCipher encrypted Room database (PHI) -->
+    <exclude domain="database" path="clinic_database"/>
+    <exclude domain="database" path="clinic_database-wal"/>
+    <exclude domain="database" path="clinic_database-shm"/>
+
+    <!-- Room schema export directory (not sensitive, but no need to back up) -->
+    <exclude domain="file" path="schemas/"/>
 </full-backup-content>
