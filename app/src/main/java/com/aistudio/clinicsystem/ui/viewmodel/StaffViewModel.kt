@@ -36,6 +36,8 @@ class StaffViewModel
         // ROLE-FIX: role-aware staff console — Admin gets a system-users section
         // served by GET /api/v1/users (Admin-only backend route).
         private val apiService: com.aistudio.clinicsystem.data.api.ApiService,
+        // TASK-8: realtime queue subscription (per-specialist room).
+        private val webSocketClient: com.aistudio.clinicsystem.utils.ClinicWebSocketClient,
     ) : ViewModel() {
         /** Resolved role of the signed-in staff user (drives role-aware UI). */
         val staffRole: StateFlow<com.aistudio.clinicsystem.domain.model.UserRole> =
@@ -365,6 +367,40 @@ class StaffViewModel
             viewModelScope.launch {
                 repository.syncDoctorsFromServer()
             }
+            // TASK-8: subscribe to the per-specialist queue room. The backend
+            // broadcasts into "specialist_{id}::{date}" — one room per
+            // connection, so the console follows the first available doctor's
+            // room (the REST per-queue refresh keeps the rest current).
+            viewModelScope.launch {
+                repository.allDoctors.collectLatest { doctors ->
+                    val firstDoctor = doctors.firstOrNull { it.serverId != null }
+                    if (firstDoctor != null) {
+                        webSocketClient.subscribeToQueue(
+                            department = "specialist_${firstDoctor.serverId}",
+                            date = "",
+                        )
+                    }
+                }
+            }
+            // TASK-8: partial queue events (no snapshot in the payload) and
+            // reconnect recovery — both re-read the affected queue via REST
+            // instead of wiping the cache.
+            viewModelScope.launch {
+                webSocketClient.partialQueueEvents.collect { room ->
+                    refreshQueueForRoom(room)
+                }
+            }
+            viewModelScope.launch {
+                webSocketClient.recoveryEvents.collect { room ->
+                    refreshQueueForRoom(room)
+                }
+            }
+        }
+
+        private suspend fun refreshQueueForRoom(room: String) {
+            val match = Regex("specialist_(\\d+)").find(room) ?: return
+            val specialistId = match.groupValues[1].toIntOrNull() ?: return
+            repository.refreshQueueForSpecialist(specialistId)
         }
 
         var onLogoutSuccess: (() -> Unit)? = null
