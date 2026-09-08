@@ -9,8 +9,10 @@ import javax.inject.Singleton
  * Called by AuthViewModel and ClinicViewModel on user logout.
  */
 @Singleton
-class LogoutUseCase @Inject constructor(
-    private val authRepository: AuthRepositoryInterface,
-) {
-    suspend operator fun invoke(): Result<Unit> = authRepository.logout()
-}
+class LogoutUseCase
+    @Inject
+    constructor(
+        private val authRepository: AuthRepositoryInterface,
+    ) {
+        suspend operator fun invoke(): Result<Unit> = authRepository.logout()
+    }

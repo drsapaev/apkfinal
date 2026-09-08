@@ -14,7 +14,7 @@
     <string name="auth_2fa_title">Two-Factor Authentication</string>
     <string name="auth_2fa_code_hint">6-digit code</string>
     <string name="auth_2fa_verify">Verify</string>
-    <string name="auth_2fa_use_recovery">Use recovery code</string>
+    <string name="auth_2fa_use_recovery">Can\u2019t sign in? Use a backup code</string>
     <string name="auth_2fa_trust_device">Trust this device</string>
     <string name="auth_2fa_error_expired">2FA session expired, please log in again</string>
     <string name="auth_2fa_error_code">Code must be 6 digits</string>
@@ -130,11 +130,11 @@
     <string name="ui_2fa_use_recovery">Use recovery code</string>
     <string name="ui_2fa_cancel">Cancel</string>
     <string name="ui_2fa_recovery_title">Account recovery</string>
-    <string name="ui_2fa_recovery_hint">Enter email or phone — we will send a recovery code</string>
+    <string name="ui_2fa_recovery_hint">Enter a backup code (8-10 characters) issued when you set up two-factor authentication. Email recovery from the app is not available — it is a deliberate server-side restriction.</string>
     <string name="ui_2fa_recovery_method">Email or phone</string>
     <string name="ui_2fa_send_recovery">Send recovery code</string>
     <string name="ui_2fa_recovery_enter_code">After receiving the code, enter it below:</string>
-    <string name="ui_2fa_recovery_code">Recovery code</string>
+    <string name="ui_2fa_recovery_code">Backup code</string>
     <string name="ui_2fa_verify_recovery">Verify recovery code</string>
     <string name="ui_2fa_back_to_totp">← Back to TOTP</string>
     <string name="ui_intellect_clinic">Intellect Clinic</string>
@@ -324,6 +324,7 @@ Register an approved patient below.</string>
     <string name="st_rejected">Rejected</string>
     <string name="st_confirmed">Confirmed</string>
     <string name="st_waiting">Waiting</string>
+    <string name="st_called">Called</string>
     <string name="st_in_progress">In progress</string>
     <string name="st_seen">Seen</string>
     <string name="st_syncing">Syncing...</string>
@@ -338,9 +339,9 @@ Register an approved patient below.</string>
     <string name="auth_error_fragment_activity">Error: FragmentActivity required</string>
     <string name="auth_biometric_key_unavailable">Biometric key unavailable. Login with password.</string>
     <string name="auth_2fa_enter_code">Enter verification code</string>
-    <string name="auth_2fa_recovery_title">Account recovery</string>
+    <string name="auth_2fa_recovery_title">Backup code</string>
     <string name="auth_2fa_send_recovery">Send recovery code</string>
-    <string name="auth_2fa_verify_recovery">Verify recovery code</string>
+    <string name="auth_2fa_verify_recovery">Sign in with backup code</string>
     <string name="auth_2fa_recovery_request_first">Request recovery code first</string>
     <string name="auth_2fa_must_relogin">Must log in again</string>
     <string name="auth_2fa_error_generic">2FA error</string>
@@ -435,6 +436,7 @@ Register an approved patient below.</string>
     <string name="queue_to_queue">To queue</string>
     <string name="queue_call_doctor">Call to doctor</string>
     <string name="queue_complete">Complete visit</string>
+    <string name="queue_start_visit">Start visit</string>
     <string name="queue_remove">Remove</string>
     <string name="queue_up">Up</string>
     <string name="queue_down">Down</string>
@@ -665,4 +667,12 @@ Register an approved patient below.</string>
     <string name="vm_tg_unlink_error">🔴 Telegram unlink error</string>
     <string name="vm_tg_test_error">🔴 TELEGRAM TEST: Send error</string>
     <string name="vm_people">people</string>
+    <string name="dialog_add_notes">Add notes</string>
+    <string name="staff_role_label">Role</string>
+    <string name="staff_admin_section">Administration — system users</string>
+    <string name="staff_admin_loading">Loading users…</string>
+    <string name="staff_admin_error">Load error</string>
+    <string name="staff_admin_empty">No users found</string>
+    <string name="staff_admin_active">active</string>
+    <string name="staff_admin_inactive">inactive</string>
 </resources>

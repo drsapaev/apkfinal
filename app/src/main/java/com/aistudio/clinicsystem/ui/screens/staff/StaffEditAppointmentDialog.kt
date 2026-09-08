@@ -17,7 +17,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,29 +59,31 @@ fun StaffEditAppointmentDialog(
     onStatusSelectedChange: (String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
-    accentColor: Color
+    accentColor: Color,
 ) {
     if (!visible) return
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
             shape = RoundedCornerShape(Radius.xl),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(Spacing.xl)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(Spacing.m)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(Spacing.xl)
+                        .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 Text(
                     text = stringResource(R.string.dlg_edit_appointment),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
 
                 OutlinedTextField(
@@ -90,7 +91,7 @@ fun StaffEditAppointmentDialog(
                     onValueChange = onPatientPhoneChange,
                     label = { Text(stringResource(R.string.dlg_patient_phone)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 OutlinedTextField(
@@ -98,7 +99,7 @@ fun StaffEditAppointmentDialog(
                     onValueChange = onPatientNameChange,
                     label = { Text(stringResource(R.string.dlg_patient_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 OutlinedTextField(
@@ -106,7 +107,7 @@ fun StaffEditAppointmentDialog(
                     onValueChange = onDoctorSelectedChange,
                     label = { Text(stringResource(R.string.dlg_doctor)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 OutlinedTextField(
@@ -114,26 +115,26 @@ fun StaffEditAppointmentDialog(
                     onValueChange = onSpecialtySelectedChange,
                     label = { Text(stringResource(R.string.dlg_specialty)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.m)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.m),
                 ) {
                     OutlinedTextField(
                         value = editDate,
                         onValueChange = onDateChange,
                         label = { Text(stringResource(R.string.dlg_date)) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     OutlinedTextField(
                         value = editTime,
                         onValueChange = onTimeChange,
                         label = { Text(stringResource(R.string.dlg_time)) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
 
@@ -141,7 +142,7 @@ fun StaffEditAppointmentDialog(
                     value = editReason,
                     onValueChange = onReasonChange,
                     label = { Text(stringResource(R.string.dlg_reason_visit)) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 OutlinedTextField(
@@ -149,14 +150,14 @@ fun StaffEditAppointmentDialog(
                     onValueChange = onStatusSelectedChange,
                     label = { Text(stringResource(R.string.dlg_status)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(Spacing.s))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onDismiss) {
                         Text(stringResource(R.string.ui_otmena))
@@ -164,7 +165,7 @@ fun StaffEditAppointmentDialog(
                     Spacer(modifier = Modifier.width(Spacing.s))
                     Button(
                         onClick = onSave,
-                        colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                        colors = ButtonDefaults.buttonColors(containerColor = accentColor),
                     ) {
                         Text(stringResource(R.string.ui_sohranit), color = MaterialTheme.colorScheme.surface)
                     }

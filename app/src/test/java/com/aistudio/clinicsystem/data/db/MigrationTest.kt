@@ -27,7 +27,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class MigrationTest {
-
     private lateinit var context: Context
     private val dbName = "migration_test.db"
 
@@ -85,14 +84,15 @@ class MigrationTest {
 
     @Test
     fun dataPersistsAcrossReopenWithMigrationsRegistered() {
-        val db = Room.databaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-            dbName,
-        )
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                    dbName,
+                ).allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.userDao().insertUser(
@@ -125,14 +125,15 @@ class MigrationTest {
         }
         db.close()
 
-        val dbReopened = Room.databaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-            dbName,
-        )
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val dbReopened =
+            Room
+                .databaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                    dbName,
+                ).allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             val user = dbReopened.userDao().getUserByPhone("+77071234567")
@@ -156,10 +157,12 @@ class MigrationTest {
 
     @Test
     fun appointmentEntity_hasEtagColumn() {
-        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.appointmentDao().insertAppointment(
@@ -184,10 +187,12 @@ class MigrationTest {
 
     @Test
     fun medicalRecordEntity_hasVersionAndUpdateAtColumns() {
-        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.medicalRecordDao().insertRecord(
@@ -211,10 +216,12 @@ class MigrationTest {
 
     @Test
     fun pendingSyncEntity_hasLastHttpCodeColumn() {
-        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.pendingSyncDao().insertPendingSync(
@@ -237,10 +244,12 @@ class MigrationTest {
 
     @Test
     fun doctorEntity_tableCreatedByMigration_7_to_8() {
-        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.doctorDao().insertDoctor(
@@ -274,10 +283,12 @@ class MigrationTest {
 
     @Test
     fun labResultEntity_tableCreatedByMigration_8_to_9() {
-        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.labResultDao().insertAll(
@@ -315,10 +326,12 @@ class MigrationTest {
 
     @Test
     fun doctorDataPersistsAcrossReopen() {
-        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.doctorDao().insertDoctors(
@@ -330,10 +343,12 @@ class MigrationTest {
         }
         db.close()
 
-        val dbReopened = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val dbReopened =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             val doctors = dbReopened.doctorDao().getAllDoctorsOnce()
@@ -346,10 +361,12 @@ class MigrationTest {
 
     @Test
     fun labResultDataPersistsAcrossReopen() {
-        val db = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val db =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             db.labResultDao().insertAll(
@@ -369,10 +386,12 @@ class MigrationTest {
         }
         db.close()
 
-        val dbReopened = Room.databaseBuilder(context, ClinicDatabase::class.java, dbName)
-            .allowMainThreadQueries()
-            .addMigrations(*Migrations.ALL)
-            .build()
+        val dbReopened =
+            Room
+                .databaseBuilder(context, ClinicDatabase::class.java, dbName)
+                .allowMainThreadQueries()
+                .addMigrations(*Migrations.ALL)
+                .build()
 
         kotlinx.coroutines.runBlocking {
             val results = dbReopened.labResultDao().getResultsByPatientOnce("+77771112233")

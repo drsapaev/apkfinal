@@ -40,14 +40,17 @@ class AuthInterceptor(
             return chain.proceed(originalRequest)
         }
 
-        val bearerValue = if (token.startsWith("Bearer ", ignoreCase = true)) {
-            token
-        } else {
-            "Bearer $token"
-        }
-        val authedRequest = originalRequest.newBuilder()
-            .header("Authorization", bearerValue)
-            .build()
+        val bearerValue =
+            if (token.startsWith("Bearer ", ignoreCase = true)) {
+                token
+            } else {
+                "Bearer $token"
+            }
+        val authedRequest =
+            originalRequest
+                .newBuilder()
+                .header("Authorization", bearerValue)
+                .build()
         return chain.proceed(authedRequest)
     }
 }

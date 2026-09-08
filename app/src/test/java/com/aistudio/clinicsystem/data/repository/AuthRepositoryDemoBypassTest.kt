@@ -1,7 +1,6 @@
 package com.aistudio.clinicsystem.data.repository
 
 import androidx.test.core.app.ApplicationProvider
-import com.aistudio.clinicsystem.data.api.ApiService
 import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
@@ -43,7 +42,6 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AuthRepositoryDemoBypassTest {
-
     private lateinit var mockWebServer: MockWebServer
     private lateinit var repository: AuthRepository
     private lateinit var context: android.content.Context
@@ -58,16 +56,18 @@ class AuthRepositoryDemoBypassTest {
             mockWebServer.enqueue(
                 MockResponse()
                     .setResponseCode(401)
-                    .setBody("""{"detail":"Unauthorized"}""")
+                    .setBody("""{"detail":"Unauthorized"}"""),
             )
         }
 
-        val mockApiService = Retrofit.Builder()
-            .baseUrl(mockWebServer.url("/"))
-            .client(OkHttpClient.Builder().build())
-            .addConverterFactory(MoshiConverterFactory.create())
-            .build()
-            .create(MobileApiService::class.java)
+        val mockApiService =
+            Retrofit
+                .Builder()
+                .baseUrl(mockWebServer.url("/"))
+                .client(OkHttpClient.Builder().build())
+                .addConverterFactory(MoshiConverterFactory.create())
+                .build()
+                .create(MobileApiService::class.java)
 
         // Stage 2.11: ApiClient is no longer an `object`. The MockWebServer-backed
         // mockApiService is passed directly to AuthRepository via constructor.
@@ -80,25 +80,31 @@ class AuthRepositoryDemoBypassTest {
         // short-circuit through the bypass and DOES reach the network.
         resetSessionManagerSingleton()
 
-        val db = androidx.room.Room.inMemoryDatabaseBuilder(
-            context,
-            ClinicDatabase::class.java
-        ).allowMainThreadQueries().build()
+        val db =
+            androidx.room.Room
+                .inMemoryDatabaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                ).allowMainThreadQueries()
+                .build()
 
         // Stage 2.11: SessionRepository now takes (context, sessionManager, database).
-        val sessionRepo = com.aistudio.clinicsystem.data.session.SessionRepository(
-            appContext = context,
-            sessionManager = com.aistudio.clinicsystem.utils.SessionManagerImpl.getInstance(context),
-            database = db,
-        )
+        val sessionRepo =
+            com.aistudio.clinicsystem.data.session.SessionRepository(
+                appContext = context,
+                sessionManager =
+                    com.aistudio.clinicsystem.utils.SessionManagerImpl
+                        .getInstance(context),
+                database = db,
+            )
 
-        repository = AuthRepository(
-            context = context,
-            database = db,
-            mobileApiService = mockApiService,
-            apiService = io.mockk.mockk(relaxed = true),
-            sessionRepository = sessionRepo,
-        )
+        repository =
+            AuthRepository(
+                context = context,
+                database = db,
+                mobileApiService = mockApiService,
+                sessionRepository = sessionRepo,
+            )
     }
 
     @After
@@ -107,81 +113,86 @@ class AuthRepositoryDemoBypassTest {
     }
 
     @Test
-    fun login_adminDemoBypass_isRemoved() = runBlocking {
-        val result = repository.login("admin", "any-password")
+    fun login_adminDemoBypass_isRemoved() =
+        runBlocking {
+            val result = repository.login("admin", "any-password")
 
-        assertTrue(
-            "login('admin', *) must FAIL after E1.1 — was the demo bypass reintroduced?",
-            result.isFailure
-        )
+            assertTrue(
+                "login('admin', *) must FAIL after E1.1 — was the demo bypass reintroduced?",
+                result.isFailure,
+            )
 
-        // Prove the request actually reached the network (no bypass short-circuit)
-        val recordedRequest = mockWebServer.takeRequest()
-        assertEquals("POST", recordedRequest.method)
-        assertTrue(
-            "Request must hit /api/v1/authentication/login, was: ${recordedRequest.path}",
-            recordedRequest.path?.contains("/api/v1/authentication/login") == true
-        )
-    }
-
-    @Test
-    fun login_patientDemoBypass_isRemoved() = runBlocking {
-        val result = repository.login("patient", "any-password")
-
-        assertTrue(
-            "login('patient', *) must FAIL after E1.1 — was the demo bypass reintroduced?",
-            result.isFailure
-        )
-
-        val recordedRequest = mockWebServer.takeRequest()
-        assertTrue(
-            "Request must reach the network — bypass must not have short-circuited",
-            recordedRequest != null
-        )
-    }
+            // Prove the request actually reached the network (no bypass short-circuit)
+            val recordedRequest = mockWebServer.takeRequest()
+            assertEquals("POST", recordedRequest.method)
+            assertTrue(
+                "Request must hit /api/v1/authentication/login, was: ${recordedRequest.path}",
+                recordedRequest.path?.contains("/api/v1/authentication/login") == true,
+            )
+        }
 
     @Test
-    fun login_arbitraryCredentials_reachesNetwork() = runBlocking {
-        val result = repository.login("real_user@example.com", "real_password")
+    fun login_patientDemoBypass_isRemoved() =
+        runBlocking {
+            val result = repository.login("patient", "any-password")
 
-        assertTrue(
-            "Arbitrary credentials must go through the network and fail with 401",
-            result.isFailure
-        )
-        val recordedRequest = mockWebServer.takeRequest()
-        assertEquals("POST", recordedRequest.method)
-        assertTrue(
-            "Request must hit /api/v1/authentication/login, was: ${recordedRequest.path}",
-            recordedRequest.path?.contains("/api/v1/authentication/login") == true
-        )
-    }
+            assertTrue(
+                "login('patient', *) must FAIL after E1.1 — was the demo bypass reintroduced?",
+                result.isFailure,
+            )
+
+            val recordedRequest = mockWebServer.takeRequest()
+            assertTrue(
+                "Request must reach the network — bypass must not have short-circuited",
+                recordedRequest != null,
+            )
+        }
 
     @Test
-    fun login_adminDemoBypass_doesNotSaveFakeToken() = runBlocking {
-        // The bypass used to call sessionManager.saveSession("fake_demo_token_admin", ...).
-        // After E1.6, SessionManagerImpl.saveSession under Robolectric is a no-op
-        // (EncryptedSharedPreferences unavailable). So even if the bypass WAS
-        // reintroduced, no token would be persisted. The real protection here is
-        // the isFailure assertion above. This test is a secondary check.
-        val result = repository.login("admin", "any-password")
-        assertTrue(result.isFailure)
+    fun login_arbitraryCredentials_reachesNetwork() =
+        runBlocking {
+            val result = repository.login("real_user@example.com", "real_password")
 
-        // SessionManagerImpl.getToken() returns null under Robolectric (fail-closed)
-        val savedToken = SessionManagerImpl.getInstance(context).getToken()
-        assertFalse(
-            "No fake_demo_token_* must be saved",
-            (savedToken ?: "").startsWith("fake_demo_token_")
-        )
-    }
+            assertTrue(
+                "Arbitrary credentials must go through the network and fail with 401",
+                result.isFailure,
+            )
+            val recordedRequest = mockWebServer.takeRequest()
+            assertEquals("POST", recordedRequest.method)
+            assertTrue(
+                "Request must hit /api/v1/authentication/login, was: ${recordedRequest.path}",
+                recordedRequest.path?.contains("/api/v1/authentication/login") == true,
+            )
+        }
+
+    @Test
+    fun login_adminDemoBypass_doesNotSaveFakeToken() =
+        runBlocking {
+            // The bypass used to call sessionManager.saveSession("fake_demo_token_admin", ...).
+            // After E1.6, SessionManagerImpl.saveSession under Robolectric is a no-op
+            // (EncryptedSharedPreferences unavailable). So even if the bypass WAS
+            // reintroduced, no token would be persisted. The real protection here is
+            // the isFailure assertion above. This test is a secondary check.
+            val result = repository.login("admin", "any-password")
+            assertTrue(result.isFailure)
+
+            // SessionManagerImpl.getToken() returns null under Robolectric (fail-closed)
+            val savedToken = SessionManagerImpl.getInstance(context).getToken()
+            assertFalse(
+                "No fake_demo_token_* must be saved",
+                (savedToken ?: "").startsWith("fake_demo_token_"),
+            )
+        }
 
     // ------------------------------------------------------------------
 
     private fun resetSessionManagerSingleton() {
         try {
-            val companionInstance = SessionManagerImpl::class.java
-                .getDeclaredField("Companion")
-                .apply { isAccessible = true }
-                .get(SessionManagerImpl) as Any
+            val companionInstance =
+                SessionManagerImpl::class.java
+                    .getDeclaredField("Companion")
+                    .apply { isAccessible = true }
+                    .get(SessionManagerImpl) as Any
 
             val instanceField = companionInstance.javaClass.getDeclaredField("instance")
             instanceField.isAccessible = true

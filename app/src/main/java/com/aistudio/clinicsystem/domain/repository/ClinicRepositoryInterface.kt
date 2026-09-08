@@ -1,9 +1,5 @@
 package com.aistudio.clinicsystem.domain.repository
 
-import com.aistudio.clinicsystem.domain.model.Appointment
-import com.aistudio.clinicsystem.domain.model.MedicalRecord
-import com.aistudio.clinicsystem.domain.model.PendingSync
-import com.aistudio.clinicsystem.domain.model.QueuePosition
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -23,16 +19,22 @@ import kotlinx.coroutines.flow.Flow
  * implements this interface) as a @Singleton.
  */
 interface ClinicRepositoryInterface {
-
     // ── User Operations ──
     suspend fun getUserByPhone(phone: String): com.aistudio.clinicsystem.data.db.UserEntity?
+
     suspend fun insertUser(user: com.aistudio.clinicsystem.data.db.UserEntity): Long
+
     suspend fun updateUser(user: com.aistudio.clinicsystem.data.db.UserEntity)
 
     // ── Appointment Operations ──
     suspend fun getAppointmentById(id: String): com.aistudio.clinicsystem.data.db.AppointmentEntity?
-    suspend fun insertAppointment(appointment: com.aistudio.clinicsystem.data.db.AppointmentEntity): com.aistudio.clinicsystem.data.db.AppointmentEntity
+
+    suspend fun insertAppointment(
+        appointment: com.aistudio.clinicsystem.data.db.AppointmentEntity,
+    ): com.aistudio.clinicsystem.data.db.AppointmentEntity
+
     suspend fun updateAppointment(appointment: com.aistudio.clinicsystem.data.db.AppointmentEntity)
+
     suspend fun deleteAppointment(id: String)
 
     // ── Appointment Sync Operations ──
@@ -55,20 +57,25 @@ interface ClinicRepositoryInterface {
     ): com.aistudio.clinicsystem.data.db.AppointmentEntity?
 
     suspend fun retryUnsyncedWrites(token: String?): Boolean
+
     suspend fun syncAllAppointmentsFromServer(token: String?): Boolean
 
     // ── Medical Record Operations ──
     suspend fun getMedicalRecordById(id: String): com.aistudio.clinicsystem.data.db.MedicalRecordEntity?
-    suspend fun insertMedicalRecord(record: com.aistudio.clinicsystem.data.db.MedicalRecordEntity): com.aistudio.clinicsystem.data.db.MedicalRecordEntity
+
+    suspend fun insertMedicalRecord(
+        record: com.aistudio.clinicsystem.data.db.MedicalRecordEntity,
+    ): com.aistudio.clinicsystem.data.db.MedicalRecordEntity
+
     suspend fun createMedicalRecordOnServerAndLocal(
         token: String?,
         patientPhone: String,
         doctorName: String,
         diagnosis: String,
         prescription: String,
-        visitDate: String,
         recommendations: String,
     ): com.aistudio.clinicsystem.data.db.MedicalRecordEntity
+
     suspend fun fetchMedicalRecordsFromServer(
         token: String?,
         phone: String,
@@ -76,13 +83,22 @@ interface ClinicRepositoryInterface {
     ): List<com.aistudio.clinicsystem.data.db.MedicalRecordEntity>
 
     // ── Queue Operations ──
-    suspend fun registerInQueue(appointmentId: String): retrofit2.Response<com.aistudio.clinicsystem.data.api.QueueDto>
+    // M-CONTRACT-FIX: the backend removed POST /api/v1/queue/register —
+    // implementations throw UnsupportedOperationException and callers fall
+    // back to the local queue snapshot.
+    suspend fun registerInQueue(appointmentId: String)
 
     // ── Outbox Operations ──
     suspend fun dismissPendingSync(sync: com.aistudio.clinicsystem.data.db.PendingSyncEntity)
+
     suspend fun clearSensitiveDataForPatient(phone: String)
+
     suspend fun clearLogs()
-    suspend fun addSyncLog(logMessage: String, direction: String)
+
+    suspend fun addSyncLog(
+        logMessage: String,
+        direction: String,
+    )
 
     // ── Flows (observable data) ──
     val allUsers: Flow<List<com.aistudio.clinicsystem.data.db.UserEntity>>

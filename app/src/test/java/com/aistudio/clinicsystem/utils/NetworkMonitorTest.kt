@@ -2,17 +2,12 @@ package com.aistudio.clinicsystem.utils
 
 import android.content.Context
 import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import com.aistudio.clinicsystem.data.db.SyncLogDao
 import com.aistudio.clinicsystem.data.realtime.RealtimeManager
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -34,7 +29,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class NetworkMonitorTest {
-
     private lateinit var networkMonitor: NetworkMonitor
     private lateinit var mockContext: Context
     private lateinit var mockRealtimeManager: RealtimeManager
@@ -51,11 +45,12 @@ class NetworkMonitorTest {
         every { mockContext.getSystemService(Context.CONNECTIVITY_SERVICE) } returns mockCm
         every { mockCm.getNetworkCapabilities(any()) } returns null
 
-        networkMonitor = NetworkMonitor(
-            appContext = mockContext,
-            realtimeManager = mockRealtimeManager,
-            syncLogDao = mockSyncLogDao,
-        )
+        networkMonitor =
+            NetworkMonitor(
+                appContext = mockContext,
+                realtimeManager = mockRealtimeManager,
+                syncLogDao = mockSyncLogDao,
+            )
     }
 
     @After

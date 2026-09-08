@@ -3,7 +3,6 @@ package com.aistudio.clinicsystem.ui.screens.patient
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.ui.theme.MyApplicationTheme
@@ -23,17 +22,17 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ProfileCabinetCardTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val testUser = UserEntity(
-        id = "user-1",
-        phone = "+79991234567",
-        fullName = "Иван Тестов",
-        role = "PATIENT",
-        biometricEnabled = true
-    )
+    private val testUser =
+        UserEntity(
+            id = 1,
+            phone = "+79991234567",
+            fullName = "Иван Тестов",
+            role = "PATIENT",
+            biometricEnabled = true,
+        )
 
     @Test
     fun profileCard_showsUserName() {
@@ -42,7 +41,7 @@ class ProfileCabinetCardTest {
                 ProfileCabinetCard(
                     user = testUser,
                     onEditClick = {},
-                    onBiometricToggle = {}
+                    onBiometricToggle = {},
                 )
             }
         }
@@ -57,7 +56,7 @@ class ProfileCabinetCardTest {
                 ProfileCabinetCard(
                     user = testUser,
                     onEditClick = {},
-                    onBiometricToggle = {}
+                    onBiometricToggle = {},
                 )
             }
         }
@@ -72,7 +71,7 @@ class ProfileCabinetCardTest {
                 ProfileCabinetCard(
                     user = testUser,
                     onEditClick = {},
-                    onBiometricToggle = {}
+                    onBiometricToggle = {},
                 )
             }
         }
@@ -88,7 +87,7 @@ class ProfileCabinetCardTest {
                 ProfileCabinetCard(
                     user = testUser,
                     onEditClick = {},
-                    onBiometricToggle = {}
+                    onBiometricToggle = {},
                 )
             }
         }

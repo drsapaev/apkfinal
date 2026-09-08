@@ -1,5 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
+    // BUILD-FIX: compile Kotlin sources. Must be applied BEFORE the Compose
+    // compiler plugin (org.jetbrains.kotlin.plugin.compose requires it).
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.roborazzi)
@@ -170,6 +173,11 @@ android {
             buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"")
             buildConfigField("String", "BACKEND_URL", "\"$debugBaseUrl\"")
             buildConfigField("String", "WEBSOCKET_URL", "\"$debugWsUrl\"")
+            // BUILD-FIX: CertificatePinningConfig references these fields for
+            // EVERY variant; declaring them only in release broke the debug
+            // compile. Debug always runs unpinned ("UNSET" → buildPinner() = null).
+            buildConfigField("String", "CERT_PIN_PRIMARY", "\"UNSET\"")
+            buildConfigField("String", "CERT_PIN_BACKUP", "\"UNSET\"")
             // E2.6: debug source set provides permissive network_security_config.xml
             // (cleartext permitted for 10.0.2.2/localhost). Release uses the strict
             // version in src/main/res/xml/.
@@ -193,6 +201,17 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            all { test ->
+                // BUILD-FIX: Robolectric artifact extraction (Guava
+                // Files.createTempDir inside MavenArtifactFetcher) fails with
+                // "Failed to create directory" when java.io.tmpdir points to
+                // an MSYS/Git Bash path (/tmp). Pin the test JVM temp dir to
+                // the real OS temp directory.
+                val winTemp = System.getenv("TEMP")
+                if (!winTemp.isNullOrBlank()) {
+                    test.systemProperty("java.io.tmpdir", winTemp)
+                }
+            }
         }
     }
 }

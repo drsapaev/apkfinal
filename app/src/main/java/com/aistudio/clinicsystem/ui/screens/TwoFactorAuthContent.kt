@@ -1,8 +1,5 @@
 package com.aistudio.clinicsystem.ui.screens
 
-import androidx.compose.ui.res.stringResource
-import com.aistudio.clinicsystem.R
-import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,13 +37,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
 
 /**
@@ -62,17 +62,20 @@ import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
  * 3. Taps stringResource(R.string.ui_verify) → viewModel.verify2FA(totpCode, rememberDevice)
  *    - Success → onLoginSuccess callback (navigates to main screen)
  *    - Failure → authError StateFlow shows stringResource(R.string.auth_2fa_error_invalid)
- * 4. Alternative: stringResource(R.string.auth_2fa_use_recovery) → opens recovery flow dialog
+ * 4. Alternative: stringResource(R.string.auth_2fa_use_recovery) → opens the BACKUP-CODE
+ *    entry card → viewModel.verify2FA(backupCode) (routes to the backend `backup_code`
+ *    field — the only mid-challenge recovery the server supports)
  * 5. stringResource(R.string.ui_cancel) → viewModel.cancel2FAChallenge() (returns to login form)
  *
- * The AuthViewModel already implements the full 2FA API (verify2FA,
- * request2FARecovery, verify2FARecovery, cancel2FAChallenge) since M1/E3.4.
- * This Composable wires it up to the UI — previously dead code.
+ * M-CONTRACT-FIX: the old SMS/email recovery card (request2FARecovery/
+ * verify2FARecovery) was removed — both /2fa/recovery/... endpoints require
+ * a Bearer JWT and never return the recovery token, so they cannot work
+ * in the blocking login challenge.
  */
 @Composable
 fun TwoFactorAuthContent(
     viewModel: AuthViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val authError by viewModel.authError.collectAsStateWithLifecycle()
@@ -80,42 +83,48 @@ fun TwoFactorAuthContent(
     var totpCode by remember { mutableStateOf("") }
     var rememberDevice by remember { mutableStateOf(false) }
     var showRecoveryFlow by remember { mutableStateOf(false) }
-    var recoveryMethod by remember { mutableStateOf("") }
     var recoveryCode by remember { mutableStateOf("") }
 
     val tealPrimary = MaterialTheme.colorScheme.primary
     val tealLight = MaterialTheme.colorScheme.surfaceVariant
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surfaceVariant)
-    )
+    val backgroundBrush =
+        Brush.verticalGradient(
+            colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surfaceVariant),
+        )
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(backgroundBrush)
-            .padding(Spacing.xl),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(backgroundBrush)
+                .padding(Spacing.xl),
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .width(androidx.compose.ui.unit.Dp.Infinity.times(0.92f))
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .width(
+                        androidx.compose.ui.unit.Dp.Infinity
+                            .times(0.92f),
+                    ),
         ) {
             // Lock icon
             Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(tealLight),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(tealLight),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = stringResource(R.string.auth_2fa_title),
                     tint = tealPrimary,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 )
             }
 
@@ -123,11 +132,12 @@ fun TwoFactorAuthContent(
 
             Text(
                 text = stringResource(R.string.auth_2fa_title),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                ),
-                textAlign = TextAlign.Center
+                style =
+                    MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    ),
+                textAlign = TextAlign.Center,
             )
 
             Text(
@@ -135,7 +145,7 @@ fun TwoFactorAuthContent(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -156,24 +166,25 @@ fun TwoFactorAuthContent(
                     authError = authError,
                     onVerify = { viewModel.verify2FA(totpCode, rememberDevice) },
                     onShowRecovery = { showRecoveryFlow = true },
-                    onCancel = { viewModel.cancel2FAChallenge() }
+                    onCancel = { viewModel.cancel2FAChallenge() },
                 )
             } else {
-                // === Recovery code flow ===
+                // === Backup-code recovery ===
+                // M-CONTRACT-FIX: the backend does not support SMS/email
+                // recovery from the login challenge (/2fa/recovery/... both
+                // require a Bearer JWT). Backup codes are verified directly
+                // via /2fa/verify — so the recovery card collects a backup
+                // code and routes it through verify2FA.
                 TwoFactorRecoveryCard(
-                    recoveryMethod = recoveryMethod,
-                    onRecoveryMethodChange = { recoveryMethod = it },
                     recoveryCode = recoveryCode,
                     onRecoveryCodeChange = { recoveryCode = it },
                     isSyncing = isSyncing,
                     authError = authError,
-                    onRequestRecovery = { viewModel.request2FARecovery(recoveryMethod) },
-                    onVerifyRecovery = { viewModel.verify2FARecovery(recoveryCode) },
+                    onVerifyRecovery = { viewModel.verify2FA(recoveryCode, rememberDevice = false) },
                     onBackToTotp = {
                         showRecoveryFlow = false
-                        recoveryMethod = ""
                         recoveryCode = ""
-                    }
+                    },
                 )
             }
         }
@@ -190,7 +201,7 @@ private fun TwoFactorTotpCard(
     authError: String?,
     onVerify: () -> Unit,
     onShowRecovery: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
 ) {
     val tealPrimary = MaterialTheme.colorScheme.primary
 
@@ -198,18 +209,18 @@ private fun TwoFactorTotpCard(
         shape = RoundedCornerShape(Radius.xl),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.padding(Spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = stringResource(R.string.auth_2fa_enter_code),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
 
             Spacer(modifier = Modifier.height(Spacing.l))
@@ -222,16 +233,20 @@ private fun TwoFactorTotpCard(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 visualTransformation = PasswordVisualTransformation(),
-                textStyle = MaterialTheme.typography.headlineSmall.copy(
-                    textAlign = TextAlign.Center,
-                    letterSpacing = androidx.compose.ui.unit.TextUnit(8f, androidx.compose.ui.unit.TextUnitType.Sp)
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = tealPrimary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedLabelColor = tealPrimary
-                ),
-                modifier = Modifier.fillMaxWidth()
+                textStyle =
+                    MaterialTheme.typography.headlineSmall.copy(
+                        textAlign = TextAlign.Center,
+                        letterSpacing =
+                            androidx.compose.ui.unit
+                                .TextUnit(8f, androidx.compose.ui.unit.TextUnitType.Sp),
+                    ),
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = tealPrimary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = tealPrimary,
+                    ),
+                modifier = Modifier.fillMaxWidth(),
             )
 
             authError?.let { error ->
@@ -241,7 +256,7 @@ private fun TwoFactorTotpCard(
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -250,17 +265,17 @@ private fun TwoFactorTotpCard(
             // Remember device checkbox
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Checkbox(
                     checked = rememberDevice,
-                    onCheckedChange = onRememberDeviceChange
+                    onCheckedChange = onRememberDeviceChange,
                 )
                 Text(
                     text = stringResource(R.string.auth_2fa_trust_device),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp)
+                    modifier = Modifier.padding(start = 4.dp),
                 )
             }
 
@@ -274,14 +289,15 @@ private fun TwoFactorTotpCard(
                     enabled = totpCode.length == 6,
                     colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                     shape = RoundedCornerShape(Radius.medium),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.ui_verify),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.surface
+                        color = MaterialTheme.colorScheme.surface,
                     )
                 }
             }
@@ -291,7 +307,7 @@ private fun TwoFactorTotpCard(
             TextButton(onClick = onShowRecovery) {
                 Text(
                     stringResource(R.string.auth_2fa_use_recovery),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -300,7 +316,7 @@ private fun TwoFactorTotpCard(
             TextButton(onClick = onCancel) {
                 Text(
                     stringResource(R.string.ui_cancel),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -309,15 +325,12 @@ private fun TwoFactorTotpCard(
 
 @Composable
 private fun TwoFactorRecoveryCard(
-    recoveryMethod: String,
-    onRecoveryMethodChange: (String) -> Unit,
     recoveryCode: String,
     onRecoveryCodeChange: (String) -> Unit,
     isSyncing: Boolean,
     authError: String?,
-    onRequestRecovery: () -> Unit,
     onVerifyRecovery: () -> Unit,
-    onBackToTotp: () -> Unit
+    onBackToTotp: () -> Unit,
 ) {
     val tealPrimary = MaterialTheme.colorScheme.primary
 
@@ -325,18 +338,18 @@ private fun TwoFactorRecoveryCard(
         shape = RoundedCornerShape(Radius.xl),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.padding(Spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = stringResource(R.string.auth_2fa_recovery_title),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
 
             Spacer(modifier = Modifier.height(Spacing.s))
@@ -346,61 +359,21 @@ private fun TwoFactorRecoveryCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
-
-            OutlinedTextField(
-                value = recoveryMethod,
-                onValueChange = onRecoveryMethodChange,
-                label = { Text(stringResource(R.string.ui_2fa_recovery_method)) },
-                placeholder = { Text(stringResource(R.string.ui_2fa_recovery_method_placeholder)) },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = tealPrimary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedLabelColor = tealPrimary
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.m))
-
-            Button(
-                onClick = onRequestRecovery,
-                enabled = recoveryMethod.isNotBlank() && !isSyncing,
-                colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
-                shape = RoundedCornerShape(Radius.medium),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    stringResource(R.string.auth_2fa_send_recovery),
-                    color = MaterialTheme.colorScheme.surface,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.l))
-
-            Text(
-                text = stringResource(R.string.misc_after_code_received),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.s))
 
             OutlinedTextField(
                 value = recoveryCode,
                 onValueChange = onRecoveryCodeChange,
                 label = { Text(stringResource(R.string.ui_2fa_recovery_code)) },
                 singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = tealPrimary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedLabelColor = tealPrimary
-                ),
-                modifier = Modifier.fillMaxWidth()
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = tealPrimary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = tealPrimary,
+                    ),
+                modifier = Modifier.fillMaxWidth(),
             )
 
             authError?.let { error ->
@@ -410,7 +383,7 @@ private fun TwoFactorRecoveryCard(
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -424,12 +397,15 @@ private fun TwoFactorRecoveryCard(
                     enabled = recoveryCode.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                     shape = RoundedCornerShape(Radius.medium),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                 ) {
                     Text(
-                        stringResource(R.string.auth_2fa_verify_recovery),
+                        text = stringResource(R.string.auth_2fa_verify_recovery),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.surface,
-                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -439,7 +415,7 @@ private fun TwoFactorRecoveryCard(
             TextButton(onClick = onBackToTotp) {
                 Text(
                     stringResource(R.string.ui_2fa_back_to_totp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

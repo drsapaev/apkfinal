@@ -1,6 +1,5 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
-import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aistudio.clinicsystem.R
+import com.aistudio.clinicsystem.ui.theme.Spacing
 
 /**
  * P-07 refactor: extracted from PatientScreen.kt (was 758 LOC).
@@ -45,7 +45,7 @@ fun EditProfileDialog(
     onEditNameInputChange: (String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
-    tealPrimary: Color
+    tealPrimary: Color,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -62,20 +62,22 @@ fun EditProfileDialog(
                     text = stringResource(R.string.pat_edit_name_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    modifier = Modifier.padding(bottom = 12.dp),
                 )
                 OutlinedTextField(
                     value = editNameInput,
                     onValueChange = onEditNameInputChange,
                     label = { Text(stringResource(R.string.pat_full_name)) },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = tealPrimary,
-                        focusedLabelColor = tealPrimary
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("edit_profile_input")
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = tealPrimary,
+                            focusedLabelColor = tealPrimary,
+                        ),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .testTag("edit_profile_input"),
                 )
             }
         },
@@ -83,7 +85,7 @@ fun EditProfileDialog(
             Button(
                 onClick = onSave,
                 colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
-                modifier = Modifier.testTag("save_profile_button")
+                modifier = Modifier.testTag("save_profile_button"),
             ) {
                 Text(stringResource(R.string.ui_sohranit), color = MaterialTheme.colorScheme.surface)
             }
@@ -92,6 +94,6 @@ fun EditProfileDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }
+        },
     )
 }

@@ -47,18 +47,25 @@ import retrofit2.http.Query
  * ─── 2FA ───────────────────────────────────────────────────────────────
  *
  *   POST /api/v1/2fa/verify
- *     body: TwoFAVerifyRequest(pending_2fa_token, totp_code, remember_device,
- *                              device_fingerprint)
- *     200 → LoginResponse (with real access_token + refresh_token)
- *     401 → wrong code
+ *     body: TwoFAVerifyRequest(pending_2fa_token?, totp_code? | backup_code?,
+ *                              remember_device, device_fingerprint)
+ *     200 → TwoFactorVerifyResponse(success, message, access_token?,
+ *                                   refresh_token?, ...)  — check `success`!
+ *     401 → missing/invalid pending_2fa_token
  *
- *   POST /api/v1/2fa/recovery/request
- *     body: TwoFARecoveryRequest(pending_2fa_token, method)  // "email" | "sms"
- *     200 → {recovery_token, sent: true}
+ *   POST /api/v1/2fa/recovery/request      (REQUIRES Bearer JWT)
+ *     body: TwoFARecoveryRequest(recovery_type: "email"|"phone"|"backup_code",
+ *                                recovery_value)
+ *     200 → {recovery_token: null, expires_at, message} — the token is
+ *           delivered to the recovery channel, never in the response.
  *
- *   POST /api/v1/2fa/recovery/verify
- *     body: TwoFARecoveryVerifyRequest(recovery_token, code)
- *     200 → LoginResponse
+ *   POST /api/v1/2fa/recovery/verify       (REQUIRES Bearer JWT)
+ *     body: TwoFARecoveryVerifyRequest(recovery_token)
+ *     200 → TwoFactorVerifyResponse (NO token exchange on this route)
+ *
+ *   Mobile login-challenge recovery = BACKUP CODE via /2fa/verify
+ *   (the backend rejects email recovery without a Bearer token and
+ *   explicitly answers "Backup codes are verified directly via /2fa/verify").
  *
  * ─── Mobile surface (/api/v1/mobile/ endpoint family) ─────────────────────────────────
  *
@@ -69,21 +76,24 @@ import retrofit2.http.Query
  * concrete parsing will be tightened in M2 when we add proper DTOs.
  */
 interface MobileApiService {
-
     // ═══════════════════════════════════════════════════════════════════
     // Authentication (canonical)
     // ═══════════════════════════════════════════════════════════════════
 
     @POST("api/v1/authentication/login")
-    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+    suspend fun login(
+        @Body request: LoginRequest,
+    ): Response<LoginResponse>
 
     @POST("api/v1/authentication/refresh")
     suspend fun refreshToken(
-        @Body request: RefreshTokenRequest
+        @Body request: RefreshTokenRequest,
     ): Response<RefreshTokenResponse>
 
     @POST("api/v1/authentication/logout")
-    suspend fun logout(@Body request: LogoutRequest): Response<Unit>
+    suspend fun logout(
+        @Body request: LogoutRequest,
+    ): Response<Unit>
 
     @GET("api/v1/authentication/profile")
     suspend fun getProfile(): Response<UserProfileResponse>
@@ -98,20 +108,50 @@ interface MobileApiService {
     // 2FA
     // ═══════════════════════════════════════════════════════════════════
 
+    /**
+     * POST /api/v1/2fa/verify — completes the blocking 2FA login challenge.
+     *
+     * Backend contract (`app/schemas/two_factor_auth.py:TwoFactorVerifyRequest`):
+     * at least ONE of [TwoFAVerifyRequest.totpCode], [TwoFAVerifyRequest.backupCode]
+     * or [TwoFAVerifyRequest.recoveryToken] must be provided. When
+     * [TwoFAVerifyRequest.pending2faToken] is present the backend exchanges it
+     * for real access/refresh tokens and returns them in the response
+     * (`TwoFactorVerifyResponse.accessToken/refreshToken`).
+     */
     @POST("api/v1/2fa/verify")
     suspend fun verify2FA(
-        @Body request: TwoFAVerifyRequest
-    ): Response<LoginResponse>
+        @Body request: TwoFAVerifyRequest,
+    ): Response<TwoFactorVerifyResponse>
 
+    /**
+     * POST /api/v1/2fa/recovery/request — backend contract
+     * (`TwoFactorRecoveryRequest`): requires `recovery_type`
+     * ("email" | "phone" | "backup_code") + `recovery_value`.
+     *
+     * NOTE: this endpoint requires a Bearer JWT (it is an authenticated
+     * settings flow). The recovery token itself is NEVER returned in the
+     * response — it is delivered to the configured recovery email channel.
+     * Mid-login-challenge recovery is done with a backup code via
+     * [verify2FA] instead.
+     */
+    @Suppress("unused")
     @POST("api/v1/2fa/recovery/request")
     suspend fun request2FARecovery(
-        @Body request: TwoFARecoveryRequest
+        @Body request: TwoFARecoveryRequest,
     ): Response<TwoFARecoveryResponse>
 
+    /**
+     * POST /api/v1/2fa/recovery/verify — backend contract
+     * (`TwoFactorRecoveryVerifyRequest`): body carries only
+     * `recovery_token` (the token received via the recovery channel).
+     * Requires a Bearer JWT; returns [TwoFactorVerifyResponse] WITHOUT
+     * access/refresh tokens (no pending-token exchange on this route).
+     */
+    @Suppress("unused")
     @POST("api/v1/2fa/recovery/verify")
     suspend fun verify2FARecovery(
-        @Body request: TwoFARecoveryVerifyRequest
-    ): Response<LoginResponse>
+        @Body request: TwoFARecoveryVerifyRequest,
+    ): Response<TwoFactorVerifyResponse>
 
     // High-3 audit fix: removed `send2FACode` — never called. The 2FA
     // flow uses `verify2FA` directly (TOTP code is entered by the user
@@ -137,12 +177,16 @@ interface MobileApiService {
     /** Reserved for future: Profile edit — PUT /mobile/profile. */
     @Suppress("unused")
     @PUT("api/v1/mobile/profile")
-    suspend fun updateProfile(@Body request: ProfileUpdateRequest): Response<Unit>
+    suspend fun updateProfile(
+        @Body request: ProfileUpdateRequest,
+    ): Response<Unit>
 
     /** Reserved for future: Avatar upload — POST /mobile/profile/avatar. */
     @Suppress("unused")
     @POST("api/v1/mobile/profile/avatar")
-    suspend fun uploadAvatar(@Body body: AvatarUploadRequest): Response<Unit>
+    suspend fun uploadAvatar(
+        @Body body: AvatarUploadRequest,
+    ): Response<Unit>
 
     // ═══════════════════════════════════════════════════════════════════
     // Mobile: appointments
@@ -158,19 +202,19 @@ interface MobileApiService {
 
     @POST("api/v1/mobile/appointments/book")
     suspend fun bookAppointment(
-        @Body request: AppointmentBookRequest
+        @Body request: AppointmentBookRequest,
     ): Response<MobileAppointmentOut>
 
     @POST("api/v1/mobile/appointments/cancel")
     suspend fun cancelAppointment(
-        @Body request: AppointmentCancelRequest
+        @Body request: AppointmentCancelRequest,
     ): Response<Unit>
 
     /** Reserved for future: Reschedule dialog — POST /mobile/appointments/reschedule. */
     @Suppress("unused")
     @POST("api/v1/mobile/appointments/reschedule")
     suspend fun rescheduleAppointment(
-        @Body request: AppointmentRescheduleRequest
+        @Body request: AppointmentRescheduleRequest,
     ): Response<MobileAppointmentOut>
 
     // ═══════════════════════════════════════════════════════════════════
@@ -180,16 +224,16 @@ interface MobileApiService {
     // High-3 audit fix: removed 4 doctor/service search endpoints:
     //   - `searchDoctors` — duplicates `getDoctors` (P-04 doctor
     //     directory already uses `getDoctors` with ETag caching)
-    //   - `getDoctorSchedule` — duplicates `getDoctorTimeSlots` (used
-    //     by DoctorRepository for slot booking)
     //   - `searchServices` — no service directory UI exists
     //   - `getServiceCategories` — no service category UI exists
     //
-    // The doctor directory (P-04) uses `getDoctors` + `getDoctorTimeSlots`
-    // (declared at the bottom of this interface). When a service catalog
-    // UI is added, these can be restored from git history.
+    // M-CONTRACT-FIX: the old `getDoctorTimeSlots` (GET /doctors/{id}/slots)
+    // was replaced by `getDoctorSchedule` (GET /doctors/{id}/schedule) —
+    // the backend never published a /slots route. When a service catalog
+    // UI is added, searchServices/getServiceCategories can be restored
+    // from git history.
 
-    // (searchDoctors, getDoctorSchedule, searchServices, getServiceCategories removed)
+    // (searchDoctors, searchServices, getServiceCategories removed)
 
     // ═══════════════════════════════════════════════════════════════════
     // Mobile: queue
@@ -202,7 +246,7 @@ interface MobileApiService {
     // average_wait_minutes) — no UI consumes this.
 
     @GET("api/v1/mobile/queues/my-position")
-    suspend fun getMyQueuePosition(): Response<QueuePositionOut>
+    suspend fun getMyQueuePosition(): Response<QueuePositionsResponse>
 
     // ═══════════════════════════════════════════════════════════════════
     // Mobile: lab results
@@ -228,7 +272,7 @@ interface MobileApiService {
     @Suppress("unused")
     @POST("api/v1/mobile/notifications/{notification_id}/read")
     suspend fun markNotificationRead(
-        @Path("notification_id") notificationId: String
+        @Path("notification_id") notificationId: String,
     ): Response<Unit>
 
     /** Reserved for future: Notification settings screen — GET /mobile/settings/notifications. */
@@ -240,7 +284,7 @@ interface MobileApiService {
     @Suppress("unused")
     @PUT("api/v1/mobile/settings/notifications")
     suspend fun updateNotificationSettings(
-        @Body request: NotificationSettingsRequest
+        @Body request: NotificationSettingsRequest,
     ): Response<Unit>
 
     // ═══════════════════════════════════════════════════════════════════
@@ -267,17 +311,35 @@ interface MobileApiService {
     // 5xx responses trigger appropriate error handling). API version
     // is not displayed in the UI.
 
-    // P-04: doctor directory endpoints
+    // P-04: doctor directory endpoints.
+    // Backend contract (mobile_api.py:list_mobile_doctors):
+    //   [{id, name, specialty, cabinet, active}]
     @GET("api/v1/mobile/doctors")
     suspend fun getDoctors(
-        @Header("If-None-Match") etag: String? = null
+        @Header("If-None-Match") etag: String? = null,
     ): Response<List<DoctorDto>>
 
-    @GET("api/v1/mobile/doctors/{id}/slots")
-    suspend fun getDoctorTimeSlots(
+    /**
+     * GET /api/v1/mobile/doctors/{id}/schedule?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+     *
+     * Backend contract (mobile_api_extended.py:get_doctor_schedule) — the
+     * per-day schedule grid for the doctor over the requested range:
+     *   { "doctor_id": 1, "schedule": [
+     *       { "date": "2026-06-29", "weekday": 0,
+     *         "start_time": "09:00:00" | null,
+     *         "end_time": "18:00:00" | null,
+     *         "appointments": [ { "id": 10, "appointment_time": "09:30",
+     *                             "patient_id": 5, "status": "scheduled" } ] } ] }
+     *
+     * Free time slots are derived CLIENT-SIDE from the working window minus
+     * booked appointments (the backend has no dedicated /slots endpoint).
+     */
+    @GET("api/v1/mobile/doctors/{id}/schedule")
+    suspend fun getDoctorSchedule(
         @Path("id") doctorId: Int,
-        @Query("date") date: String // "2026-06-29"
-    ): Response<List<TimeSlotDto>>
+        @Query("date_from") dateFrom: String,
+        @Query("date_to") dateTo: String,
+    ): Response<DoctorScheduleResponse>
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -289,7 +351,7 @@ data class LoginRequest(
     @Json(name = "username") val username: String,
     @Json(name = "password") val password: String,
     @Json(name = "device_fingerprint") val deviceFingerprint: String? = null,
-    @Json(name = "remember_me") val rememberMe: Boolean? = null
+    @Json(name = "remember_me") val rememberMe: Boolean? = null,
 )
 
 /**
@@ -309,7 +371,7 @@ data class LoginResponse(
     @Json(name = "expires_in") val expiresIn: Int? = null,
     @Json(name = "user") val user: Map<String, Any?>? = null,
     @Json(name = "requires_2fa") val requires2fa: Boolean? = null,
-    @Json(name = "pending_2fa_token") val pending2faToken: String? = null
+    @Json(name = "pending_2fa_token") val pending2faToken: String? = null,
 ) {
     /** Convenience: is this a "you must complete 2FA" response? */
     val isTwoFactorChallenge: Boolean
@@ -318,7 +380,7 @@ data class LoginResponse(
 
 @JsonClass(generateAdapter = true)
 data class RefreshTokenRequest(
-    @Json(name = "refresh_token") val refreshToken: String
+    @Json(name = "refresh_token") val refreshToken: String,
 )
 
 @JsonClass(generateAdapter = true)
@@ -326,12 +388,12 @@ data class RefreshTokenResponse(
     @Json(name = "access_token") val accessToken: String,
     @Json(name = "refresh_token") val refreshToken: String,
     @Json(name = "token_type") val tokenType: String? = null,
-    @Json(name = "expires_in") val expiresIn: Int? = null
+    @Json(name = "expires_in") val expiresIn: Int? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class LogoutRequest(
-    @Json(name = "refresh_token") val refreshToken: String
+    @Json(name = "refresh_token") val refreshToken: String,
 )
 
 // High-3 audit fix: removed unused DTO `AuthStatusResponse` —
@@ -354,38 +416,85 @@ data class UserProfileResponse(
     @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
     @Json(name = "clinic_id") val clinicId: String? = null,
     @Json(name = "is_active") val isActive: Boolean? = null,
-    @Json(name = "is_superuser") val isSuperuser: Boolean? = null
+    @Json(name = "is_superuser") val isSuperuser: Boolean? = null,
 )
 
 // ═══════════════════════════════════════════════════════════════════════
 // DTOs — 2FA
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * Aligned with backend `TwoFactorVerifyRequest`
+ * (`app/schemas/two_factor_auth.py`). At least one of [totpCode],
+ * [backupCode], [recoveryToken] must be non-null — the backend rejects
+ * the request otherwise (HTTP 400).
+ */
 @JsonClass(generateAdapter = true)
 data class TwoFAVerifyRequest(
-    @Json(name = "pending_2fa_token") val pending2faToken: String,
-    @Json(name = "totp_code") val totpCode: String,
+    @Json(name = "pending_2fa_token") val pending2faToken: String? = null,
+    @Json(name = "totp_code") val totpCode: String? = null,
+    @Json(name = "backup_code") val backupCode: String? = null,
+    @Json(name = "recovery_token") val recoveryToken: String? = null,
     @Json(name = "remember_device") val rememberDevice: Boolean = false,
-    @Json(name = "device_fingerprint") val deviceFingerprint: String? = null
+    @Json(name = "device_fingerprint") val deviceFingerprint: String? = null,
 )
 
+/**
+ * Aligned with backend `TwoFactorVerifyResponse` — NOTE: this is NOT a
+ * full LoginResponse. When [success] is false the backend still returns
+ * HTTP 200 with the failure [message], so callers MUST check [success].
+ * When [pending2faToken] was exchanged, [accessToken]/[refreshToken]
+ * carry the real session tokens.
+ */
+@JsonClass(generateAdapter = true)
+data class TwoFactorVerifyResponse(
+    @Json(name = "success") val success: Boolean = false,
+    @Json(name = "message") val message: String = "",
+    @Json(name = "session_token") val sessionToken: String? = null,
+    @Json(name = "device_trusted") val deviceTrusted: Boolean = false,
+    @Json(name = "backup_codes_remaining") val backupCodesRemaining: Int? = null,
+    @Json(name = "access_token") val accessToken: String? = null,
+    @Json(name = "refresh_token") val refreshToken: String? = null,
+    @Json(name = "token_type") val tokenType: String? = null,
+    @Json(name = "expires_in") val expiresIn: Int? = null,
+)
+
+/**
+ * Aligned with backend `TwoFactorRecoveryRequest`
+ * (`app/schemas/two_factor_auth.py:257`): requires `recovery_type`
+ * (pattern `^(email|phone|backup_code)$`) and `recovery_value`.
+ * The previous client fields (`pending_2fa_token`, `method`) caused
+ * HTTP 422 on every request.
+ */
 @JsonClass(generateAdapter = true)
 data class TwoFARecoveryRequest(
-    @Json(name = "pending_2fa_token") val pending2faToken: String,
-    @Json(name = "method") val method: String  // "email" | "sms"
+    @Json(name = "recovery_type") val recoveryType: String, // "email" | "phone" | "backup_code"
+    @Json(name = "recovery_value") val recoveryValue: String,
+    @Json(name = "device_fingerprint") val deviceFingerprint: String? = null,
 )
 
+/**
+ * Aligned with backend `TwoFactorRecoveryResponse`. The recovery token
+ * is deliberately NOT returned (SECURITY AUTH-REAUDIT-28) — it is
+ * delivered to the configured recovery channel, so [recoveryToken] is
+ * always null in practice.
+ */
 @JsonClass(generateAdapter = true)
 data class TwoFARecoveryResponse(
-    @Json(name = "recovery_token") val recoveryToken: String,
-    @Json(name = "sent") val sent: Boolean,
-    @Json(name = "method") val method: String? = null
+    @Json(name = "recovery_token") val recoveryToken: String? = null,
+    /** ISO 8601 datetime string. */
+    @Json(name = "expires_at") val expiresAt: String? = null,
+    @Json(name = "message") val message: String = "",
 )
 
+/**
+ * Aligned with backend `TwoFactorRecoveryVerifyRequest`: the body
+ * carries only `recovery_token` (the code received via the recovery
+ * channel IS the token).
+ */
 @JsonClass(generateAdapter = true)
 data class TwoFARecoveryVerifyRequest(
     @Json(name = "recovery_token") val recoveryToken: String,
-    @Json(name = "code") val code: String
 )
 
 // High-3 audit fix: removed unused DTO `Send2FACodeRequest` —
@@ -453,7 +562,7 @@ data class ProfileUpdateRequest(
 @JsonClass(generateAdapter = true)
 data class AvatarUploadRequest(
     @Json(name = "base64_data") val base64Data: String,
-    @Json(name = "content_type") val contentType: String = "image/jpeg"
+    @Json(name = "content_type") val contentType: String = "image/jpeg",
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -497,27 +606,36 @@ data class AppointmentUpcomingOut(
      * (YYYY-MM-DD) for display. Returns the raw string if parsing fails.
      */
     val date: String
-        get() = try {
-            // Take the date portion before the 'T' separator.
-            appointmentDate.substringBefore('T').ifBlank { appointmentDate }
-        } catch (e: Exception) {
-            appointmentDate
-        }
+        get() =
+            try {
+                // Take the date portion before the 'T' separator.
+                appointmentDate.substringBefore('T').ifBlank { appointmentDate }
+            } catch (e: Exception) {
+                appointmentDate
+            }
 
     /**
      * Splits [appointmentDate] (ISO 8601) into the time portion
      * (HH:MM) for display. Returns empty string if parsing fails.
+     *
+     * BUILD-FIX (found by BackendDtoContractTest): substringBefore must use
+     * the WHOLE string as the not-found fallback — passing "" wiped the
+     * whole time for timestamps without an explicit UTC offset
+     * ("2026-07-15T14:30:00" → "").
      */
     val time: String
-        get() = try {
-            val timePart = appointmentDate.substringAfter('T', "")
-                .substringBefore('Z', "")
-                .substringBefore('+', "")
-                .substringBefore('-', "")
-            if (timePart.length >= 5) timePart.substring(0, 5) else timePart
-        } catch (e: Exception) {
-            ""
-        }
+        get() =
+            try {
+                val timePart =
+                    appointmentDate
+                        .substringAfter('T')
+                        .substringBefore('Z')
+                        .substringBefore('+')
+                        .substringBefore('-')
+                if (timePart.length >= 5) timePart.substring(0, 5) else timePart
+            } catch (e: Exception) {
+                ""
+            }
 }
 
 /**
@@ -527,26 +645,37 @@ data class AppointmentUpcomingOut(
  */
 typealias MobileAppointmentOut = AppointmentUpcomingOut
 
+/**
+ * Aligned with backend `MobileBookAppointmentRequest`
+ * (`app/schemas/mobile.py:110`). The previous fields (`date`, `time`,
+ * `reason`, `clinic_id`) caused HTTP 422 on every booking.
+ *
+ * `preferredDate` MUST be "YYYY-MM-DD"; `preferredTime` is optional
+ * "HH:MM" (date-only bookings are allowed). `services` carries backend
+ * Service IDs (resolved to names server-side; inactive/unknown IDs are
+ * rejected with HTTP 400).
+ */
 @JsonClass(generateAdapter = true)
 data class AppointmentBookRequest(
     @Json(name = "doctor_id") val doctorId: Int,
-    @Json(name = "date") val date: String,
-    @Json(name = "time") val time: String,
-    @Json(name = "reason") val reason: String? = null,
-    @Json(name = "clinic_id") val clinicId: String? = null
+    @Json(name = "preferred_date") val preferredDate: String,
+    @Json(name = "preferred_time") val preferredTime: String? = null,
+    @Json(name = "complaint") val complaint: String? = null,
+    @Json(name = "services") val services: List<Int> = emptyList(),
+    @Json(name = "notes") val notes: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class AppointmentCancelRequest(
     @Json(name = "appointment_id") val appointmentId: Int,
-    @Json(name = "reason") val reason: String? = null
+    @Json(name = "reason") val reason: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class AppointmentRescheduleRequest(
     @Json(name = "appointment_id") val appointmentId: Int,
     @Json(name = "new_date") val newDate: String,
-    @Json(name = "new_time") val newTime: String
+    @Json(name = "new_time") val newTime: String,
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -570,13 +699,31 @@ data class AppointmentRescheduleRequest(
 // High-3 audit fix: removed unused DTO `QueueStatusOut` —
 // `getQueueStatus` endpoint was removed (patient uses getMyQueuePosition).
 
+/**
+ * Wrapper for GET /api/v1/mobile/queues/my-position. The backend returns
+ * `{ "positions": [...] }` — NOT a flat object.
+ */
+@JsonClass(generateAdapter = true)
+data class QueuePositionsResponse(
+    @Json(name = "positions") val positions: List<QueuePositionOut> = emptyList(),
+)
+
+/**
+ * One active queue position, aligned with the backend dict
+ * (`mobile_api_extended.py:get_my_queue_position`):
+ *   queue_id, doctor_name, specialty, my_number, current_number,
+ *   patients_before_me, estimated_wait_minutes, status ("waiting"|"ready")
+ */
 @JsonClass(generateAdapter = true)
 data class QueuePositionOut(
-    @Json(name = "position") val position: Int,
-    @Json(name = "queue_number") val queueNumber: Int? = null,
-    @Json(name = "estimated_wait_minutes") val estimatedWaitMinutes: Int? = null,
-    @Json(name = "status") val status: String = "WAITING",
-    @Json(name = "queue_id") val queueId: Int? = null
+    @Json(name = "queue_id") val queueId: Int = 0,
+    @Json(name = "doctor_name") val doctorName: String = "",
+    @Json(name = "specialty") val specialty: String = "",
+    @Json(name = "my_number") val myNumber: Int = 0,
+    @Json(name = "current_number") val currentNumber: Int = 0,
+    @Json(name = "patients_before_me") val patientsBeforeMe: Int = 0,
+    @Json(name = "estimated_wait_minutes") val estimatedWaitMinutes: Int = 0,
+    @Json(name = "status") val status: String = "waiting",
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -725,36 +872,81 @@ data class MobileQuickStats(
 //   - `ApiVersionOut` (getApiVersion endpoint removed)
 
 // ═══════════════════════════════════════════════════════════════════════
-// P-04: DTOs — Doctor directory
+// P-04: DTOs — Doctor directory + schedule
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * Aligned with the backend `/api/v1/mobile/doctors` dict shape
+ * (`mobile_api.py:list_mobile_doctors`):
+ *   { "id": 1, "name": "Иванов Иван", "specialty": "Кардиолог",
+ *     "cabinet": "204" | null, "active": true }
+ *
+ * The previous client DTO expected `full_name`, `phone`, `email`,
+ * `avatar_url`, `is_active` — none of which the backend returns (doctor
+ * sync crashed at deserialization: `fullName` is non-nullable and Moshi
+ * threw on the missing `full_name` key).
+ */
 @JsonClass(generateAdapter = true)
 data class DoctorDto(
     @Json(name = "id") val id: Int,
-    @Json(name = "full_name") val fullName: String,
+    @Json(name = "name") val name: String,
     @Json(name = "specialty") val specialty: String,
-    @Json(name = "phone") val phone: String? = null,
-    @Json(name = "email") val email: String? = null,
-    @Json(name = "avatar_url") val avatarUrl: String? = null,
-    @Json(name = "is_active") val isActive: Boolean = true
+    @Json(name = "cabinet") val cabinet: String? = null,
+    @Json(name = "active") val isActive: Boolean = true,
 ) {
-    fun toEntity(): com.aistudio.clinicsystem.data.db.DoctorEntity {
-        return com.aistudio.clinicsystem.data.db.DoctorEntity(
+    fun toEntity(): com.aistudio.clinicsystem.data.db.DoctorEntity =
+        com.aistudio.clinicsystem.data.db.DoctorEntity(
             serverId = id,
-            fullName = fullName,
+            fullName = name,
             specialty = specialty,
-            phone = phone ?: "",
-            email = email ?: "",
-            avatarUrl = avatarUrl,
+            phone = "",
+            email = "",
+            avatarUrl = null,
             isActive = isActive,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = System.currentTimeMillis(),
         )
-    }
 }
 
+/**
+ * Response of GET /api/v1/mobile/doctors/{id}/schedule?date_from&date_to.
+ * See [MobileApiService.getDoctorSchedule] for the backend contract.
+ */
 @JsonClass(generateAdapter = true)
+data class DoctorScheduleResponse(
+    @Json(name = "doctor_id") val doctorId: Int = 0,
+    @Json(name = "schedule") val schedule: List<DoctorScheduleDay> = emptyList(),
+)
+
+/** One day of the doctor's schedule grid. */
+@JsonClass(generateAdapter = true)
+data class DoctorScheduleDay(
+    /** "YYYY-MM-DD". */
+    @Json(name = "date") val date: String,
+    /** ISO weekday index: Monday = 0 … Sunday = 6. */
+    @Json(name = "weekday") val weekday: Int = 0,
+    /** Working window start, "HH:MM[:SS]", or null when the doctor is off. */
+    @Json(name = "start_time") val startTime: String? = null,
+    /** Working window end, "HH:MM[:SS]", or null when the doctor is off. */
+    @Json(name = "end_time") val endTime: String? = null,
+    @Json(name = "appointments") val appointments: List<DoctorScheduleAppointment> = emptyList(),
+)
+
+/** One booked appointment inside the schedule grid. */
+@JsonClass(generateAdapter = true)
+data class DoctorScheduleAppointment(
+    @Json(name = "id") val id: Int = 0,
+    /** "HH:MM" or null for date-only bookings. */
+    @Json(name = "appointment_time") val appointmentTime: String? = null,
+    @Json(name = "patient_id") val patientId: Int? = null,
+    @Json(name = "status") val status: String? = null,
+)
+
+/**
+ * CLIENT-SIDE derived model (not a wire type): one candidate slot in the
+ * doctor's working window. Kept for [DoctorRepository] slot derivation.
+ */
 data class TimeSlotDto(
-    @Json(name = "time") val time: String, // "09:00"
-    @Json(name = "available") val available: Boolean,
-    @Json(name = "appointment_id") val appointmentId: String? = null // if booked
+    val time: String, // "09:00"
+    val available: Boolean,
+    val appointmentId: Int? = null, // backend appointment occupying the slot, if booked
 )

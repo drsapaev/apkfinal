@@ -1,11 +1,13 @@
 package com.aistudio.clinicsystem.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aistudio.clinicsystem.ui.screens.AuthScreen
 import com.aistudio.clinicsystem.ui.screens.PatientScreen
 import com.aistudio.clinicsystem.ui.screens.StaffScreen
@@ -18,21 +20,21 @@ import com.aistudio.clinicsystem.ui.viewmodel.StaffViewModel
 fun ClinicNavGraph(
     navController: NavHostController,
     viewModel: ClinicViewModel,
-    startDestination: String
+    startDestination: String,
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
     ) {
         composable("auth") { backStackEntry ->
-            val authViewModel: AuthViewModel = viewModel(backStackEntry)
+            val authViewModel: AuthViewModel = hiltViewModel()
             authViewModel.onLoginSuccess = {
                 viewModel.refreshSession()
             }
             AuthScreen(viewModel = authViewModel)
         }
         composable("patient") { backStackEntry ->
-            val patientViewModel: PatientViewModel = viewModel(backStackEntry)
+            val patientViewModel: PatientViewModel = hiltViewModel()
             patientViewModel.onLogoutSuccess = {
                 viewModel.refreshSession()
             }
@@ -40,7 +42,7 @@ fun ClinicNavGraph(
             PatientScreen(viewModel = patientViewModel, isOnline = isOnline)
         }
         composable("staff") { backStackEntry ->
-            val staffViewModel: StaffViewModel = viewModel(backStackEntry)
+            val staffViewModel: StaffViewModel = hiltViewModel()
             staffViewModel.onLogoutSuccess = {
                 viewModel.refreshSession()
             }
@@ -49,4 +51,3 @@ fun ClinicNavGraph(
         }
     }
 }
-

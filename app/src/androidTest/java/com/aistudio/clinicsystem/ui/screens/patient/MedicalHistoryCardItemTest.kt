@@ -25,20 +25,20 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class MedicalHistoryCardItemTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val testRecord = MedicalRecordEntity(
-        id = "test-1",
-        serverId = 1,
-        patientPhone = "+79991234567",
-        doctorName = "Dr. Test",
-        diagnosis = "Тестовый диагноз",
-        prescription = "Тестовый рецепт",
-        visitDate = "2026-06-29",
-        recommendations = "Тестовые рекомендации"
-    )
+    private val testRecord =
+        MedicalRecordEntity(
+            id = "test-1",
+            serverId = 1,
+            patientPhone = "+79991234567",
+            doctorName = "Dr. Test",
+            diagnosis = "Тестовый диагноз",
+            prescription = "Тестовый рецепт",
+            visitDate = "2026-06-29",
+            recommendations = "Тестовые рекомендации",
+        )
 
     @Test
     fun medicalCard_collapsed_showsDiagnosis() {
@@ -47,7 +47,7 @@ class MedicalHistoryCardItemTest {
                 MedicalHistoryCardItem(
                     record = testRecord,
                     isExpanded = false,
-                    onExpandClick = {}
+                    onExpandClick = {},
                 )
             }
         }
@@ -63,7 +63,7 @@ class MedicalHistoryCardItemTest {
                 MedicalHistoryCardItem(
                     record = testRecord,
                     isExpanded = false,
-                    onExpandClick = {}
+                    onExpandClick = {},
                 )
             }
         }
@@ -78,7 +78,7 @@ class MedicalHistoryCardItemTest {
                 MedicalHistoryCardItem(
                     record = testRecord,
                     isExpanded = false,
-                    onExpandClick = {}
+                    onExpandClick = {},
                 )
             }
         }
@@ -93,7 +93,7 @@ class MedicalHistoryCardItemTest {
                 MedicalHistoryCardItem(
                     record = testRecord,
                     isExpanded = true,
-                    onExpandClick = {}
+                    onExpandClick = {},
                 )
             }
         }
@@ -109,7 +109,7 @@ class MedicalHistoryCardItemTest {
                 MedicalHistoryCardItem(
                     record = testRecord,
                     isExpanded = true,
-                    onExpandClick = {}
+                    onExpandClick = {},
                 )
             }
         }
@@ -125,7 +125,7 @@ class MedicalHistoryCardItemTest {
                 MedicalHistoryCardItem(
                     record = testRecord,
                     isExpanded = true,
-                    onExpandClick = {}
+                    onExpandClick = {},
                 )
             }
         }
@@ -140,7 +140,7 @@ class MedicalHistoryCardItemTest {
                 MedicalHistoryCardItem(
                     record = testRecord,
                     isExpanded = true,
-                    onExpandClick = {}
+                    onExpandClick = {},
                 )
             }
         }

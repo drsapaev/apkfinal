@@ -1,8 +1,5 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
-import androidx.compose.ui.res.stringResource
-import com.aistudio.clinicsystem.ui.theme.Spacing
-import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -20,14 +17,17 @@ import androidx.compose.material.icons.filled.FolderShared
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.data.db.MedicalRecordEntity
 import com.aistudio.clinicsystem.data.db.UserEntity
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
 
 /**
  * Section 2: Patients Directory header + list.
@@ -41,49 +41,53 @@ fun LazyListScope.staffPatientsSection(
     allRecords: List<MedicalRecordEntity>,
     searchQuery: String,
     adminColor: Color,
-    onWriteRecord: (String) -> Unit
+    onWriteRecord: (String) -> Unit,
 ) {
     item {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(
                 imageVector = Icons.Default.FolderShared,
                 contentDescription = null,
                 tint = adminColor,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(20.dp),
             )
             Spacer(modifier = Modifier.width(Spacing.s))
             Text(
                 text = stringResource(R.string.staff_patients_dir),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
 
-    val displayPatients = patientRoleUsers.filter {
-        if (searchQuery.isNotBlank()) {
-            it.fullName.contains(searchQuery, ignoreCase = true) ||
-            it.phone.contains(searchQuery)
-        } else true
-    }
+    val displayPatients =
+        patientRoleUsers.filter {
+            if (searchQuery.isNotBlank()) {
+                it.fullName.contains(searchQuery, ignoreCase = true) ||
+                    it.phone.contains(searchQuery)
+            } else {
+                true
+            }
+        }
 
     if (displayPatients.isEmpty()) {
         item {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.large))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
-                    .padding(Spacing.xl),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.large))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
+                        .padding(Spacing.xl),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(R.string.staff_no_patients),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
@@ -94,7 +98,7 @@ fun LazyListScope.staffPatientsSection(
                 patient = patient,
                 recordsCount = patientRecords.size,
                 onWriteRecord = { onWriteRecord(patient.phone) },
-                accentColor = adminColor
+                accentColor = adminColor,
             )
         }
     }

@@ -1,6 +1,5 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
-import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aistudio.clinicsystem.data.db.UserEntity
+import com.aistudio.clinicsystem.ui.theme.Spacing
 
 /**
  * P-03 refactor: Profile tab content for PatientScreen Bottom Navigation.
@@ -28,26 +28,27 @@ fun PatientProfileTab(
     onLinkTelegram: (String) -> Unit,
     onUnlinkTelegram: () -> Unit,
     onTestTelegram: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(Spacing.l)
+        modifier =
+            modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.l),
     ) {
         ProfileCabinetCard(
             user = currentUser,
             onEditClick = onEditClick,
-            onBiometricToggle = onBiometricToggle
+            onBiometricToggle = onBiometricToggle,
         )
 
         TelegramBotCard(
             user = currentUser,
             onLinkClick = onLinkTelegram,
             onUnlinkClick = onUnlinkTelegram,
-            onTestClick = onTestTelegram
+            onTestClick = onTestTelegram,
         )
 
         Spacer(modifier = Modifier.height(80.dp))

@@ -8,8 +8,8 @@ import com.aistudio.clinicsystem.data.db.PendingSyncEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -40,7 +40,6 @@ import java.lang.reflect.Method
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class ClinicWebSocketClientTest {
-
     private lateinit var context: Context
     private lateinit var database: ClinicDatabase
     private lateinit var wsClient: ClinicWebSocketClient
@@ -49,10 +48,13 @@ class ClinicWebSocketClientTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        database = Room.inMemoryDatabaseBuilder(
-            context,
-            ClinicDatabase::class.java
-        ).allowMainThreadQueries().build()
+        database =
+            Room
+                .inMemoryDatabaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                ).allowMainThreadQueries()
+                .build()
 
         // P0-2 audit fix: pass a relaxed mockk SessionRepository to the
         // new 3-arg constructor. The previous test used the 2-arg
@@ -67,10 +69,11 @@ class ClinicWebSocketClientTest {
         scopeField.isAccessible = true
         scopeField.set(wsClient, CoroutineScope(Dispatchers.Unconfined + SupervisorJob()))
 
-        handleMethod = ClinicWebSocketClient::class.java.getDeclaredMethod(
-            "handleSocketMessage",
-            String::class.java
-        )
+        handleMethod =
+            ClinicWebSocketClient::class.java.getDeclaredMethod(
+                "handleSocketMessage",
+                String::class.java,
+            )
         handleMethod.isAccessible = true
     }
 
@@ -79,10 +82,11 @@ class ClinicWebSocketClientTest {
         database.close()
     }
 
-    private fun handleMessage(json: String) = runBlocking {
-        handleMethod.invoke(wsClient, json)
-        delay(100)
-    }
+    private fun handleMessage(json: String) =
+        runBlocking {
+            handleMethod.invoke(wsClient, json)
+            delay(100)
+        }
 
     // ─── APPOINTMENT_STATUS ──────────────────────────────────────────
 
@@ -91,15 +95,22 @@ class ClinicWebSocketClientTest {
         runBlocking {
             database.appointmentDao().insertAppointment(
                 com.aistudio.clinicsystem.data.db.AppointmentEntity(
-                    id = "42", patientPhone = "+77771112233", patientName = "Patient",
-                    doctorName = "Dr. Smith", specialty = "Cardiology",
-                    date = "2026-07-01", time = "10:00", status = "PENDING",
-                    reason = "Checkup"
-                )
+                    id = "42",
+                    patientPhone = "+77771112233",
+                    patientName = "Patient",
+                    doctorName = "Dr. Smith",
+                    specialty = "Cardiology",
+                    date = "2026-07-01",
+                    time = "10:00",
+                    status = "PENDING",
+                    reason = "Checkup",
+                ),
             )
         }
 
-        handleMessage("""{"event":"APPOINTMENT_STATUS","data":{"id":42,"status":"APPROVED","doctor_name":"Dr. Smith","date":"2026-07-01","time":"10:00","patient_name":"Patient","patient_phone":"+77771112233"}}""")
+        handleMessage(
+            """{"event":"APPOINTMENT_STATUS","data":{"id":42,"status":"APPROVED","doctor_name":"Dr. Smith","date":"2026-07-01","time":"10:00","patient_name":"Patient","patient_phone":"+77771112233"}}""",
+        )
 
         runBlocking {
             val updated = database.appointmentDao().getAppointmentById("42")
@@ -110,7 +121,9 @@ class ClinicWebSocketClientTest {
 
     @Test
     fun `APPOINTMENT_STATUS creates new appointment if not in Room`() {
-        handleMessage("""{"event":"APPOINTMENT_STATUS","data":{"id":99,"status":"PENDING","doctor_name":"Dr. New","date":"2026-08-01","time":"14:00","patient_name":"New Patient","patient_phone":"+77001112233","specialty":"Neurology","reason":"New visit"}}""")
+        handleMessage(
+            """{"event":"APPOINTMENT_STATUS","data":{"id":99,"status":"PENDING","doctor_name":"Dr. New","date":"2026-08-01","time":"14:00","patient_name":"New Patient","patient_phone":"+77001112233","specialty":"Neurology","reason":"New visit"}}""",
+        )
 
         runBlocking {
             val created = database.appointmentDao().getAppointmentById("99")
@@ -125,21 +138,29 @@ class ClinicWebSocketClientTest {
         runBlocking {
             database.appointmentDao().insertAppointment(
                 com.aistudio.clinicsystem.data.db.AppointmentEntity(
-                    id = "10", patientPhone = "+77771112233", patientName = "P",
-                    doctorName = "Dr.", specialty = "S", date = "2026-07-01", time = "10:00",
-                    status = "PENDING", reason = "R"
-                )
+                    id = "10",
+                    patientPhone = "+77771112233",
+                    patientName = "P",
+                    doctorName = "Dr.",
+                    specialty = "S",
+                    date = "2026-07-01",
+                    time = "10:00",
+                    status = "PENDING",
+                    reason = "R",
+                ),
             )
             database.pendingSyncDao().insertPendingSync(
                 PendingSyncEntity(
                     type = "UPDATE_STATUS",
                     payload = "10|APPROVED|notes",
-                    clientRequestId = "req-123"
-                )
+                    clientRequestId = "req-123",
+                ),
             )
         }
 
-        handleMessage("""{"event":"APPOINTMENT_STATUS","data":{"id":10,"status":"CANCELLED","doctor_name":"Dr.","date":"2026-07-01","time":"10:00","patient_name":"P","patient_phone":"+77771112233"}}""")
+        handleMessage(
+            """{"event":"APPOINTMENT_STATUS","data":{"id":10,"status":"CANCELLED","doctor_name":"Dr.","date":"2026-07-01","time":"10:00","patient_name":"P","patient_phone":"+77771112233"}}""",
+        )
 
         runBlocking {
             val appointment = database.appointmentDao().getAppointmentById("10")
@@ -156,7 +177,9 @@ class ClinicWebSocketClientTest {
 
     @Test
     fun `NEW_MEDICAL_RECORD inserts record into Room`() {
-        handleMessage("""{"event":"NEW_MEDICAL_RECORD","data":{"id":55,"patient_phone":"+77771112233","doctor_name":"Dr. House","diagnosis":"Lupus","prescription":"Steroids","visit_date":"2026-06-15","recommendations":"Rest"}}""")
+        handleMessage(
+            """{"event":"NEW_MEDICAL_RECORD","data":{"id":55,"patient_phone":"+77771112233","doctor_name":"Dr. House","diagnosis":"Lupus","prescription":"Steroids","visit_date":"2026-06-15","recommendations":"Rest"}}""",
+        )
 
         runBlocking {
             val record = database.medicalRecordDao().getRecordById("55")
@@ -185,14 +208,20 @@ class ClinicWebSocketClientTest {
             database.queueSnapshotDao().insertQueueSnapshots(
                 listOf(
                     com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
-                        id = 1, patientName = "Old", appointmentId = 1,
-                        position = 1, status = "WAITING", timestamp = 0
-                    )
-                )
+                        id = 1,
+                        patientName = "Old",
+                        appointmentId = 1,
+                        position = 1,
+                        status = "WAITING",
+                        timestamp = 0,
+                    ),
+                ),
             )
         }
 
-        handleMessage("""{"event":"QUEUE_UPDATE","data":{"queue":[{"id":1,"patient_name":"Alice","appointment_id":1,"position":1,"status":"WAITING"},{"id":2,"patient_name":"Bob","appointment_id":2,"position":2,"status":"WAITING"},{"id":3,"patient_name":"Charlie","appointment_id":3,"position":3,"status":"IN_PROGRESS"}]}}""")
+        handleMessage(
+            """{"event":"QUEUE_UPDATE","data":{"queue":[{"id":1,"patient_name":"Alice","appointment_id":1,"position":1,"status":"WAITING"},{"id":2,"patient_name":"Bob","appointment_id":2,"position":2,"status":"WAITING"},{"id":3,"patient_name":"Charlie","appointment_id":3,"position":3,"status":"IN_PROGRESS"}]}}""",
+        )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
@@ -208,10 +237,14 @@ class ClinicWebSocketClientTest {
             database.queueSnapshotDao().insertQueueSnapshots(
                 listOf(
                     com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
-                        id = 1, patientName = "X", appointmentId = 1,
-                        position = 1, status = "WAITING", timestamp = 0
-                    )
-                )
+                        id = 1,
+                        patientName = "X",
+                        appointmentId = 1,
+                        position = 1,
+                        status = "WAITING",
+                        timestamp = 0,
+                    ),
+                ),
             )
         }
 
@@ -259,7 +292,9 @@ class ClinicWebSocketClientTest {
     fun `type field is preferred over event field`() {
         // Backend sends `type` (lowercase). Old contract used `event` (UPPER).
         // Verify the new `type:APPOINTMENT_STATUS` is dispatched correctly.
-        handleMessage("""{"type":"APPOINTMENT_STATUS","data":{"id":777,"status":"APPROVED","doctor_name":"Dr. Type","date":"2026-07-10","time":"10:00","patient_name":"Type Patient","patient_phone":"+77771112233"}}""")
+        handleMessage(
+            """{"type":"APPOINTMENT_STATUS","data":{"id":777,"status":"APPROVED","doctor_name":"Dr. Type","date":"2026-07-10","time":"10:00","patient_name":"Type Patient","patient_phone":"+77771112233"}}""",
+        )
 
         runBlocking {
             val appt = database.appointmentDao().getAppointmentByServerId(777)
@@ -297,7 +332,7 @@ class ClinicWebSocketClientTest {
             val logs = database.syncLogDao().getAllSyncLogs()
             assertTrue(
                 "Should log auth error",
-                logs.any { it.logMessage.contains("Authentication") }
+                logs.any { it.logMessage.contains("Authentication") },
             )
         }
     }
@@ -310,14 +345,16 @@ class ClinicWebSocketClientTest {
             val logs = database.syncLogDao().getAllSyncLogs()
             assertTrue(
                 "Should log origin error",
-                logs.any { it.logMessage.contains("origin") }
+                logs.any { it.logMessage.contains("origin") },
             )
         }
     }
 
     @Test
     fun `lowercase queue_update event type is handled like QUEUE_UPDATE`() {
-        handleMessage("""{"type":"queue_update","data":{"queue":[{"id":10,"patient_name":"Dave","appointment_id":10,"position":1,"status":"WAITING"}]}}""")
+        handleMessage(
+            """{"type":"queue_update","data":{"queue":[{"id":10,"patient_name":"Dave","appointment_id":10,"position":1,"status":"WAITING"}]}}""",
+        )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
@@ -328,7 +365,9 @@ class ClinicWebSocketClientTest {
 
     @Test
     fun `lowercase patient_called event type is handled like QUEUE_UPDATE`() {
-        handleMessage("""{"type":"patient_called","data":{"queue":[{"id":11,"patient_name":"Eve","appointment_id":11,"position":1,"status":"CALLED"}]}}""")
+        handleMessage(
+            """{"type":"patient_called","data":{"queue":[{"id":11,"patient_name":"Eve","appointment_id":11,"position":1,"status":"CALLED"}]}}""",
+        )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
@@ -339,7 +378,9 @@ class ClinicWebSocketClientTest {
 
     @Test
     fun `lowercase entry_added event type is handled like QUEUE_UPDATE`() {
-        handleMessage("""{"type":"entry_added","data":{"queue":[{"id":12,"patient_name":"Frank","appointment_id":12,"position":1,"status":"WAITING"}]}}""")
+        handleMessage(
+            """{"type":"entry_added","data":{"queue":[{"id":12,"patient_name":"Frank","appointment_id":12,"position":1,"status":"WAITING"}]}}""",
+        )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
@@ -351,7 +392,9 @@ class ClinicWebSocketClientTest {
     @Test
     fun `type and event fields both present - type wins`() {
         // Edge case: backend migration emits both fields. `type` takes priority.
-        handleMessage("""{"type":"QUEUE_UPDATE","event":"APPOINTMENT_STATUS","data":{"queue":[{"id":13,"patient_name":"Grace","appointment_id":13,"position":1,"status":"WAITING"}]}}""")
+        handleMessage(
+            """{"type":"QUEUE_UPDATE","event":"APPOINTMENT_STATUS","data":{"queue":[{"id":13,"patient_name":"Grace","appointment_id":13,"position":1,"status":"WAITING"}]}}""",
+        )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()

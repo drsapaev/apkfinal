@@ -39,30 +39,41 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class ClinicRepositorySyncTest {
-
     private lateinit var database: ClinicDatabase
     private lateinit var repository: ClinicRepository
     private lateinit var mockMobileApi: MobileApiService
     private lateinit var mockLegacyApi: ApiService
+
+    companion object {
+        private val PAYLOAD_TEST =
+            """{"id":null,"patient_phone":"+77771112233","patient_name":"Test","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"PENDING","reason":"R"}"""
+        private val PAYLOAD_GHOST =
+            """{"id":null,"patient_phone":"+79990000000","patient_name":"Ghost","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"PENDING","reason":"R"}"""
+    }
+
     private val moshi = Moshi.Builder().build()
 
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        database = Room.inMemoryDatabaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        database =
+            Room
+                .inMemoryDatabaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                ).allowMainThreadQueries()
+                .build()
 
         mockMobileApi = mockk(relaxed = true)
         mockLegacyApi = mockk(relaxed = true)
 
-        repository = ClinicRepository(
-            database = database,
-            mobileApiService = mockMobileApi,
-            legacyApiService = mockLegacyApi,
-            moshi = moshi,
-        )
+        repository =
+            ClinicRepository(
+                database = database,
+                mobileApiService = mockMobileApi,
+                legacyApiService = mockLegacyApi,
+                moshi = moshi,
+            )
     }
 
     @After
@@ -71,93 +82,145 @@ class ClinicRepositorySyncTest {
     }
 
     @Test
-    fun `retryUnsyncedWrites with empty outbox returns true`() = runBlocking {
-        val result = repository.retryUnsyncedWrites(token = "test-token")
-        assertTrue("Should return true when no pending syncs", result)
-    }
+    fun `retryUnsyncedWrites with empty outbox returns true`() =
+        runBlocking {
+            val result = repository.retryUnsyncedWrites(token = "test-token")
+            assertTrue("Should return true when no pending syncs", result)
+        }
 
     @Test
-    fun `retryUnsyncedWrites with CREATE_APPOINTMENT and server 200 marks COMPLETED and deletes`() = runBlocking {
-        // Insert a pending sync row
-        val pendingSync = PendingSyncEntity(
-            type = OutboxOperation.CREATE_APPOINTMENT.code,
-            payload = """{"id":null,"patient_phone":"+77771112233","patient_name":"Test","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"PENDING","reason":"R"}""",
-            clientRequestId = "req-001",
-        )
-        database.pendingSyncDao().insertPendingSync(pendingSync)
+    fun `retryUnsyncedWrites with CREATE_APPOINTMENT and server 200 marks COMPLETED and deletes`() =
+        runBlocking {
+            // Insert a pending sync row
+            val pendingSync =
+                PendingSyncEntity(
+                    type = OutboxOperation.CREATE_APPOINTMENT.code,
+                    payload = PAYLOAD_TEST,
+                    clientRequestId = "req-001",
+                )
+            database.pendingSyncDao().insertPendingSync(pendingSync)
 
-        // Mock server response — 200 with a created appointment
-        val createdDto = com.aistudio.clinicsystem.data.api.AppointmentDto(
-            id = 42,
-            patientPhone = "+77771112233",
-            patientName = "Test",
-            doctorName = "Dr.",
-            specialty = "S",
-            date = "2026-07-10",
-            time = "14:00",
-            status = "PENDING",
-            reason = "R",
-        )
-        coEvery { mockLegacyApi.createAppointment(any()) } returns retrofit2.Response.success(createdDto)
+            // M-CONTRACT-FIX: the outbox flush resolves the backend patient_id
+            // first (GET /patients?phone=…), then POSTs /appointments.
+            coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns
+                retrofit2.Response.success(
+                    listOf(
+                        com.aistudio.clinicsystem.data.api
+                            .StaffPatientDto(id = 7, phone = "+77771112233"),
+                    ),
+                )
+            coEvery { mockLegacyApi.createAppointment(any()) } returns
+                retrofit2.Response.success(
+                    com.aistudio.clinicsystem.data.api.StaffAppointmentDto(
+                        id = 42,
+                        patientId = 7,
+                        appointmentDate = "2026-07-10",
+                        appointmentTime = "14:00",
+                        status = "scheduled",
+                    ),
+                )
 
-        val result = repository.retryUnsyncedWrites("test-token")
+            val result = repository.retryUnsyncedWrites("test-token")
 
-        assertTrue("Should return true on success", result)
+            assertTrue("Should return true on success", result)
 
-        // Verify the row was deleted (COMPLETED + delete)
-        val remaining = database.pendingSyncDao().getAllPendingSyncs()
-        assertTrue("Pending sync should be deleted after success", remaining.none { it.clientRequestId == "req-001" })
-    }
-
-    @Test
-    fun `retryUnsyncedWrites with server 500 schedules retry with backoff`() = runBlocking {
-        val pendingSync = PendingSyncEntity(
-            type = OutboxOperation.CREATE_APPOINTMENT.code,
-            payload = """{"id":null,"patient_phone":"+77771112233","patient_name":"Test","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"PENDING","reason":"R"}""",
-            clientRequestId = "req-500",
-        )
-        database.pendingSyncDao().insertPendingSync(pendingSync)
-
-        // Mock server returns 500
-        coEvery { mockLegacyApi.createAppointment(any()) } returns retrofit2.Response.error(
-            500,
-            okhttp3.ResponseBody.create(null, "Internal Server Error"),
-        )
-
-        repository.retryUnsyncedWrites("test-token")
-
-        // The row should be in FAILED state with a nextRetryAt set
-        val rows = database.pendingSyncDao().getAllPendingSyncs()
-        val failedRow = rows.find { it.clientRequestId == "req-500" }
-        assertTrue("Row should still exist (not deleted)", failedRow != null)
-        assertEquals("FAILED", failedRow?.status)
-        assertTrue("nextRetryAt should be set", failedRow?.nextRetryAt != null)
-        assertEquals(500, failedRow?.lastHttpCode)
-    }
+            // Verify the row was deleted (COMPLETED + delete)
+            val remaining = database.pendingSyncDao().getAllPendingSyncs()
+            assertTrue("Pending sync should be deleted after success", remaining.none { it.clientRequestId == "req-001" })
+        }
 
     @Test
-    fun `retryUnsyncedWrites with server 400 moves to DEAD_LETTER immediately`() = runBlocking {
-        val pendingSync = PendingSyncEntity(
-            type = OutboxOperation.CREATE_APPOINTMENT.code,
-            payload = """{"id":null,"patient_phone":"+77771112233","patient_name":"Test","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"PENDING","reason":"R"}""",
-            clientRequestId = "req-400",
-        )
-        database.pendingSyncDao().insertPendingSync(pendingSync)
+    fun `retryUnsyncedWrites with server 500 schedules retry with backoff`() =
+        runBlocking {
+            val pendingSync =
+                PendingSyncEntity(
+                    type = OutboxOperation.CREATE_APPOINTMENT.code,
+                    payload = PAYLOAD_TEST,
+                    clientRequestId = "req-500",
+                )
+            database.pendingSyncDao().insertPendingSync(pendingSync)
 
-        // Mock server returns 400 Bad Request (non-retriable)
-        coEvery { mockLegacyApi.createAppointment(any()) } returns retrofit2.Response.error(
-            400,
-            okhttp3.ResponseBody.create(null, """{"detail":"Invalid doctor_id"}"""),
-        )
+            coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns
+                retrofit2.Response.success(
+                    listOf(
+                        com.aistudio.clinicsystem.data.api
+                            .StaffPatientDto(id = 7),
+                    ),
+                )
+            // Mock server returns 500
+            coEvery { mockLegacyApi.createAppointment(any()) } returns
+                retrofit2.Response.error(
+                    500,
+                    okhttp3.ResponseBody.create(null, "Internal Server Error"),
+                )
 
-        repository.retryUnsyncedWrites("test-token")
+            repository.retryUnsyncedWrites("test-token")
 
-        val rows = database.pendingSyncDao().getAllPendingSyncs()
-        val deadRow = rows.find { it.clientRequestId == "req-400" }
-        assertTrue("Row should still exist", deadRow != null)
-        assertEquals("DEAD_LETTER", deadRow?.status)
-        assertEquals(400, deadRow?.lastHttpCode)
-    }
+            // The row should be in FAILED state with a nextRetryAt set
+            val rows = database.pendingSyncDao().getAllPendingSyncs()
+            val failedRow = rows.find { it.clientRequestId == "req-500" }
+            assertTrue("Row should still exist (not deleted)", failedRow != null)
+            assertEquals("FAILED", failedRow?.status)
+            assertTrue("nextRetryAt should be set", failedRow?.nextRetryAt != null)
+            assertEquals(500, failedRow?.lastHttpCode)
+        }
+
+    @Test
+    fun `retryUnsyncedWrites with server 400 moves to DEAD_LETTER immediately`() =
+        runBlocking {
+            val pendingSync =
+                PendingSyncEntity(
+                    type = OutboxOperation.CREATE_APPOINTMENT.code,
+                    payload = PAYLOAD_TEST,
+                    clientRequestId = "req-400",
+                )
+            database.pendingSyncDao().insertPendingSync(pendingSync)
+
+            coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns
+                retrofit2.Response.success(
+                    listOf(
+                        com.aistudio.clinicsystem.data.api
+                            .StaffPatientDto(id = 7),
+                    ),
+                )
+            // Mock server returns 400 Bad Request (non-retriable)
+            coEvery { mockLegacyApi.createAppointment(any()) } returns
+                retrofit2.Response.error(
+                    400,
+                    okhttp3.ResponseBody.create(null, """{"detail":"Invalid doctor_id"}"""),
+                )
+
+            repository.retryUnsyncedWrites("test-token")
+
+            val rows = database.pendingSyncDao().getAllPendingSyncs()
+            val deadRow = rows.find { it.clientRequestId == "req-400" }
+            assertTrue("Row should still exist", deadRow != null)
+            assertEquals("DEAD_LETTER", deadRow?.status)
+            assertEquals(400, deadRow?.lastHttpCode)
+        }
+
+    @Test
+    fun `retryUnsyncedWrites with unknown patient dead-letters CREATE_APPOINTMENT`() =
+        runBlocking {
+            val pendingSync =
+                PendingSyncEntity(
+                    type = OutboxOperation.CREATE_APPOINTMENT.code,
+                    payload = PAYLOAD_GHOST,
+                    clientRequestId = "req-nopatient",
+                )
+            database.pendingSyncDao().insertPendingSync(pendingSync)
+
+            // Patient lookup returns nothing — POST /appointments requires an
+            // int patient_id, so the row can never succeed.
+            coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns retrofit2.Response.success(emptyList())
+
+            repository.retryUnsyncedWrites("test-token")
+
+            val rows = database.pendingSyncDao().getAllPendingSyncs()
+            val deadRow = rows.find { it.clientRequestId == "req-nopatient" }
+            assertTrue("Row should still exist", deadRow != null)
+            assertEquals("Row should be DEAD_LETTER (unresolvable patient)", "DEAD_LETTER", deadRow?.status)
+        }
 
     @Test
     fun `OutboxOperation fromCode round-trip for all values`() {
@@ -174,55 +237,60 @@ class ClinicRepositorySyncTest {
     }
 
     @Test
-    fun `claimForProcessing marks PENDING rows as PROCESSING`() = runBlocking {
-        // Insert 2 PENDING rows
-        database.pendingSyncDao().insertPendingSync(
-            PendingSyncEntity(
-                type = OutboxOperation.CREATE_APPOINTMENT.code,
-                payload = "{}",
-                clientRequestId = "req-a",
-            ),
-        )
-        database.pendingSyncDao().insertPendingSync(
-            PendingSyncEntity(
-                type = OutboxOperation.CREATE_MEDICAL_RECORD.code,
-                payload = "{}",
-                clientRequestId = "req-b",
-            ),
-        )
+    fun `claimForProcessing marks PENDING rows as PROCESSING`() =
+        runBlocking {
+            // Insert 2 PENDING rows
+            database.pendingSyncDao().insertPendingSync(
+                PendingSyncEntity(
+                    type = OutboxOperation.CREATE_APPOINTMENT.code,
+                    payload = "{}",
+                    clientRequestId = "req-a",
+                ),
+            )
+            database.pendingSyncDao().insertPendingSync(
+                PendingSyncEntity(
+                    type = OutboxOperation.CREATE_MEDICAL_RECORD.code,
+                    payload = "{}",
+                    clientRequestId = "req-b",
+                ),
+            )
 
-        // Claim
-        val claimed = database.pendingSyncDao().claimForProcessing(
-            staleBefore = System.currentTimeMillis() - 5 * 60_000,
-        )
+            // Claim
+            val claimed =
+                database.pendingSyncDao().claimForProcessing(
+                    staleBefore = System.currentTimeMillis() - 5 * 60_000,
+                )
 
-        assertEquals("Should claim 2 rows", 2, claimed.size)
-        claimed.forEach { row ->
-            assertEquals("Row should be PROCESSING", "PROCESSING", row.status)
+            assertEquals("Should claim 2 rows", 2, claimed.size)
+            claimed.forEach { row ->
+                assertEquals("Row should be PROCESSING", "PROCESSING", row.status)
+            }
         }
-    }
 
     @Test
-    fun `claimForProcessing does not reclaim recently-stuck PROCESSING rows`() = runBlocking {
-        // Insert a PROCESSING row with recent updatedAt
-        val recentProcessing = PendingSyncEntity(
-            type = OutboxOperation.CREATE_APPOINTMENT.code,
-            payload = "{}",
-            clientRequestId = "req-recent",
-            status = "PROCESSING",
-            updatedAt = System.currentTimeMillis(), // just now — not stale
-        )
-        database.pendingSyncDao().insertPendingSync(recentProcessing)
+    fun `claimForProcessing does not reclaim recently-stuck PROCESSING rows`() =
+        runBlocking {
+            // Insert a PROCESSING row with recent updatedAt
+            val recentProcessing =
+                PendingSyncEntity(
+                    type = OutboxOperation.CREATE_APPOINTMENT.code,
+                    payload = "{}",
+                    clientRequestId = "req-recent",
+                    status = "PROCESSING",
+                    updatedAt = System.currentTimeMillis(), // just now — not stale
+                )
+            database.pendingSyncDao().insertPendingSync(recentProcessing)
 
-        // Claim with stale threshold = 5 minutes ago
-        val claimed = database.pendingSyncDao().claimForProcessing(
-            staleBefore = System.currentTimeMillis() - 5 * 60_000,
-        )
+            // Claim with stale threshold = 5 minutes ago
+            val claimed =
+                database.pendingSyncDao().claimForProcessing(
+                    staleBefore = System.currentTimeMillis() - 5 * 60_000,
+                )
 
-        // The recently-PROCESSING row should NOT be reclaimed
-        assertTrue(
-            "Should not reclaim recently-PROCESSING row",
-            claimed.none { it.clientRequestId == "req-recent" },
-        )
-    }
+            // The recently-PROCESSING row should NOT be reclaimed
+            assertTrue(
+                "Should not reclaim recently-PROCESSING row",
+                claimed.none { it.clientRequestId == "req-recent" },
+            )
+        }
 }

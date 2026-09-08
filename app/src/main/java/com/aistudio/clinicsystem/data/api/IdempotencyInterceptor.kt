@@ -25,7 +25,6 @@ import okhttp3.Response
  * Reference: https://developer.squareup.com/blog/idempotency-keys-for-apis/
  */
 class IdempotencyInterceptor : Interceptor {
-
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val method = request.method.uppercase()
@@ -43,12 +42,15 @@ class IdempotencyInterceptor : Interceptor {
         // Read the key from the request tag (set by ClinicRepository when
         // building the request). If absent, no idempotency guarantee —
         // proceed without the header.
-        val key = request.tag(IdempotencyKey::class.java)?.value
-            ?: return chain.proceed(request)
+        val key =
+            request.tag(IdempotencyKey::class.java)?.value
+                ?: return chain.proceed(request)
 
-        val idempotentRequest = request.newBuilder()
-            .header(HEADER_NAME, key)
-            .build()
+        val idempotentRequest =
+            request
+                .newBuilder()
+                .header(HEADER_NAME, key)
+                .build()
         return chain.proceed(idempotentRequest)
     }
 
@@ -75,4 +77,6 @@ class IdempotencyInterceptor : Interceptor {
  *       @Tag idempotencyKey: IdempotencyKey,
  *   ): Response<AppointmentDto>
  */
-data class IdempotencyKey(val value: String)
+data class IdempotencyKey(
+    val value: String,
+)

@@ -15,7 +15,10 @@ import timber.log.Timber
  * Stage 4.1 also fixes the typo "Traacked" → "Tracked".
  */
 object AnalyticsManager {
-    fun logEvent(eventName: String, params: Map<String, Any>? = null) {
+    fun logEvent(
+        eventName: String,
+        params: Map<String, Any>? = null,
+    ) {
         // Note: in release builds this message will be DROPPED by ReleaseTree
         // (INFO level). If you need events in release, use Firebase Analytics
         // or Sentry — see Stage 9.

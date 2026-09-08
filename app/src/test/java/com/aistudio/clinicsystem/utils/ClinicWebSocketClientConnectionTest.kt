@@ -6,11 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import okhttp3.mockwebserver.MockWebServerExtensions
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Ignore
@@ -43,7 +40,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class ClinicWebSocketClientConnectionTest {
-
     private lateinit var context: Context
     private lateinit var database: ClinicDatabase
     private lateinit var mockWebServer: MockWebServer
@@ -52,10 +48,13 @@ class ClinicWebSocketClientConnectionTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        database = Room.inMemoryDatabaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        database =
+            Room
+                .inMemoryDatabaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                ).allowMainThreadQueries()
+                .build()
 
         mockWebServer = MockWebServer().apply { start() }
 
@@ -106,17 +105,25 @@ class ClinicWebSocketClientConnectionTest {
         // MockWebServer: accept WebSocket upgrade, then expect a subscribe message
         var receivedSubscribe = false
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    // Wait for the subscribe message from the client
-                }
-
-                override fun onMessage(webSocket: okhttp3.WebSocket, text: String) {
-                    if (text.contains("subscribe")) {
-                        receivedSubscribe = true
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        // Wait for the subscribe message from the client
                     }
-                }
-            }),
+
+                    override fun onMessage(
+                        webSocket: okhttp3.WebSocket,
+                        text: String,
+                    ) {
+                        if (text.contains("subscribe")) {
+                            receivedSubscribe = true
+                        }
+                    }
+                },
+            ),
         )
 
         wsClient.start()
@@ -134,11 +141,16 @@ class ClinicWebSocketClientConnectionTest {
     @Test
     fun `stop closes the WebSocket connection`() {
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    // Connection accepted
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        // Connection accepted
+                    }
+                },
+            ),
         )
 
         wsClient.start()
@@ -156,11 +168,16 @@ class ClinicWebSocketClientConnectionTest {
     fun `start is idempotent — calling twice does not create a second connection`() {
         var connectionCount = 0
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    connectionCount++
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        connectionCount++
+                    }
+                },
+            ),
         )
 
         wsClient.start()
@@ -179,19 +196,29 @@ class ClinicWebSocketClientConnectionTest {
         var connectionCount = 0
         // First connection
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    connectionCount++
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        connectionCount++
+                    }
+                },
+            ),
         )
         // Second connection (after force reconnect)
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    connectionCount++
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        connectionCount++
+                    }
+                },
+            ),
         )
 
         wsClient.start()
@@ -207,14 +234,19 @@ class ClinicWebSocketClientConnectionTest {
     @Test
     fun `server sends APPOINTMENT_STATUS message is processed without crash`() {
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    // Send an APPOINTMENT_STATUS event
-                    webSocket.send(
-                        """{"event":"APPOINTMENT_STATUS","data":{"id":1,"patient_phone":"+77771112233","patient_name":"Test","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"APPROVED","reason":"R"}}""",
-                    )
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        // Send an APPOINTMENT_STATUS event
+                        webSocket.send(
+                            """{"event":"APPOINTMENT_STATUS","data":{"id":1,"patient_phone":"+77771112233","patient_name":"Test","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"APPROVED","reason":"R"}}""",
+                        )
+                    }
+                },
+            ),
         )
 
         wsClient.start()
@@ -229,11 +261,16 @@ class ClinicWebSocketClientConnectionTest {
     @Test
     fun `server sends malformed JSON does not crash`() {
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    webSocket.send("not valid json {{{")
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        webSocket.send("not valid json {{{")
+                    }
+                },
+            ),
         )
 
         wsClient.start()
@@ -246,11 +283,16 @@ class ClinicWebSocketClientConnectionTest {
     @Test
     fun `server sends unknown event type does not crash`() {
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    webSocket.send("""{"event":"UNKNOWN_EVENT","data":{}}""")
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        webSocket.send("""{"event":"UNKNOWN_EVENT","data":{}}""")
+                    }
+                },
+            ),
         )
 
         wsClient.start()
@@ -264,20 +306,30 @@ class ClinicWebSocketClientConnectionTest {
     fun `server closes connection triggers reconnect attempt`() {
         // First connection — server will close it immediately
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    // Immediately close the connection (server-initiated)
-                    webSocket.close(1000, "Server closing")
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        // Immediately close the connection (server-initiated)
+                        webSocket.close(1000, "Server closing")
+                    }
+                },
+            ),
         )
         // Second connection — reconnect attempt
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(object : okhttp3.WebSocketListener() {
-                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
-                    // Reconnected successfully
-                }
-            }),
+            MockResponse().withWebSocketUpgrade(
+                object : okhttp3.WebSocketListener() {
+                    override fun onOpen(
+                        webSocket: okhttp3.WebSocket,
+                        response: okhttp3.Response,
+                    ) {
+                        // Reconnected successfully
+                    }
+                },
+            ),
         )
 
         wsClient.start()

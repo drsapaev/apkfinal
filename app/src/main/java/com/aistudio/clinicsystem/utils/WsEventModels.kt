@@ -48,7 +48,7 @@ data class BaseWsEvent(
 data class AppointmentStatusEvent(
     val type: String? = null,
     val event: String? = null,
-    val data: AppointmentStatusData?
+    val data: AppointmentStatusData?,
 )
 
 @JsonClass(generateAdapter = true)
@@ -61,14 +61,14 @@ data class AppointmentStatusData(
     @param:Json(name = "patient_name") val patientName: String?,
     @param:Json(name = "patient_phone") val patientPhone: String?,
     val specialty: String?,
-    val reason: String?
+    val reason: String?,
 )
 
 @JsonClass(generateAdapter = true)
 data class NewMedicalRecordEvent(
     val type: String? = null,
     val event: String? = null,
-    val data: NewMedicalRecordData?
+    val data: NewMedicalRecordData?,
 )
 
 @JsonClass(generateAdapter = true)
@@ -79,7 +79,7 @@ data class NewMedicalRecordData(
     val diagnosis: String?,
     val prescription: String?,
     @param:Json(name = "visit_date") val visitDate: String?,
-    val recommendations: String?
+    val recommendations: String?,
 )
 
 @JsonClass(generateAdapter = true)
@@ -88,12 +88,12 @@ data class QueueUpdateEvent(
     val event: String? = null,
     val data: QueueUpdateData?,
     /** Room identifier sent by backend: "{department}::{date}". */
-    val room: String? = null
+    val room: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class QueueUpdateData(
-    val queue: List<com.aistudio.clinicsystem.data.api.QueueDto>?
+    val queue: List<com.aistudio.clinicsystem.data.api.QueueDto>?,
 )
 
 /**
@@ -106,7 +106,7 @@ data class QueueUpdateData(
 @JsonClass(generateAdapter = true)
 data class WsPingEvent(
     val type: String? = null,
-    val timestamp: Double? = null
+    val timestamp: Double? = null,
 )
 
 /**
@@ -121,7 +121,7 @@ data class WsPingEvent(
 @JsonClass(generateAdapter = true)
 data class WsQueueConnectedEvent(
     val type: String? = null,
-    val room: String? = null
+    val room: String? = null,
 )
 
 /**
@@ -137,5 +137,5 @@ data class WsQueueConnectedEvent(
 @JsonClass(generateAdapter = true)
 data class WsErrorEvent(
     val type: String? = null,
-    val reason: String? = null
+    val reason: String? = null,
 )

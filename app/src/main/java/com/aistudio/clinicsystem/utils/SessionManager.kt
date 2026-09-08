@@ -12,25 +12,46 @@ import android.content.Context
  */
 interface SessionManager {
     /** Stores access token + user meta. Does NOT set refresh token — use [setTokens] for that. */
-    fun saveSession(token: String, phone: String, role: String)
+    fun saveSession(
+        token: String,
+        phone: String,
+        role: String,
+    )
 
     /** Stores both access and refresh tokens (used after login / refresh). */
-    fun setTokens(accessToken: String, refreshToken: String)
+    fun setTokens(
+        accessToken: String,
+        refreshToken: String,
+    )
 
     fun getToken(): String?
+
     fun getRefreshToken(): String?
+
     fun getPhone(): String?
+
     fun getRole(): String?
+
     fun clearSession()
+
     fun isLoggedIn(): Boolean
 }
 
-class SessionManagerImpl(private val context: Context) : SessionManager {
-    override fun saveSession(token: String, phone: String, role: String) {
+class SessionManagerImpl(
+    private val context: Context,
+) : SessionManager {
+    override fun saveSession(
+        token: String,
+        phone: String,
+        role: String,
+    ) {
         TokenManager.saveAuthData(context, token, phone, role)
     }
 
-    override fun setTokens(accessToken: String, refreshToken: String) {
+    override fun setTokens(
+        accessToken: String,
+        refreshToken: String,
+    ) {
         TokenManager.saveTokens(context, accessToken, refreshToken)
     }
 
@@ -52,10 +73,9 @@ class SessionManagerImpl(private val context: Context) : SessionManager {
         @Volatile
         private var instance: SessionManager? = null
 
-        fun getInstance(context: Context): SessionManager {
-            return instance ?: synchronized(this) {
+        fun getInstance(context: Context): SessionManager =
+            instance ?: synchronized(this) {
                 instance ?: SessionManagerImpl(context.applicationContext).also { instance = it }
             }
-        }
     }
 }

@@ -1,7 +1,5 @@
 package com.aistudio.clinicsystem.data.realtime
 
-import com.aistudio.clinicsystem.data.db.AppointmentEntity
-import com.aistudio.clinicsystem.data.db.MedicalRecordEntity
 import com.aistudio.clinicsystem.data.db.QueueSnapshotEntity
 
 /**
@@ -30,7 +28,7 @@ sealed class RealtimeEvent {
         val patientName: String,
         val patientPhone: String,
         val specialty: String?,
-        val reason: String?
+        val reason: String?,
     ) : RealtimeEvent()
 
     /** New medical record created for a patient. */
@@ -41,18 +39,20 @@ sealed class RealtimeEvent {
         val diagnosis: String,
         val prescription: String,
         val visitDate: String,
-        val recommendations: String
+        val recommendations: String,
     ) : RealtimeEvent()
 
     /** Queue state updated (full snapshot of current queue). */
     data class QueueUpdated(
-        val snapshots: List<QueueSnapshotEntity>
+        val snapshots: List<QueueSnapshotEntity>,
     ) : RealtimeEvent()
 
     /** WebSocket connection state changed. */
     sealed class ConnectionState : RealtimeEvent() {
         object Connected : ConnectionState()
+
         object Disconnected : ConnectionState()
+
         object Reconnecting : ConnectionState()
     }
 }

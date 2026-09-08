@@ -1,4 +1,5 @@
 @file:Suppress("UnusedPrivateProperty")
+
 package com.aistudio.clinicsystem.utils
 
 import android.content.Context
@@ -42,7 +43,6 @@ import javax.crypto.spec.GCMParameterSpec
  * Reference: https://developer.android.com/training/sign-in/biometric-auth
  */
 object BiometricCryptoHelper {
-
     private const val KEYSTORE = "AndroidKeyStore"
     private const val KEY_ALIAS = "clinic_biometric_refresh_key"
     private const val GCM_IV_LENGTH = 12 // bytes
@@ -83,14 +83,15 @@ object BiometricCryptoHelper {
 
         // Generate a new key
         val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
-        val builder = KeyGenParameterSpec.Builder(
-            KEY_ALIAS,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-        )
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setUserAuthenticationRequired(true)
-            .setInvalidatedByBiometricEnrollment(true)
+        val builder =
+            KeyGenParameterSpec
+                .Builder(
+                    KEY_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+                ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setUserAuthenticationRequired(true)
+                .setInvalidatedByBiometricEnrollment(true)
 
         // Stage 4.2: StrongBox where available
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -107,8 +108,10 @@ object BiometricCryptoHelper {
         // Both are the same integer value (0x000F), but lint enforces the type.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             builder.setUserAuthenticationParameters(
-                /* timeout = */ 0, // 0 = require auth on every use (no timeout)
-                /* types = */ KeyProperties.AUTH_BIOMETRIC_STRONG,
+                // timeout =
+                0, // 0 = require auth on every use (no timeout)
+                // types =
+                KeyProperties.AUTH_BIOMETRIC_STRONG,
             )
         }
 
@@ -128,9 +131,10 @@ object BiometricCryptoHelper {
     fun createEncryptionCryptoObject(): BiometricPrompt.CryptoObject? {
         val key = getOrCreateBiometricKey() ?: return null
         return try {
-            val cipher = Cipher.getInstance(
-                "${KeyProperties.KEY_ALGORITHM_AES}/${KeyProperties.BLOCK_MODE_GCM}/${KeyProperties.ENCRYPTION_PADDING_NONE}",
-            )
+            val cipher =
+                Cipher.getInstance(
+                    "${KeyProperties.KEY_ALGORITHM_AES}/${KeyProperties.BLOCK_MODE_GCM}/${KeyProperties.ENCRYPTION_PADDING_NONE}",
+                )
             cipher.init(Cipher.ENCRYPT_MODE, key)
             BiometricPrompt.CryptoObject(cipher)
         } catch (e: Exception) {
@@ -154,9 +158,10 @@ object BiometricCryptoHelper {
         val key = keyStore.getKey(KEY_ALIAS, null) as? SecretKey ?: return null
 
         return try {
-            val cipher = Cipher.getInstance(
-                "${KeyProperties.KEY_ALGORITHM_AES}/${KeyProperties.BLOCK_MODE_GCM}/${KeyProperties.ENCRYPTION_PADDING_NONE}",
-            )
+            val cipher =
+                Cipher.getInstance(
+                    "${KeyProperties.KEY_ALGORITHM_AES}/${KeyProperties.BLOCK_MODE_GCM}/${KeyProperties.ENCRYPTION_PADDING_NONE}",
+                )
             val spec = GCMParameterSpec(128, iv) // 128-bit auth tag
             cipher.init(Cipher.DECRYPT_MODE, key, spec)
             BiometricPrompt.CryptoObject(cipher)
@@ -173,7 +178,10 @@ object BiometricCryptoHelper {
      *
      * The IV is non-secret and can be stored alongside the ciphertext.
      */
-    fun encryptRefreshToken(cipher: Cipher, refreshToken: String): EncryptedData {
+    fun encryptRefreshToken(
+        cipher: Cipher,
+        refreshToken: String,
+    ): EncryptedData {
         val ciphertext = cipher.doFinal(refreshToken.toByteArray(Charsets.UTF_8))
         return EncryptedData(
             ciphertext = ciphertext,
@@ -185,15 +193,17 @@ object BiometricCryptoHelper {
      * Decrypts the refresh token using the unlocked Cipher. Returns the
      * plaintext token, or null if decryption fails.
      */
-    fun decryptRefreshToken(cipher: Cipher, encryptedData: EncryptedData): String? {
-        return try {
+    fun decryptRefreshToken(
+        cipher: Cipher,
+        encryptedData: EncryptedData,
+    ): String? =
+        try {
             val plaintext = cipher.doFinal(encryptedData.ciphertext)
             String(plaintext, Charsets.UTF_8)
         } catch (e: Exception) {
             timber.log.Timber.e(e, "Failed to decrypt refresh token")
             null
         }
-    }
 
     /**
      * Deletes the biometric key from the keystore. Called when the user
@@ -213,15 +223,14 @@ object BiometricCryptoHelper {
      * Returns true if the biometric key exists in the keystore (i.e. the
      * user has previously enrolled in biometric login).
      */
-    fun isBiometricKeyPresent(): Boolean {
-        return try {
+    fun isBiometricKeyPresent(): Boolean =
+        try {
             val keyStore = java.security.KeyStore.getInstance(KEYSTORE)
             keyStore.load(null)
             keyStore.containsAlias(KEY_ALIAS)
         } catch (e: Exception) {
             false
         }
-    }
 
     /**
      * Convenience method: returns a CryptoObject for decryption of the

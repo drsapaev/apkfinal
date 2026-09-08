@@ -32,97 +32,102 @@ import javax.inject.Singleton
  * (avoids infinite recursion: authenticate → refresh → 401 → ...).
  */
 @Singleton
-class ApiClient @javax.inject.Inject constructor(
-    private val sessionManager: SessionManager,
-    private val sessionRepository: SessionRepository,
-    private val moshi: Moshi,
-) {
-    /** Dynamic token provider — reads from SessionRepository (SSOT). */
-    val tokenProvider: () -> String? = { sessionRepository.accessToken }
+class ApiClient
+    @javax.inject.Inject
+    constructor(
+        private val sessionManager: SessionManager,
+        private val sessionRepository: SessionRepository,
+        private val moshi: Moshi,
+    ) {
+        /** Dynamic token provider — reads from SessionRepository (SSOT). */
+        val tokenProvider: () -> String? = { sessionRepository.accessToken }
 
-    /** The TokenAuthenticator — calls sessionRepository.invalidate() on refresh failure. */
-    val tokenAuthenticator: TokenAuthenticator = TokenAuthenticator(
-        sessionManager = sessionManager,
-        moshi = moshi,
-        baseUrlProvider = ::getBaseUrl,
-        onSessionInvalidated = { sessionRepository.invalidate() },
-    )
+        /** The TokenAuthenticator — calls sessionRepository.invalidate() on refresh failure. */
+        val tokenAuthenticator: TokenAuthenticator =
+            TokenAuthenticator(
+                sessionManager = sessionManager,
+                moshi = moshi,
+                baseUrlProvider = ::getBaseUrl,
+                onSessionInvalidated = { sessionRepository.invalidate() },
+            )
 
-    private val authInterceptor = AuthInterceptor(tokenProvider)
+        private val authInterceptor = AuthInterceptor(tokenProvider)
 
-    // Stage 3.3 (H-1 fix): Idempotency-Key interceptor — adds the header
-    // to POST/PUT/PATCH/DELETE requests that carry an IdempotencyKey tag.
-    private val idempotencyInterceptor = IdempotencyInterceptor()
+        // Stage 3.3 (H-1 fix): Idempotency-Key interceptor — adds the header
+        // to POST/PUT/PATCH/DELETE requests that carry an IdempotencyKey tag.
+        private val idempotencyInterceptor = IdempotencyInterceptor()
 
-    private val okHttpClient: OkHttpClient by lazy { buildOkHttpClient() }
+        private val okHttpClient: OkHttpClient by lazy { buildOkHttpClient() }
 
-    private val retrofit: Retrofit by lazy { buildRetrofit() }
+        private val retrofit: Retrofit by lazy { buildRetrofit() }
 
-    /** Legacy staff-facing API. */
-    val service: ApiService by lazy { retrofit.create(ApiService::class.java) }
+        /** Legacy staff-facing API. */
+        val service: ApiService by lazy { retrofit.create(ApiService::class.java) }
 
-    /** Patient-facing mobile API. */
-    val mobileService: MobileApiService by lazy { retrofit.create(MobileApiService::class.java) }
+        /** Patient-facing mobile API. */
+        val mobileService: MobileApiService by lazy { retrofit.create(MobileApiService::class.java) }
 
-    private fun buildOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(authInterceptor)
-            // Stage 3.3: idempotency interceptor runs AFTER auth so it can
-            // see the final request URL + method. It only adds a header —
-            // no request body inspection, no logging.
-            .addInterceptor(idempotencyInterceptor)
-            .authenticator(tokenAuthenticator)
-            .apply {
-                // Stage 4.3 (H-3 build fix): Certificate Pinning.
-                // No-op in debug builds (no pins configured); active in
-                // release builds where `clinic.certPin1` is set via CI secret.
-                CertificatePinningConfig.buildPinner()?.let { pinner ->
-                    certificatePinner(pinner)
-                }
-
-                // Stage 4.1 (NET-16 fix): HTTP logging in DEBUG only.
-                // Authorization + Cookie headers are redacted (never logged).
-                // In release builds, no HTTP logging interceptor is attached
-                // at all — PHI in request/response bodies never reaches Logcat.
-                if (com.aistudio.clinicsystem.BuildConfig.DEBUG) {
-                    val loggingInterceptor = HttpLoggingInterceptor().apply {
-                        level = HttpLoggingInterceptor.Level.BODY
-                        redactHeader("Authorization")
-                        redactHeader("Cookie")
-                        redactHeader("Set-Cookie")
-                        redactHeader("Idempotency-Key")
+        private fun buildOkHttpClient(): OkHttpClient =
+            OkHttpClient
+                .Builder()
+                .addInterceptor(authInterceptor)
+                // Stage 3.3: idempotency interceptor runs AFTER auth so it can
+                // see the final request URL + method. It only adds a header —
+                // no request body inspection, no logging.
+                .addInterceptor(idempotencyInterceptor)
+                .authenticator(tokenAuthenticator)
+                .apply {
+                    // Stage 4.3 (H-3 build fix): Certificate Pinning.
+                    // No-op in debug builds (no pins configured); active in
+                    // release builds where `clinic.certPin1` is set via CI secret.
+                    CertificatePinningConfig.buildPinner()?.let { pinner ->
+                        certificatePinner(pinner)
                     }
-                    // Route OkHttp logs through Timber so the ReleaseTree
-                    // redaction also applies (defense in depth).
-                    loggingInterceptor.logger = HttpLoggingInterceptor.Logger { msg ->
-                        timber.log.Timber.d("HTTP: $msg")
+
+                    // Stage 4.1 (NET-16 fix): HTTP logging in DEBUG only.
+                    // Authorization + Cookie headers are redacted (never logged).
+                    // In release builds, no HTTP logging interceptor is attached
+                    // at all — PHI in request/response bodies never reaches Logcat.
+                    if (com.aistudio.clinicsystem.BuildConfig.DEBUG) {
+                        // BUILD-FIX: pass the Timber logger via the constructor —
+                        // the `logger` property is not writable in the okhttp
+                        // version resolved on the classpath.
+                        val loggingInterceptor =
+                            HttpLoggingInterceptor(
+                                HttpLoggingInterceptor.Logger { msg ->
+                                    timber.log.Timber.d("HTTP: $msg")
+                                },
+                            ).apply {
+                                level = HttpLoggingInterceptor.Level.BODY
+                                redactHeader("Authorization")
+                                redactHeader("Cookie")
+                                redactHeader("Set-Cookie")
+                                redactHeader("Idempotency-Key")
+                            }
+                        addInterceptor(loggingInterceptor)
                     }
-                    addInterceptor(loggingInterceptor)
-                }
-            }
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
-            .build()
-    }
+                }.connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .writeTimeout(15, TimeUnit.SECONDS)
+                .build()
 
-    private fun buildRetrofit(): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl(getBaseUrl())
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-    }
+        private fun buildRetrofit(): Retrofit =
+            Retrofit
+                .Builder()
+                .baseUrl(getBaseUrl())
+                .client(okHttpClient)
+                .addConverterFactory(MoshiConverterFactory.create(moshi))
+                .build()
 
-    /**
-     * Returns the backend base URL. Reads from BuildConfig (injected by
-     * Stage 1.3 via gradle property `clinic.baseUrl`).
-     */
-    fun getBaseUrl(): String {
-        val url = com.aistudio.clinicsystem.BuildConfig.BASE_URL
-        return if (url.endsWith("/")) url else "$url/"
+        /**
+         * Returns the backend base URL. Reads from BuildConfig (injected by
+         * Stage 1.3 via gradle property `clinic.baseUrl`).
+         */
+        fun getBaseUrl(): String {
+            val url = com.aistudio.clinicsystem.BuildConfig.BASE_URL
+            return if (url.endsWith("/")) url else "$url/"
+        }
     }
-}
 
 /**
  * Hilt module that provides the API layer singletons.
@@ -150,7 +155,8 @@ object ApiModule {
     @Singleton
     @Named("refresh")
     fun provideRefreshOkHttpClient(): OkHttpClient =
-        OkHttpClient.Builder()
+        OkHttpClient
+            .Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
@@ -163,9 +169,11 @@ object ApiModule {
         @Named("refresh") client: OkHttpClient,
         moshi: Moshi,
         apiClient: ApiClient,
-    ): Retrofit = Retrofit.Builder()
-        .baseUrl(apiClient.getBaseUrl())
-        .client(client)
-        .addConverterFactory(MoshiConverterFactory.create(moshi))
-        .build()
+    ): Retrofit =
+        Retrofit
+            .Builder()
+            .baseUrl(apiClient.getBaseUrl())
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
 }

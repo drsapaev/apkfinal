@@ -1,7 +1,8 @@
 package com.aistudio.clinicsystem.ui.screens
 
-import com.aistudio.clinicsystem.ui.theme.Spacing
-import com.aistudio.clinicsystem.ui.theme.Radius
+import android.widget.Toast
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,7 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -25,21 +27,18 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
-import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
-import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aistudio.clinicsystem.R
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
+import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
 
 @Composable
 fun AuthScreen(
     viewModel: AuthViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // E1.5: secure the auth screen — prevents screenshots/screen recording
     // of credentials input.
@@ -51,7 +50,7 @@ fun AuthScreen(
 @Composable
 private fun AuthScreenContent(
     viewModel: AuthViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val username by viewModel.usernameInput.collectAsStateWithLifecycle()
@@ -73,12 +72,14 @@ private fun AuthScreenContent(
     val tealPrimary = MaterialTheme.colorScheme.primary
     val tealLight = MaterialTheme.colorScheme.surfaceVariant
     val tealAccent = MaterialTheme.colorScheme.tertiary
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surfaceVariant)
-    )
+    val backgroundBrush =
+        Brush.verticalGradient(
+            colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surfaceVariant),
+        )
 
     LaunchedEffect(Unit) {
-        com.aistudio.clinicsystem.utils.AnalyticsManager.trackScreen("AuthScreen")
+        com.aistudio.clinicsystem.utils.AnalyticsManager
+            .trackScreen("AuthScreen")
     }
 
     // P-16 fix: if 2FA challenge is pending, render 2FA UI instead of login form
@@ -88,33 +89,36 @@ private fun AuthScreenContent(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .imePadding()
-            .background(backgroundBrush)
-            .padding(Spacing.xl),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .fillMaxSize()
+                .imePadding()
+                .background(backgroundBrush)
+                .padding(Spacing.xl),
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 480.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 480.dp),
         ) {
             // Heartbeat/Clinic Icon logo
             Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(tealLight),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(tealLight),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.MedicalServices,
                     contentDescription = "Clinic Logo",
                     tint = tealPrimary,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(44.dp),
                 )
             }
 
@@ -122,11 +126,12 @@ private fun AuthScreenContent(
 
             Text(
                 text = stringResource(R.string.ui_myclinic_system),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                ),
-                textAlign = TextAlign.Center
+                style =
+                    MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    ),
+                textAlign = TextAlign.Center,
             )
 
             Text(
@@ -134,7 +139,7 @@ private fun AuthScreenContent(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
 
             Spacer(modifier = Modifier.heightIn(min = 44.dp))
@@ -143,20 +148,21 @@ private fun AuthScreenContent(
                 shape = RoundedCornerShape(Radius.xl),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
                     modifier = Modifier.padding(Spacing.xl),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
                         text = stringResource(R.string.ui_login_system),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
+                        style =
+                            MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            ),
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
 
                     Spacer(modifier = Modifier.height(Spacing.l))
@@ -166,7 +172,7 @@ private fun AuthScreenContent(
                             text = stringResource(R.string.ui_enter_credentials),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 6.dp)
+                            modifier = Modifier.padding(bottom = 6.dp),
                         )
 
                         OutlinedTextField(
@@ -177,18 +183,19 @@ private fun AuthScreenContent(
                                 Icon(
                                     imageVector = Icons.Default.Person,
                                     contentDescription = "User icon",
-                                    tint = tealPrimary
+                                    tint = tealPrimary,
                                 )
                             },
                             placeholder = { Text(stringResource(R.string.ui_login)) },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = tealPrimary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedLabelColor = tealPrimary
-                            ),
-                            modifier = Modifier.fillMaxWidth()
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                            colors =
+                                OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = tealPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedLabelColor = tealPrimary,
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
                         )
 
                         Spacer(modifier = Modifier.height(Spacing.m))
@@ -201,7 +208,7 @@ private fun AuthScreenContent(
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = "Lock icon",
-                                    tint = tealPrimary
+                                    tint = tealPrimary,
                                 )
                             },
                             placeholder = { Text(stringResource(R.string.ui_parol)) },
@@ -212,17 +219,25 @@ private fun AuthScreenContent(
                                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (passwordVisible) stringResource(R.string.auth_hide_password) else stringResource(R.string.auth_show_password),
-                                        tint = tealPrimary
+                                        contentDescription =
+                                            if (passwordVisible) {
+                                                stringResource(
+                                                    R.string.auth_hide_password,
+                                                )
+                                            } else {
+                                                stringResource(R.string.auth_show_password)
+                                            },
+                                        tint = tealPrimary,
                                     )
                                 }
                             },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = tealPrimary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedLabelColor = tealPrimary
-                            ),
-                            modifier = Modifier.fillMaxWidth()
+                            colors =
+                                OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = tealPrimary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedLabelColor = tealPrimary,
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
 
@@ -233,7 +248,7 @@ private fun AuthScreenContent(
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
 
@@ -248,14 +263,15 @@ private fun AuthScreenContent(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                             shape = RoundedCornerShape(Radius.medium),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp),
                         ) {
                             Text(
                                 text = stringResource(R.string.ui_voyti),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.surface
+                                color = MaterialTheme.colorScheme.surface,
                             )
                         }
                     }
@@ -271,32 +287,34 @@ private fun AuthScreenContent(
                 Card(
                     shape = RoundedCornerShape(Radius.large),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (usersWithBio.size == 1) {
-                                selectedBioUserPhone = usersWithBio.first().phone
-                                showVerificationDialog = true
-                            } else {
-                                showBiometricSelector = true
-                            }
-                        }
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (usersWithBio.size == 1) {
+                                    selectedBioUserPhone = usersWithBio.first().phone
+                                    showVerificationDialog = true
+                                } else {
+                                    showBiometricSelector = true
+                                }
+                            },
                 ) {
                     Row(
                         modifier = Modifier.padding(Spacing.l),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(tealPrimary),
-                            contentAlignment = Alignment.Center
+                            modifier =
+                                Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(tealPrimary),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Fingerprint,
                                 contentDescription = "Biometric Login",
-                                tint = MaterialTheme.colorScheme.surface
+                                tint = MaterialTheme.colorScheme.surface,
                             )
                         }
                         Spacer(modifier = Modifier.width(Spacing.m))
@@ -304,19 +322,19 @@ private fun AuthScreenContent(
                             Text(
                                 text = stringResource(R.string.ui_enter_by_biometrics),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
                             )
                             Text(
                                 text = stringResource(R.string.ui_quick_biometrics),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
                         Icon(
                             imageVector = Icons.Default.ArrowForwardIos,
                             contentDescription = "Arrow right",
                             tint = tealPrimary,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(16.dp),
                         )
                     }
                 }
@@ -327,7 +345,7 @@ private fun AuthScreenContent(
                     style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(Spacing.m)
+                    modifier = Modifier.padding(Spacing.m),
                 )
             }
 
@@ -348,25 +366,29 @@ private fun AuthScreenContent(
                 Column {
                     allUsers.filter { it.biometricEnabled }.forEach { user ->
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedBioUserPhone = user.phone
-                                    showBiometricSelector = false
-                                    showVerificationDialog = true
-                                }
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedBioUserPhone = user.phone
+                                        showBiometricSelector = false
+                                        showVerificationDialog = true
+                                    }.padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
                                 imageVector = if (user.role == "STAFF") Icons.Default.MedicalServices else Icons.Default.Person,
                                 contentDescription = null,
                                 tint = tealPrimary,
-                                modifier = Modifier.padding(end = 12.dp)
+                                modifier = Modifier.padding(end = 12.dp),
                             )
                             Column {
                                 Text(text = user.fullName, fontWeight = FontWeight.Bold)
-                                Text(text = "${user.role} • ${user.phone}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "${user.role} • ${user.phone}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                         HorizontalDivider()
@@ -377,7 +399,7 @@ private fun AuthScreenContent(
                 TextButton(onClick = { showBiometricSelector = false }) {
                     Text(stringResource(R.string.ui_zakryt))
                 }
-            }
+            },
         )
     }
 
@@ -397,64 +419,79 @@ private fun AuthScreenContent(
                 // The CryptoObject is created from a keystore key with
                 // setUserAuthenticationRequired(true) — without biometric,
                 // the Cipher cannot be used.
-                val cryptoObject = com.aistudio.clinicsystem.utils.BiometricCryptoHelper
-                    .createDecryptionCryptoObjectForLogin(context)
+                val cryptoObject =
+                    com.aistudio.clinicsystem.utils.BiometricCryptoHelper
+                        .createDecryptionCryptoObjectForLogin(context)
 
                 if (cryptoObject == null) {
                     // No biometric key enrolled, OR key was invalidated by
                     // new fingerprint enrollment. Fall back to password login.
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.ui_biometric_key_unavailable),
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    Toast
+                        .makeText(
+                            context,
+                            context.getString(R.string.ui_biometric_key_unavailable),
+                            Toast.LENGTH_LONG,
+                        ).show()
                     showVerificationDialog = false
                     return@LaunchedEffect
                 }
 
-                val biometricPrompt = BiometricPrompt(
-                    fragmentActivity,
-                    executor,
-                    object : BiometricPrompt.AuthenticationCallback() {
-                        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                            super.onAuthenticationError(errorCode, errString)
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.auth_error_message, errString.toString()),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            showVerificationDialog = false
-                        }
+                val biometricPrompt =
+                    BiometricPrompt(
+                        fragmentActivity,
+                        executor,
+                        object : BiometricPrompt.AuthenticationCallback() {
+                            override fun onAuthenticationError(
+                                errorCode: Int,
+                                errString: CharSequence,
+                            ) {
+                                super.onAuthenticationError(errorCode, errString)
+                                Toast
+                                    .makeText(
+                                        context,
+                                        context.getString(R.string.auth_error_message, errString.toString()),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                showVerificationDialog = false
+                            }
 
-                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                            super.onAuthenticationSucceeded(result)
-                            showVerificationDialog = false
-                            // Stage 4.4: the CryptoObject's Cipher is now
-                            // unlocked. The ViewModel will use it to decrypt
-                            // the stored refresh token.
-                            val cipher = result.cryptoObject?.cipher
-                            viewModel.loginWithBiometrics(selectedBioUserPhone, cipher)
-                        }
+                            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                super.onAuthenticationSucceeded(result)
+                                showVerificationDialog = false
+                                // Stage 4.4: the CryptoObject's Cipher is now
+                                // unlocked. The ViewModel will use it to decrypt
+                                // the stored refresh token.
+                                val cipher = result.cryptoObject?.cipher
+                                viewModel.loginWithBiometrics(selectedBioUserPhone, cipher)
+                            }
 
-                        override fun onAuthenticationFailed() {
-                            super.onAuthenticationFailed()
-                            Toast.makeText(context, stringResource(R.string.auth_fingerprint_not_recognized), Toast.LENGTH_SHORT).show()
-                        }
-                    })
+                            override fun onAuthenticationFailed() {
+                                super.onAuthenticationFailed()
+                                Toast
+                                    .makeText(
+                                        context,
+                                        context.getString(R.string.auth_fingerprint_not_recognized),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                            }
+                        },
+                    )
 
-                val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(stringResource(R.string.auth_biometric_login))
-                    .setSubtitle(stringResource(R.string.auth_biometric_prompt))
-                    // Stage 4.4: BIOMETRIC_STRONG only — Class 3 biometrics
-                    // required to unlock the keystore key.
-                    .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                    .setNegativeButtonText(stringResource(R.string.ui_otmena))
-                    .build()
+                val promptInfo =
+                    BiometricPrompt.PromptInfo
+                        .Builder()
+                        .setTitle(context.getString(R.string.auth_biometric_login))
+                        .setSubtitle(context.getString(R.string.auth_biometric_prompt))
+                        // Stage 4.4: BIOMETRIC_STRONG only — Class 3 biometrics
+                        // required to unlock the keystore key.
+                        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                        .setNegativeButtonText(context.getString(R.string.ui_otmena))
+                        .build()
 
                 // Stage 4.4: two-arg authenticate with CryptoObject.
                 biometricPrompt.authenticate(promptInfo, cryptoObject)
             } else {
-                Toast.makeText(context, stringResource(R.string.auth_error_fragment_activity), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.auth_error_fragment_activity), Toast.LENGTH_SHORT).show()
                 showVerificationDialog = false
             }
         }

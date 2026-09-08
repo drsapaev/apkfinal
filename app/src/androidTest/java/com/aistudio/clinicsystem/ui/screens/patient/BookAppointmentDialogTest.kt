@@ -26,14 +26,14 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class BookAppointmentDialogTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val testDoctors = listOf(
-        Pair("Dr. Test Cardiologist", "Кардиолог"),
-        Pair("Dr. Test Neurologist", "Невролог")
-    )
+    private val testDoctors =
+        listOf(
+            Pair("Dr. Test Cardiologist", "Кардиолог"),
+            Pair("Dr. Test Neurologist", "Невролог"),
+        )
 
     private val testDates = listOf("2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05")
 
@@ -58,9 +58,15 @@ class BookAppointmentDialogTest {
                     onReasonInputChange = { _ -> },
                     onConfirm = {},
                     onDismiss = {},
-                    tealPrimary = androidx.compose.ui.graphics.Color(0xFF4DB6AC),
-                    tealLight = androidx.compose.ui.graphics.Color(0xFFB2DFDB),
-                    accentNavy = androidx.compose.ui.graphics.Color(0xFF1F2A37)
+                    tealPrimary =
+                        androidx.compose.ui.graphics
+                            .Color(0xFF4DB6AC),
+                    tealLight =
+                        androidx.compose.ui.graphics
+                            .Color(0xFFB2DFDB),
+                    accentNavy =
+                        androidx.compose.ui.graphics
+                            .Color(0xFF1F2A37),
                 )
             }
         }

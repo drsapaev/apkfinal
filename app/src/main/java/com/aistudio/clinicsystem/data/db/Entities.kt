@@ -47,7 +47,10 @@ data class UserEntity(
     ],
 )
 data class AppointmentEntity(
-    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    @PrimaryKey val id: String =
+        java.util.UUID
+            .randomUUID()
+            .toString(),
     val serverId: Int? = null, // backend-assigned ID, null until synced
     val patientPhone: String,
     val patientName: String,
@@ -93,7 +96,9 @@ data class QueueSnapshotEntity(
     ],
 )
 data class PendingSyncEntity(
-    @PrimaryKey val id: String = com.aistudio.clinicsystem.data.outbox.generateOutboxId(),
+    @PrimaryKey val id: String =
+        com.aistudio.clinicsystem.data.outbox
+            .generateOutboxId(),
     val type: String, // OutboxOperation.name — see Stage 3.8
     val payload: String, // JSON payload representing the synchronized dto
     val clientRequestId: String,
@@ -120,7 +125,10 @@ data class PendingSyncEntity(
     ],
 )
 data class MedicalRecordEntity(
-    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    @PrimaryKey val id: String =
+        java.util.UUID
+            .randomUUID()
+            .toString(),
     val serverId: Int? = null, // backend-assigned ID, null until synced
     val patientPhone: String,
     val doctorName: String,
@@ -161,7 +169,10 @@ data class SyncLogEntity(
     ],
 )
 data class LabResultEntity(
-    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    @PrimaryKey val id: String =
+        java.util.UUID
+            .randomUUID()
+            .toString(),
     val serverId: Int? = null,
     val patientPhone: String,
     val testName: String,
@@ -189,7 +200,10 @@ data class LabResultEntity(
     ],
 )
 data class DoctorEntity(
-    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    @PrimaryKey val id: String =
+        java.util.UUID
+            .randomUUID()
+            .toString(),
     val serverId: Int? = null, // backend-assigned ID, null until synced
     val fullName: String,
     val specialty: String,

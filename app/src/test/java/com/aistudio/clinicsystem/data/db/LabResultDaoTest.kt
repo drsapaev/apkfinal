@@ -29,17 +29,19 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class LabResultDaoTest {
-
     private lateinit var database: ClinicDatabase
     private lateinit var dao: LabResultDao
 
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        database = Room.inMemoryDatabaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        database =
+            Room
+                .inMemoryDatabaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                ).allowMainThreadQueries()
+                .build()
         dao = database.labResultDao()
     }
 
@@ -69,96 +71,111 @@ class LabResultDaoTest {
     )
 
     @Test
-    fun `insertAll and getResultsByPatientFlow returns inserted results`() = runBlocking {
-        val results = listOf(
-            createLabResult(serverId = 1, testName = "Glucose"),
-            createLabResult(serverId = 2, testName = "Hemoglobin"),
-            createLabResult(serverId = 3, testName = "Cholesterol"),
-        )
-        dao.insertAll(results)
+    fun `insertAll and getResultsByPatientFlow returns inserted results`() =
+        runBlocking {
+            val results =
+                listOf(
+                    createLabResult(serverId = 1, testName = "Glucose"),
+                    createLabResult(serverId = 2, testName = "Hemoglobin"),
+                    createLabResult(serverId = 3, testName = "Cholesterol"),
+                )
+            dao.insertAll(results)
 
-        val queried = dao.getResultsByPatientFlow("+77771112233").first()
-        assertEquals(3, queried.size)
-        assertTrue(queried.any { it.testName == "Glucose" })
-        assertTrue(queried.any { it.testName == "Hemoglobin" })
-        assertTrue(queried.any { it.testName == "Cholesterol" })
-    }
-
-    @Test
-    fun `getLabResultByServerId returns correct result`() = runBlocking {
-        dao.insertAll(listOf(createLabResult(serverId = 42, testName = "Insulin")))
-
-        val result = dao.getLabResultByServerId(42)
-        assertNotNull(result)
-        assertEquals("Insulin", result?.testName)
-        assertEquals("5.5", result?.result)
-        assertEquals("mmol/L", result?.unit)
-    }
+            val queried = dao.getResultsByPatientFlow("+77771112233").first()
+            assertEquals(3, queried.size)
+            assertTrue(queried.any { it.testName == "Glucose" })
+            assertTrue(queried.any { it.testName == "Hemoglobin" })
+            assertTrue(queried.any { it.testName == "Cholesterol" })
+        }
 
     @Test
-    fun `getLabResultByServerId returns null for non-existent`() = runBlocking {
-        val result = dao.getLabResultByServerId(999)
-        assertNull(result)
-    }
+    fun `getLabResultByServerId returns correct result`() =
+        runBlocking {
+            dao.insertAll(listOf(createLabResult(serverId = 42, testName = "Insulin")))
+
+            val result = dao.getLabResultByServerId(42)
+            assertNotNull(result)
+            assertEquals("Insulin", result?.testName)
+            assertEquals("5.5", result?.result)
+            assertEquals("mmol/L", result?.unit)
+        }
 
     @Test
-    fun `clearResultsByPatient deletes only specified patient`() = runBlocking {
-        dao.insertAll(listOf(
-            createLabResult(serverId = 1, patientPhone = "+77771112233"),
-            createLabResult(serverId = 2, patientPhone = "+77771112233"),
-            createLabResult(serverId = 3, patientPhone = "+77002223344", testName = "WBC"),
-        ))
-
-        dao.clearResultsByPatient("+77771112233")
-
-        val remaining = dao.getAllResultsFlow().first()
-        assertEquals(1, remaining.size)
-        assertEquals("WBC", remaining[0].testName)
-    }
+    fun `getLabResultByServerId returns null for non-existent`() =
+        runBlocking {
+            val result = dao.getLabResultByServerId(999)
+            assertNull(result)
+        }
 
     @Test
-    fun `getResultsByPatientFlow returns empty for unknown patient`() = runBlocking {
-        dao.insertAll(listOf(createLabResult(serverId = 1, patientPhone = "+77771112233")))
+    fun `clearResultsByPatient deletes only specified patient`() =
+        runBlocking {
+            dao.insertAll(
+                listOf(
+                    createLabResult(serverId = 1, patientPhone = "+77771112233"),
+                    createLabResult(serverId = 2, patientPhone = "+77771112233"),
+                    createLabResult(serverId = 3, patientPhone = "+77002223344", testName = "WBC"),
+                ),
+            )
 
-        val queried = dao.getResultsByPatientFlow("+99999999999").first()
-        assertTrue(queried.isEmpty())
-    }
+            dao.clearResultsByPatient("+77771112233")
 
-    @Test
-    fun `insertAll with REPLACE strategy overwrites existing row`() = runBlocking {
-        val original = createLabResult(serverId = 1, testName = "Glucose", result = "5.5")
-        dao.insertAll(listOf(original))
-
-        val updated = original.copy(result = "6.2", status = "HIGH")
-        dao.insertAll(listOf(updated))
-
-        val queried = dao.getResultsByPatientFlow("+77771112233").first()
-        assertEquals(1, queried.size)
-        assertEquals("6.2", queried[0].result)
-        assertEquals("HIGH", queried[0].status)
-    }
+            val remaining = dao.getAllResultsFlow().first()
+            assertEquals(1, remaining.size)
+            assertEquals("WBC", remaining[0].testName)
+        }
 
     @Test
-    fun `getAllResultsFlow returns all results`() = runBlocking {
-        dao.insertAll(listOf(
-            createLabResult(serverId = 1, patientPhone = "+77771112233"),
-            createLabResult(serverId = 2, patientPhone = "+77002223344", testName = "WBC"),
-        ))
+    fun `getResultsByPatientFlow returns empty for unknown patient`() =
+        runBlocking {
+            dao.insertAll(listOf(createLabResult(serverId = 1, patientPhone = "+77771112233")))
 
-        val all = dao.getAllResultsFlow().first()
-        assertEquals(2, all.size)
-    }
+            val queried = dao.getResultsByPatientFlow("+99999999999").first()
+            assertTrue(queried.isEmpty())
+        }
 
     @Test
-    fun `clearAll removes everything`() = runBlocking {
-        dao.insertAll(listOf(
-            createLabResult(serverId = 1),
-            createLabResult(serverId = 2, testName = "WBC"),
-        ))
+    fun `insertAll with REPLACE strategy overwrites existing row`() =
+        runBlocking {
+            val original = createLabResult(serverId = 1, testName = "Glucose", result = "5.5")
+            dao.insertAll(listOf(original))
 
-        dao.clearAll()
+            val updated = original.copy(result = "6.2", status = "HIGH")
+            dao.insertAll(listOf(updated))
 
-        val all = dao.getAllResultsFlow().first()
-        assertTrue(all.isEmpty())
-    }
+            val queried = dao.getResultsByPatientFlow("+77771112233").first()
+            assertEquals(1, queried.size)
+            assertEquals("6.2", queried[0].result)
+            assertEquals("HIGH", queried[0].status)
+        }
+
+    @Test
+    fun `getAllResultsFlow returns all results`() =
+        runBlocking {
+            dao.insertAll(
+                listOf(
+                    createLabResult(serverId = 1, patientPhone = "+77771112233"),
+                    createLabResult(serverId = 2, patientPhone = "+77002223344", testName = "WBC"),
+                ),
+            )
+
+            val all = dao.getAllResultsFlow().first()
+            assertEquals(2, all.size)
+        }
+
+    @Test
+    fun `clearAll removes everything`() =
+        runBlocking {
+            dao.insertAll(
+                listOf(
+                    createLabResult(serverId = 1),
+                    createLabResult(serverId = 2, testName = "WBC"),
+                ),
+            )
+
+            dao.clearAll()
+
+            val all = dao.getAllResultsFlow().first()
+            assertTrue(all.isEmpty())
+        }
 }

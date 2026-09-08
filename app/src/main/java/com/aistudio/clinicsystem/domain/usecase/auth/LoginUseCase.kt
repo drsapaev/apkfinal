@@ -13,16 +13,21 @@ import javax.inject.Singleton
  * Validates input before delegating to the repository.
  */
 @Singleton
-class LoginUseCase @Inject constructor(
-    private val authRepository: AuthRepositoryInterface,
-) {
-    suspend operator fun invoke(username: String, password: String): Result<LoginOutcome> {
-        if (username.isBlank()) {
-            return Result.failure(IllegalArgumentException("Имя пользователя не может быть пустым"))
+class LoginUseCase
+    @Inject
+    constructor(
+        private val authRepository: AuthRepositoryInterface,
+    ) {
+        suspend operator fun invoke(
+            username: String,
+            password: String,
+        ): Result<LoginOutcome> {
+            if (username.isBlank()) {
+                return Result.failure(IllegalArgumentException("Имя пользователя не может быть пустым"))
+            }
+            if (password.isBlank()) {
+                return Result.failure(IllegalArgumentException("Пароль не может быть пустым"))
+            }
+            return authRepository.login(username.trim(), password)
         }
-        if (password.isBlank()) {
-            return Result.failure(IllegalArgumentException("Пароль не может быть пустым"))
-        }
-        return authRepository.login(username.trim(), password)
     }
-}

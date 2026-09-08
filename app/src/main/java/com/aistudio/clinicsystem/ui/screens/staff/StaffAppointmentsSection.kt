@@ -5,8 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -70,11 +68,13 @@ fun StaffAppointmentsSection(
     onEditClick: (AppointmentEntity) -> Unit,
     onRegisterQueue: (AppointmentEntity) -> Unit,
 ) {
-    val allDoctorsInSystem = remember(allAppointments) {
-        allAppointments.map { it.doctorName }.distinct().filter { it.isNotBlank() }
-    }
-    val isCurrentUserDoctor = currentUser?.fullName?.startsWith("Dr.") == true ||
-        currentUser?.jobTitle == "DOCTOR"
+    val allDoctorsInSystem =
+        remember(allAppointments) {
+            allAppointments.map { it.doctorName }.distinct().filter { it.isNotBlank() }
+        }
+    val isCurrentUserDoctor =
+        currentUser?.fullName?.startsWith("Dr.") == true ||
+            currentUser?.jobTitle == "DOCTOR"
 
     LaunchedEffect(isCurrentUserDoctor, currentUser) {
         if (isCurrentUserDoctor && currentUser != null) {
@@ -82,36 +82,48 @@ fun StaffAppointmentsSection(
         }
     }
 
-    val doctorsList = buildList {
-        add(stringResource(R.string.dlg_all_doctors))
-        if (isCurrentUserDoctor && currentUser != null) {
-            if (!contains(currentUser!!.fullName)) add(currentUser!!.fullName)
+    val doctorsList =
+        buildList {
+            add(stringResource(R.string.dlg_all_doctors))
+            if (isCurrentUserDoctor && currentUser != null) {
+                if (!contains(currentUser!!.fullName)) add(currentUser!!.fullName)
+            }
+            addAll(allDoctorsInSystem.filter { it != currentUser?.fullName })
+        }.distinct()
+
+    val statusesList =
+        listOf(
+            stringResource(R.string.dlg_all_statuses),
+            "PENDING",
+            "APPROVED",
+            "COMPLETED",
+            "CANCELLED",
+        )
+
+    val displayAppointments =
+        allAppointments.filter { appt ->
+            val matchesToday = if (filterTodayOnly) appt.date == todayDateStr else true
+            val matchesSearch =
+                if (searchQuery.isNotBlank()) {
+                    appt.patientName.contains(searchQuery, ignoreCase = true) ||
+                        appt.patientPhone.contains(searchQuery)
+                } else {
+                    true
+                }
+            val matchesDoctor =
+                if (selectedDoctorFilter != stringResource(R.string.dlg_all_doctors)) {
+                    appt.doctorName == selectedDoctorFilter
+                } else {
+                    true
+                }
+            val matchesStatus =
+                if (selectedStatusFilter != stringResource(R.string.dlg_all_statuses)) {
+                    appt.status == selectedStatusFilter
+                } else {
+                    true
+                }
+            matchesToday && matchesSearch && matchesDoctor && matchesStatus
         }
-        addAll(allDoctorsInSystem.filter { it != currentUser?.fullName })
-    }.distinct()
-
-    val statusesList = listOf(
-        stringResource(R.string.dlg_all_statuses),
-        "PENDING",
-        "APPROVED",
-        "COMPLETED",
-        "CANCELLED",
-    )
-
-    val displayAppointments = allAppointments.filter { appt ->
-        val matchesToday = if (filterTodayOnly) appt.date == todayDateStr else true
-        val matchesSearch = if (searchQuery.isNotBlank()) {
-            appt.patientName.contains(searchQuery, ignoreCase = true) ||
-                appt.patientPhone.contains(searchQuery)
-        } else true
-        val matchesDoctor = if (selectedDoctorFilter != stringResource(R.string.dlg_all_doctors)) {
-            appt.doctorName == selectedDoctorFilter
-        } else true
-        val matchesStatus = if (selectedStatusFilter != stringResource(R.string.dlg_all_statuses)) {
-            appt.status == selectedStatusFilter
-        } else true
-        matchesToday && matchesSearch && matchesDoctor && matchesStatus
-    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -141,11 +153,17 @@ fun StaffAppointmentsSection(
                 onClick = onCreateAppointmentClick,
                 colors = ButtonDefaults.buttonColors(containerColor = adminColor),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .testTag("create_appointment_btn"),
+                modifier =
+                    Modifier
+                        .heightIn(min = 44.dp)
+                        .testTag("create_appointment_btn"),
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.surface)
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.surface,
+                )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     stringResource(R.string.ui_priem),
@@ -176,14 +194,16 @@ fun StaffAppointmentsSection(
                 }
             },
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = adminColor,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("appointment_search_field"),
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = adminColor,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                ),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag("appointment_search_field"),
         )
 
         // Today-only filter toggle
@@ -199,10 +219,11 @@ fun StaffAppointmentsSection(
                 testTag = "all_appointments_tab",
             )
             FilterChipBox(
-                text = stringResource(
-                    R.string.staff_today_appointments_count,
-                    allAppointments.count { it.date == todayDateStr }
-                ),
+                text =
+                    stringResource(
+                        R.string.staff_today_appointments_count,
+                        allAppointments.count { it.date == todayDateStr },
+                    ),
                 isSelected = filterTodayOnly,
                 accentColor = adminColor,
                 onClick = { onFilterTodayOnlyChange(true) },
@@ -219,9 +240,10 @@ fun StaffAppointmentsSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             doctorsList.forEach { doc ->
@@ -242,20 +264,22 @@ fun StaffAppointmentsSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             statusesList.forEach { status ->
-                val labelText = when (status) {
-                    stringResource(R.string.dlg_all_statuses) -> stringResource(R.string.dlg_all_statuses)
-                    "PENDING" -> stringResource(R.string.st_pending)
-                    "APPROVED" -> stringResource(R.string.st_approved)
-                    "COMPLETED" -> stringResource(R.string.st_completed)
-                    "CANCELLED" -> stringResource(R.string.st_rejected)
-                    else -> status
-                }
+                val labelText =
+                    when (status) {
+                        stringResource(R.string.dlg_all_statuses) -> stringResource(R.string.dlg_all_statuses)
+                        "PENDING" -> stringResource(R.string.st_pending)
+                        "APPROVED" -> stringResource(R.string.st_approved)
+                        "COMPLETED" -> stringResource(R.string.st_completed)
+                        "CANCELLED" -> stringResource(R.string.st_rejected)
+                        else -> status
+                    }
                 FilterChipBox(
                     text = labelText,
                     isSelected = selectedStatusFilter == status,
@@ -268,11 +292,12 @@ fun StaffAppointmentsSection(
         // Appointments list
         if (displayAppointments.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.large))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
-                    .padding(24.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.large))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
+                        .padding(24.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -283,10 +308,11 @@ fun StaffAppointmentsSection(
             }
         } else {
             displayAppointments.forEach { appt ->
-                val isPendingSync = allPendingSyncs.any {
-                    it.clientRequestId == appt.clientRequestId ||
-                        (it.type == "UPDATE_STATUS" && it.payload.startsWith("${appt.id}|"))
-                }
+                val isPendingSync =
+                    allPendingSyncs.any {
+                        it.clientRequestId == appt.clientRequestId ||
+                            (it.type == "UPDATE_STATUS" && it.payload.startsWith("${appt.id}|"))
+                    }
                 StaffAppointmentCardItem(
                     appt = appt,
                     isPendingSync = isPendingSync,
@@ -317,12 +343,13 @@ private fun FilterChipBox(
     leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(Radius.medium))
-            .background(if (isSelected) accentColor else MaterialTheme.colorScheme.outlineVariant)
-            .clickable(onClick = onClick)
-            .let { if (testTag != null) it.testTag(testTag) else it }
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(Radius.medium))
+                .background(if (isSelected) accentColor else MaterialTheme.colorScheme.outlineVariant)
+                .clickable(onClick = onClick)
+                .let { if (testTag != null) it.testTag(testTag) else it }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         if (leadingIcon != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {

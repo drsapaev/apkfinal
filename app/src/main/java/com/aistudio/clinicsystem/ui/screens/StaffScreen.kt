@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -11,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +28,7 @@ import com.aistudio.clinicsystem.ui.screens.staff.StaffMedicalRecordDialog
 import com.aistudio.clinicsystem.ui.screens.staff.StaffNotesDialog
 import com.aistudio.clinicsystem.ui.screens.staff.StaffQueueSection
 import com.aistudio.clinicsystem.ui.screens.staff.staffPatientsSection
+import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.viewmodel.StaffViewModel
 
 /**
@@ -101,19 +102,32 @@ private fun StaffScreenContent(
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
     val allRecords by viewModel.allMedicalRecords.collectAsStateWithLifecycle()
     val cachedQueueSnapshots by viewModel.cachedQueueSnapshots.collectAsStateWithLifecycle()
+    val allDoctors by viewModel.allDoctors.collectAsStateWithLifecycle()
+
+    // ROLE-FIX: role-aware staff console. Admin gets an Administration
+    // section; the resolved role is shown as a chip in the header area.
+    val staffRole by viewModel.staffRole.collectAsStateWithLifecycle()
+    val adminUsers by viewModel.adminUsers.collectAsStateWithLifecycle()
+    val adminUsersLoading by viewModel.adminUsersLoading.collectAsStateWithLifecycle()
+    val adminUsersError by viewModel.adminUsersError.collectAsStateWithLifecycle()
+    LaunchedEffect(staffRole) { viewModel.loadUsersIfAdmin() }
 
     // Undo snackbar infrastructure
     val snackbarHostState = remember { SnackbarHostState() }
     val undoState by viewModel.undoAction.collectAsStateWithLifecycle()
 
+    // BUILD-FIX: hoist composable stringResource calls out of LaunchedEffect.
+    val actionDoneMsg = stringResource(R.string.staff_action_done)
+    val undoLabel = stringResource(R.string.staff_undo)
     LaunchedEffect(undoState) {
         val currentUndo = undoState
         if (currentUndo != null) {
-            val result = snackbarHostState.showSnackbar(
-                message = stringResource(R.string.staff_action_done),
-                actionLabel = stringResource(R.string.staff_undo),
-                duration = SnackbarDuration.Short,
-            )
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = actionDoneMsg,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.triggerUndo()
             } else {
@@ -147,11 +161,15 @@ private fun StaffScreenContent(
     // Appointments filter state
     var filterTodayOnly by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedDoctorFilter by remember { mutableStateOf(stringResource(R.string.dlg_all_doctors)) }
-    var selectedStatusFilter by remember { mutableStateOf(stringResource(R.string.dlg_all_statuses)) }
-    val todayDateStr = remember {
-        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-    }
+    // BUILD-FIX: composable calls hoisted out of remember {}.
+    val allDoctorsLabel = stringResource(R.string.dlg_all_doctors)
+    val allStatusesLabel = stringResource(R.string.dlg_all_statuses)
+    var selectedDoctorFilter by remember { mutableStateOf(allDoctorsLabel) }
+    var selectedStatusFilter by remember { mutableStateOf(allStatusesLabel) }
+    val todayDateStr =
+        remember {
+            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        }
 
     // Create appointment dialog state
     val draftCreatePatientPhoneVal by viewModel.draftCreatePatientPhone.collectAsStateWithLifecycle()
@@ -194,20 +212,17 @@ private fun StaffScreenContent(
     val approvedAppts = allAppointments.filter { it.status == "APPROVED" }
 
     LaunchedEffect(Unit) {
-        com.aistudio.clinicsystem.utils.AnalyticsManager.trackScreen("StaffScreen")
+        com.aistudio.clinicsystem.utils.AnalyticsManager
+            .trackScreen("StaffScreen")
     }
 
     // P-03 completion: Bottom Navigation tab state
     var selectedTab by rememberSaveable { mutableStateOf(0) }
 
-    val availableDocs = listOf(
-        stringResource(R.string.doc_sapaev) to stringResource(R.string.spec_dentistry),
-        stringResource(R.string.doc_ivanov) to stringResource(R.string.spec_cardiology),
-        stringResource(R.string.doc_petrov) to stringResource(R.string.spec_neurology),
-        stringResource(R.string.doc_sidorova) to stringResource(R.string.spec_pediatrics),
-        stringResource(R.string.doc_smirnova) to stringResource(R.string.spec_ophthalmology),
-        stringResource(R.string.doc_kuznetsov) to stringResource(R.string.spec_general_therapy),
-    )
+    val availableDocs =
+        allDoctors.map { doctor ->
+            doctor.fullName to doctor.specialty
+        }
 
     Scaffold(
         modifier = modifier,
@@ -265,20 +280,34 @@ private fun StaffScreenContent(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(innerPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .widthIn(max = 840.dp)
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = 840.dp)
+                        .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
             ) {
+                // ROLE-FIX: role chip + Admin-only Administration section
+                item { StaffRoleCard(staffRole) }
+                if (staffRole == com.aistudio.clinicsystem.domain.model.UserRole.ADMIN) {
+                    item {
+                        StaffAdminUsersCard(
+                            users = adminUsers,
+                            loading = adminUsersLoading,
+                            error = adminUsersError,
+                        )
+                    }
+                }
+
                 // Analytics micro-cards row
                 item {
                     Row(
@@ -402,9 +431,10 @@ private fun StaffScreenContent(
     StaffMedicalRecordDialog(
         visible = showAddRecordDialog,
         onDismiss = {
-            val hasDraftText = diagnosisInput.isNotBlank() ||
-                prescriptionInput.isNotBlank() ||
-                recommendationsInput.isNotBlank()
+            val hasDraftText =
+                diagnosisInput.isNotBlank() ||
+                    prescriptionInput.isNotBlank() ||
+                    recommendationsInput.isNotBlank()
             if (hasDraftText) {
                 showUnsavedWarningDialog = true
             } else {
@@ -475,9 +505,10 @@ private fun StaffScreenContent(
     StaffCreateAppointmentDialog(
         visible = showCreateAppointmentDialog,
         onDismiss = {
-            val hasCreateDraft = createPatientPhone.isNotBlank() ||
-                createPatientName.isNotBlank() ||
-                createReason.isNotBlank()
+            val hasCreateDraft =
+                createPatientPhone.isNotBlank() ||
+                    createPatientName.isNotBlank() ||
+                    createReason.isNotBlank()
             if (hasCreateDraft) {
                 showCreateUnsavedWarning = true
             } else {
@@ -665,7 +696,11 @@ private fun StaffTopAppBar(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = stringResource(R.string.staff_topbar_user_label, currentUser?.fullName ?: stringResource(R.string.staff_default_doctor_name)),
+                    text =
+                        stringResource(
+                            R.string.staff_topbar_user_label,
+                            currentUser?.fullName ?: stringResource(R.string.staff_default_doctor_name),
+                        ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
@@ -677,33 +712,38 @@ private fun StaffTopAppBar(
                     imageVector = Icons.Default.CloudOff,
                     contentDescription = stringResource(R.string.pat_no_connection),
                     tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier
-                        .padding(end = 4.dp)
-                        .size(20.dp),
+                    modifier =
+                        Modifier
+                            .padding(end = 4.dp)
+                            .size(20.dp),
                 )
             }
-            val themeIcon = when (themeMode) {
-                "LIGHT" -> Icons.Default.LightMode
-                "DARK" -> Icons.Default.DarkMode
-                else -> Icons.Default.BrightnessAuto
-            }
-            val themeDescription = when (themeMode) {
-                "LIGHT" -> stringResource(R.string.theme_light)
-                "DARK" -> stringResource(R.string.theme_dark)
-                else -> stringResource(R.string.theme_system)
-            }
+            val themeIcon =
+                when (themeMode) {
+                    "LIGHT" -> Icons.Default.LightMode
+                    "DARK" -> Icons.Default.DarkMode
+                    else -> Icons.Default.BrightnessAuto
+                }
+            val themeDescription =
+                when (themeMode) {
+                    "LIGHT" -> stringResource(R.string.theme_light)
+                    "DARK" -> stringResource(R.string.theme_dark)
+                    else -> stringResource(R.string.theme_system)
+                }
             IconButton(
                 onClick = {
-                    val nextMode = when (themeMode) {
-                        "SYSTEM" -> "LIGHT"
-                        "LIGHT" -> "DARK"
-                        else -> "SYSTEM"
-                    }
+                    val nextMode =
+                        when (themeMode) {
+                            "SYSTEM" -> "LIGHT"
+                            "LIGHT" -> "DARK"
+                            else -> "SYSTEM"
+                        }
                     onThemeToggle(nextMode)
                 },
-                modifier = Modifier
-                    .testTag("theme_toggle_button_staff")
-                    .minimumInteractiveComponentSize(),
+                modifier =
+                    Modifier
+                        .testTag("theme_toggle_button_staff")
+                        .minimumInteractiveComponentSize(),
             ) {
                 Icon(
                     imageVector = themeIcon,
@@ -714,9 +754,10 @@ private fun StaffTopAppBar(
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(
                 onClick = onLogout,
-                modifier = Modifier
-                    .testTag("logout_button_staff")
-                    .minimumInteractiveComponentSize(),
+                modifier =
+                    Modifier
+                        .testTag("logout_button_staff")
+                        .minimumInteractiveComponentSize(),
             ) {
                 Icon(
                     imageVector = Icons.Default.Logout,
@@ -727,4 +768,148 @@ private fun StaffTopAppBar(
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
     )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ROLE-FIX: role-aware staff console building blocks
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Small chip showing the resolved role of the signed-in staff user, so
+ * Admin/Registrar/Doctor sessions are visually distinguishable (previously
+ * every staff role saw an identical console with no role indication).
+ */
+@Composable
+private fun StaffRoleCard(role: com.aistudio.clinicsystem.domain.model.UserRole) {
+    Card(
+        shape = RoundedCornerShape(Radius.medium),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.Badge,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.staff_role_label) + ": " + role.displayLabel,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * Admin-only card: system users list from GET /api/v1/users. Shown only
+ * when the signed-in role resolves to Admin — Registrar/Doctor sessions
+ * never see it (and the backend route itself is Admin-only).
+ */
+@Composable
+private fun StaffAdminUsersCard(
+    users: List<com.aistudio.clinicsystem.data.api.StaffUserDto>,
+    loading: Boolean,
+    error: String?,
+) {
+    Card(
+        shape = RoundedCornerShape(Radius.large),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.ManageAccounts,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.staff_admin_section),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            when {
+                loading -> {
+                    Text(
+                        text = stringResource(R.string.staff_admin_loading),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                error != null -> {
+                    Text(
+                        text = stringResource(R.string.staff_admin_error) + ": " + error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                users.isEmpty() -> {
+                    Text(
+                        text = stringResource(R.string.staff_admin_empty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> {
+                    users.forEach { user ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = user.username,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    text = user.role,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Text(
+                                text =
+                                    stringResource(
+                                        if (user.isActive) {
+                                            R.string.staff_admin_active
+                                        } else {
+                                            R.string.staff_admin_inactive
+                                        },
+                                    ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color =
+                                    if (user.isActive) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

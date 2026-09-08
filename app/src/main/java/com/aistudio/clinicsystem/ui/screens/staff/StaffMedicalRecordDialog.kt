@@ -1,20 +1,21 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.aistudio.clinicsystem.ui.screens.staff
 
-import androidx.compose.ui.res.stringResource
-import com.aistudio.clinicsystem.ui.theme.Spacing
-import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.aistudio.clinicsystem.R
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
 
 /**
  * Stage 10d (PERF-8 fix): StaffMedicalRecordDialog — extracted from
@@ -50,20 +51,23 @@ fun StaffMedicalRecordDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = modifier
-                .fillMaxWidth()
-                .imePadding()
-                .padding(vertical = 16.dp),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .padding(vertical = 16.dp),
             shape = RoundedCornerShape(Radius.large),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(Spacing.xl)
-                    .verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(Spacing.xl)
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 Text(

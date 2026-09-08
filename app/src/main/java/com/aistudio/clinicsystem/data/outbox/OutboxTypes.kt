@@ -24,7 +24,7 @@ enum class OutboxStatus {
     FAILED,
 
     /** Max retries exceeded — requires manual intervention. */
-    DEAD_LETTER
+    DEAD_LETTER,
 }
 
 /**
@@ -43,7 +43,9 @@ enum class OutboxStatus {
  * The `.code` values match the strings that were already in production —
  * no migration needed.
  */
-enum class OutboxOperation(val code: String) {
+enum class OutboxOperation(
+    val code: String,
+) {
     CREATE_APPOINTMENT("CREATE_APPOINTMENT"),
     UPDATE_STATUS("UPDATE_STATUS"),
     CREATE_MEDICAL_RECORD("CREATE_MEDICAL_RECORD"),
@@ -56,8 +58,7 @@ enum class OutboxOperation(val code: String) {
          * old build) — the caller should treat null as "payload corrupt"
          * and move the row to DEAD_LETTER.
          */
-        fun fromCode(code: String): OutboxOperation? =
-            entries.firstOrNull { it.code == code }
+        fun fromCode(code: String): OutboxOperation? = entries.firstOrNull { it.code == code }
     }
 }
 
@@ -66,9 +67,9 @@ enum class OutboxOperation(val code: String) {
  */
 data class OutboxRetryPolicy(
     val maxRetries: Int = 5,
-    val initialBackoffMs: Long = 2_000,      // 2 seconds
-    val maxBackoffMs: Long = 300_000,        // 5 minutes
-    val backoffMultiplier: Double = 2.0      // exponential: 2s, 4s, 8s, 16s, 32s
+    val initialBackoffMs: Long = 2_000, // 2 seconds
+    val maxBackoffMs: Long = 300_000, // 5 minutes
+    val backoffMultiplier: Double = 2.0, // exponential: 2s, 4s, 8s, 16s, 32s
 ) {
     /**
      * Calculates the next retry delay for a given attempt number (0-based).

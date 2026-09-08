@@ -11,7 +11,7 @@ data class User(
     val dateOfBirth: String? = null,
     val biometricEnabled: Boolean = false,
     val telegramChatId: String? = null,
-    val clinicId: String? = null
+    val clinicId: String? = null,
 )
 
 data class Appointment(
@@ -26,11 +26,15 @@ data class Appointment(
     val reason: String,
     val notes: String = "",
     val clinicId: String? = null,
-    val updatedAt: Long = 0
+    val updatedAt: Long = 0,
 )
 
 enum class AppointmentStatus {
-    PENDING, APPROVED, COMPLETED, CANCELLED;
+    PENDING,
+    APPROVED,
+    COMPLETED,
+    CANCELLED,
+    ;
 
     companion object {
         fun fromString(value: String?): AppointmentStatus =
@@ -55,7 +59,7 @@ data class MedicalRecord(
     val prescription: String,
     val visitDate: String,
     val recommendations: String = "",
-    val timestamp: Long = 0
+    val timestamp: Long = 0,
 )
 
 data class QueuePosition(
@@ -63,11 +67,15 @@ data class QueuePosition(
     val queueNumber: Int? = null,
     val estimatedWaitMinutes: Int? = null,
     val status: QueueStatus,
-    val queueId: Int? = null
+    val queueId: Int? = null,
 )
 
 enum class QueueStatus {
-    WAITING, IN_PROGRESS, COMPLETED, OPEN;
+    WAITING,
+    IN_PROGRESS,
+    COMPLETED,
+    OPEN,
+    ;
 
     companion object {
         fun fromString(value: String?): QueueStatus =
@@ -90,10 +98,15 @@ data class PendingSync(
     val retryCount: Int = 0,
     val status: String = "PENDING",
     val lastError: String? = null,
-    val nextRetryAt: Long? = null
+    val nextRetryAt: Long? = null,
 )
 
 sealed class LoginResult {
-    data class Success(val user: User) : LoginResult()
-    data class TwoFactorRequired(val challengeToken: String) : LoginResult()
+    data class Success(
+        val user: User,
+    ) : LoginResult()
+
+    data class TwoFactorRequired(
+        val challengeToken: String,
+    ) : LoginResult()
 }

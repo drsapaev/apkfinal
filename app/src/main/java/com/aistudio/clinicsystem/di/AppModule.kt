@@ -12,6 +12,7 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.SessionManager
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
 import com.aistudio.clinicsystem.utils.TokenManager
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,13 +39,15 @@ import javax.inject.Singleton
 object AppModule {
     @Provides
     @Singleton
-    fun provideSessionManager(@ApplicationContext context: Context): SessionManager =
-        SessionManagerImpl(context.applicationContext)
+    fun provideSessionManager(
+        @ApplicationContext context: Context,
+    ): SessionManager = SessionManagerImpl(context.applicationContext)
 
     @Provides
     @Singleton
-    fun provideClinicDatabase(@ApplicationContext context: Context): ClinicDatabase =
-        ClinicDatabase.getDatabase(context)
+    fun provideClinicDatabase(
+        @ApplicationContext context: Context,
+    ): ClinicDatabase = ClinicDatabase.getDatabase(context)
 
     @Provides
     fun provideSyncLogDao(db: ClinicDatabase): SyncLogDao = db.syncLogDao()
@@ -56,36 +59,48 @@ object AppModule {
         apiService: ApiService,
         mobileApiService: MobileApiService,
         moshi: com.squareup.moshi.Moshi,
-    ): ClinicRepository = ClinicRepository(
-        database = database,
-        mobileApiService = mobileApiService,
-        legacyApiService = apiService,
-        moshi = moshi,
-    )
+    ): ClinicRepository =
+        ClinicRepository(
+            database = database,
+            mobileApiService = mobileApiService,
+            legacyApiService = apiService,
+            moshi = moshi,
+        )
 
     @Provides
     @Singleton
     fun provideAuthRepository(
         @ApplicationContext context: Context,
         database: ClinicDatabase,
-        apiService: ApiService,
         mobileApiService: MobileApiService,
         sessionRepository: SessionRepository,
-    ): AuthRepository = AuthRepository(
-        context = context,
-        database = database,
-        mobileApiService = mobileApiService,
-        apiService = apiService,
-        sessionRepository = sessionRepository,
-    )
+    ): AuthRepository =
+        AuthRepository(
+            context = context,
+            database = database,
+            mobileApiService = mobileApiService,
+            sessionRepository = sessionRepository,
+        )
 
     @Provides
     @Singleton
-    fun provideApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): ApiService =
-        apiClient.service
+    fun provideApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): ApiService = apiClient.service
 
     @Provides
     @Singleton
-    fun provideMobileApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): MobileApiService =
-        apiClient.mobileService
+    fun provideMobileApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): MobileApiService = apiClient.mobileService
+}
+
+/**
+ * BUILD-FIX: the auth use cases (LoginUseCase, Verify2FAUseCase, …) inject
+ * the domain [AuthRepositoryInterface], while some ViewModels inject the
+ * concrete [AuthRepository]. Dagger needs the interface bound to the
+ * implementation or the SingletonComponent fails to compile.
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryBindingsModule {
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepository): com.aistudio.clinicsystem.domain.repository.AuthRepositoryInterface
 }

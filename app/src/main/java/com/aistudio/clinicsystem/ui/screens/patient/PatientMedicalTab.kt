@@ -1,6 +1,5 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
-import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aistudio.clinicsystem.data.db.MedicalRecordEntity
+import com.aistudio.clinicsystem.ui.theme.Spacing
 
 /**
  * P-03 refactor: Medical tab content for PatientScreen Bottom Navigation.
@@ -28,25 +28,27 @@ fun PatientMedicalTab(
     isFetching: Boolean,
     onFetchClick: () -> Unit,
     onRecordToggle: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val filteredRecords = if (searchQuery.isBlank()) {
-        records
-    } else {
-        records.filter {
-            it.diagnosis.contains(searchQuery, ignoreCase = true) ||
+    val filteredRecords =
+        if (searchQuery.isBlank()) {
+            records
+        } else {
+            records.filter {
+                it.diagnosis.contains(searchQuery, ignoreCase = true) ||
                     it.doctorName.contains(searchQuery, ignoreCase = true) ||
                     it.prescription.contains(searchQuery, ignoreCase = true) ||
                     it.recommendations.contains(searchQuery, ignoreCase = true)
+            }
         }
-    }
 
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(Spacing.l)
+        modifier =
+            modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.l),
     ) {
         MedicalReportsSection(
             searchQuery = searchQuery,
@@ -55,7 +57,7 @@ fun PatientMedicalTab(
             expandedRecords = expandedRecords,
             isFetching = isFetching,
             onFetchClick = onFetchClick,
-            onRecordToggle = onRecordToggle
+            onRecordToggle = onRecordToggle,
         )
 
         Spacer(modifier = Modifier.height(80.dp))
