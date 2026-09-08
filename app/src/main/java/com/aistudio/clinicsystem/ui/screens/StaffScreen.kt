@@ -170,7 +170,8 @@ private fun StaffScreenContent(
     var notesInput by remember { mutableStateOf("") }
 
     // Appointments filter state
-    var filterTodayOnly by remember { mutableStateOf(false) }
+    // TASK-5: 0 = all, 1 = today, 2 = upcoming, 3 = history
+    var appointmentFilterMode by remember { mutableStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     // BUILD-FIX: composable calls hoisted out of remember {}.
     val allDoctorsLabel = stringResource(R.string.dlg_all_doctors)
@@ -369,8 +370,8 @@ private fun StaffScreenContent(
                         currentUser = currentUser,
                         searchQuery = searchQuery,
                         onSearchQueryChange = { searchQuery = it },
-                        filterTodayOnly = filterTodayOnly,
-                        onFilterTodayOnlyChange = { filterTodayOnly = it },
+                        appointmentFilterMode = appointmentFilterMode,
+                        onAppointmentFilterModeChange = { appointmentFilterMode = it },
                         selectedDoctorFilter = selectedDoctorFilter,
                         onDoctorFilterChange = { selectedDoctorFilter = it },
                         selectedStatusFilter = selectedStatusFilter,

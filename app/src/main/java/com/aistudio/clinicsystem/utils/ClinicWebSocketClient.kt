@@ -434,9 +434,15 @@ class ClinicWebSocketClient
                             ),
                         )
                     } else {
+                        // TASK-5: WS events carry backend statuses — normalize
+                        // so realtime, REST and background sync agree on the
+                        // client vocabulary (PENDING/APPROVED/…).
+                        val normalized = ServerStatusMapper.fromServer(status)
                         if (existing != null) {
-                            if (existing.status != status) {
-                                appDao.updateAppointment(existing.copy(status = status, updatedAt = System.currentTimeMillis()))
+                            if (existing.status != normalized) {
+                                appDao.updateAppointment(
+                                    existing.copy(status = normalized, updatedAt = System.currentTimeMillis()),
+                                )
                             }
                         } else {
                             appDao.insertAppointment(
@@ -452,7 +458,7 @@ class ClinicWebSocketClient
                                     specialty = data.specialty ?: "Терапевт",
                                     date = date,
                                     time = time,
-                                    status = status,
+                                    status = normalized,
                                     reason = data.reason ?: "",
                                     updatedAt = System.currentTimeMillis(),
                                 ),

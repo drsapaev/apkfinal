@@ -1908,47 +1908,14 @@ class ClinicRepository
                         val serverList = apptsResponse.body()!!
                         addSyncLog("✓ Успешно получено ${serverList.size} предстоящих приёмов.", "CLOUD_SYNC_SIMULATOR")
 
-                        // High-1 audit fix: map AppointmentUpcomingOut → AppointmentEntity
-                        // using computed date/time accessors for ISO datetime split.
-                        val entities =
-                            serverList.map { dto ->
-                                AppointmentEntity(
-                                    id =
-                                        java.util.UUID
-                                            .randomUUID()
-                                            .toString(),
-                                    serverId = dto.id,
-                                    patientPhone = patientPhone,
-                                    patientName = "",
-                                    doctorName = dto.doctorName,
-                                    specialty = dto.specialty,
-                                    date = dto.date, // computed from appointment_date
-                                    time = dto.time, // computed from appointment_date
-                                    status = dto.status,
-                                    reason = "",
-                                    notes = "",
-                                    clinicId = dto.clinicAddress,
-                                    updatedAt = System.currentTimeMillis(),
-                                    version = 1,
-                                )
-                            }
+                        // TASK-5: full reconciliation for EVERY row — all
+                        // changed server fields (date/time/doctor/specialty/
+                        // status) are merged; statuses are normalized; a time
+                        // transfer without a status change is no longer
+                        // dropped (the old loop only updated on status diff).
                         database.withTransaction {
-                            for (entity in entities) {
-                                val existing = appointmentDao.getAppointmentByServerId(entity.serverId ?: -1)
-                                if (existing == null) {
-                                    appointmentDao.insertAppointment(entity)
-                                } else if (existing.status != entity.status) {
-                                    appointmentDao.updateAppointment(
-                                        existing.copy(
-                                            status = entity.status,
-                                            date = entity.date,
-                                            time = entity.time,
-                                            doctorName = entity.doctorName,
-                                            specialty = entity.specialty,
-                                            updatedAt = System.currentTimeMillis(),
-                                        ),
-                                    )
-                                }
+                            for (dto in serverList) {
+                                reconcileUpcomingAppointment(dto, patientPhone)
                             }
                         }
 
@@ -2061,9 +2028,26 @@ class ClinicRepository
                             "🛰️ GET /api/v1/appointments (staff: все приёмы клиники) [Delta cursor: $sinceParam]",
                             "CLOUD_SYNC_SIMULATOR",
                         )
-                        val appointmentsResponse = legacyApiService.getAppointments(limit = 200)
-                        if (appointmentsResponse.isSuccessful && appointmentsResponse.body() != null) {
-                            val serverList = appointmentsResponse.body()!!
+                        // TASK-5: paginated fetch — the old single call with
+                        // limit=200 silently hid every appointment beyond the
+                        // first 200. Pages of 200 are pulled until a short
+                        // page arrives (hard cap prevents runaway loops).
+                        val serverList = mutableListOf<com.aistudio.clinicsystem.data.api.StaffAppointmentDto>()
+                        val pageSize = 200
+                        var skip = 0
+                        var fetchFailed = false
+                        while (true) {
+                            val pageResponse = legacyApiService.getAppointments(limit = pageSize, skip = skip)
+                            if (!pageResponse.isSuccessful || pageResponse.body() == null) {
+                                if (skip == 0) fetchFailed = true
+                                break
+                            }
+                            val page = pageResponse.body()!!
+                            serverList.addAll(page)
+                            if (page.size < pageSize || serverList.size >= 5000) break
+                            skip += pageSize
+                        }
+                        if (!fetchFailed) {
                             addSyncLog("✓ Успешно получено ${serverList.size} записей с сервера.", "CLOUD_SYNC_SIMULATOR")
 
                             database.withTransaction {
@@ -2078,7 +2062,7 @@ class ClinicRepository
                                 .recordSuccess(latency)
                             return true
                         } else {
-                            addSyncLog("⚠️ Сервер вернул код ${appointmentsResponse.code()}.", "CLOUD_SYNC_SIMULATOR")
+                            addSyncLog("⚠️ Сервер недоступен: не удалось загрузить первую страницу приёмов.", "CLOUD_SYNC_SIMULATOR")
                             com.aistudio.clinicsystem.utils.SyncMetricsManager
                                 .recordFailure()
                         }
@@ -2153,13 +2137,23 @@ class ClinicRepository
                 return
             }
 
-            // Existing appointment — check stale-write guard.
-            // Stage 3.4: payload format is `<serverId>|<status>|<notes>|<localUuid>`.
+            // TASK-5: stale-write guard covers ALL unconfirmed local writes —
+            // status changes (UPDATE_STATUS) AND full edits (UPDATE_APPOINTMENT)
+            // — so a queued draft is never overwritten by an older server
+            // snapshot. Payload prefixes identify the target row.
             val pendingForThis =
-                pendingSyncDao.getAllPendingSyncs().any {
-                    it.type == "UPDATE_STATUS" &&
-                        it.payload.startsWith("${appDto.id}|") &&
-                        (it.status == "PENDING" || it.status == "PROCESSING" || it.status == "FAILED")
+                pendingSyncDao.getAllPendingSyncs().any { row ->
+                    val live = row.status == "PENDING" || row.status == "PROCESSING" || row.status == "FAILED"
+                    live && (
+                        (
+                            row.type == "UPDATE_STATUS" &&
+                                row.payload.startsWith("${appDto.id}|")
+                        ) ||
+                            (
+                                row.type == "UPDATE_APPOINTMENT" &&
+                                    row.payload.contains("\"server_id\":${appDto.id}")
+                            )
+                    )
                 }
             if (pendingForThis) {
                 addSyncLog(
