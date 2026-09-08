@@ -51,6 +51,11 @@ class StaffViewModel
                     com.aistudio.clinicsystem.domain.model.UserRole.PATIENT,
                 )
 
+        // TASK-2: one-shot staff console messages for Snackbar surfacing of
+        // the real write outcomes (confirmed / queued / rejected).
+        private val _staffMessageEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+        val staffMessageEvent: SharedFlow<String> = _staffMessageEvent.asSharedFlow()
+
         private val _adminUsers =
             MutableStateFlow<List<com.aistudio.clinicsystem.data.api.StaffUserDto>>(emptyList())
         val adminUsers: StateFlow<List<com.aistudio.clinicsystem.data.api.StaffUserDto>> =
@@ -343,14 +348,15 @@ class StaffViewModel
                     if (oldAppt != null) {
                         _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                     }
-                    val patientUser = repository.getUserByPhone(updated.patientPhone)
+                    val entity = updated.entity
+                    val patientUser = repository.getUserByPhone(entity.patientPhone)
                     val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
 
                     com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
                         appContext,
-                        updated.serverId ?: 0,
-                        updated.doctorName,
-                        "${updated.date} в ${updated.time}",
+                        entity.serverId ?: 0,
+                        entity.doctorName,
+                        "${entity.date} в ${entity.time}",
                         "APPROVED",
                         patientName,
                     )
@@ -389,14 +395,15 @@ class StaffViewModel
                     if (oldAppt != null) {
                         _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                     }
-                    val patientUser = repository.getUserByPhone(updated.patientPhone)
+                    val entity = updated.entity
+                    val patientUser = repository.getUserByPhone(entity.patientPhone)
                     val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
 
                     com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
                         appContext,
-                        updated.serverId ?: 0,
-                        updated.doctorName,
-                        "${updated.date} в ${updated.time}",
+                        entity.serverId ?: 0,
+                        entity.doctorName,
+                        "${entity.date} в ${entity.time}",
                         "CANCELLED",
                         patientName,
                     )

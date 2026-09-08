@@ -86,11 +86,11 @@ class OutboxRetryPolicyTest {
     }
 
     @Test
-    fun `OutboxOperation enum has 5 values`() {
-        // TASK-1 added CREATE_APPOINTMENT_SELF / CREATE_APPOINTMENT_STAFF to
-        // the 3 legacy values (CREATE_APPOINTMENT, UPDATE_STATUS,
-        // CREATE_MEDICAL_RECORD).
-        assertEquals(5, OutboxOperation.entries.size)
+    fun `OutboxOperation enum has 6 values`() {
+        // TASK-1 added CREATE_APPOINTMENT_SELF / CREATE_APPOINTMENT_STAFF and
+        // TASK-2 added UPDATE_APPOINTMENT to the 3 legacy values
+        // (CREATE_APPOINTMENT, UPDATE_STATUS, CREATE_MEDICAL_RECORD).
+        assertEquals(6, OutboxOperation.entries.size)
     }
 
     @Test

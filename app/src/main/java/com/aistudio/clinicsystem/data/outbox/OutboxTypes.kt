@@ -65,6 +65,13 @@ enum class OutboxOperation(
      */
     CREATE_APPOINTMENT_STAFF("CREATE_APPOINTMENT_STAFF"),
     UPDATE_STATUS("UPDATE_STATUS"),
+
+    /**
+     * TASK-2: full edit of an existing appointment (date/time/doctor/notes)
+     * that could not be delivered immediately. Retried via the staff
+     * endpoint PUT /api/v1/appointments/{id} with the structured payload.
+     */
+    UPDATE_APPOINTMENT("UPDATE_APPOINTMENT"),
     CREATE_MEDICAL_RECORD("CREATE_MEDICAL_RECORD"),
     ;
 

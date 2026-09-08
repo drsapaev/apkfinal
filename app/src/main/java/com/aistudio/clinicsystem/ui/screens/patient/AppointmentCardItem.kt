@@ -131,6 +131,23 @@ fun AppointmentCardItem(
                             }
                         }
 
+                        // TASK-2: the syncState badge tells the user whether
+                        // the row is a queued draft (offline) or a rejected
+                        // change — a locally changed row is NEVER presented as
+                        // a server-confirmed state.
+                        when (appointment.syncState) {
+                            com.aistudio.clinicsystem.data.db.AppointmentEntity.SYNC_STATE_QUEUED ->
+                                SyncStateBadge(
+                                    text = "Черновик (не отправлено)",
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                            com.aistudio.clinicsystem.data.db.AppointmentEntity.SYNC_STATE_REJECTED ->
+                                SyncStateBadge(
+                                    text = "Отклонено сервером",
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                        }
+
                         if (isPendingSync) {
                             Surface(
                                 shape = RoundedCornerShape(Radius.medium),
@@ -274,5 +291,29 @@ fun AppointmentCardItem(
                 }
             }
         }
+    }
+}
+
+/**
+ * TASK-2: small badge distinguishing locally-queued drafts and
+ * server-rejected changes from confirmed rows.
+ */
+@Composable
+private fun SyncStateBadge(
+    text: String,
+    color: androidx.compose.ui.graphics.Color,
+) {
+    Surface(
+        shape = RoundedCornerShape(Radius.medium),
+        color = color.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.4f)),
+    ) {
+        Text(
+            text = text,
+            fontWeight = FontWeight.Bold,
+            fontSize = AppFontSize.caption,
+            color = color,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
 }

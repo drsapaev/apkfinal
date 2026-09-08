@@ -110,8 +110,12 @@ class StaffViewModelTest {
                 )
             coEvery { repository.getAppointmentById("apt-001") } returns appointment
             coEvery {
-                repository.updateAppointmentStatusOnServerAndLocal(any(), any(), any(), any())
-            } returns appointment.copy(status = "APPROVED")
+                repository.updateAppointmentStatusOnServerAndLocal(any(), any(), any(), any(), any())
+            } returns
+                com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Confirmed(
+                    appointment.copy(status = "APPROVED"),
+                    101,
+                )
 
             viewModel.approveAppointment("apt-001")
             advanceUntilIdle()
@@ -122,6 +126,7 @@ class StaffViewModelTest {
                     id = "apt-001",
                     status = "APPROVED",
                     cancelReason = "",
+                    actorIsPatient = false,
                 )
             }
         }

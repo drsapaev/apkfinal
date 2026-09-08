@@ -68,4 +68,13 @@ object OutboxRouting {
         } else {
             StatusRoute.STAFF_PUT
         }
+
+    /**
+     * TASK-2: HTTP classification shared by the foreground write paths and
+     * the outbox flush. 403/409/422 are SERVER REJECTIONS, not network
+     * absence — they must surface to the user and must NOT be retried on a
+     * different route or mistaken for an offline state. Retriable = 5xx,
+     * 401 (token refresh), 408, 429.
+     */
+    fun isRetriableHttp(code: Int): Boolean = code in 500..599 || code == 401 || code == 408 || code == 429
 }

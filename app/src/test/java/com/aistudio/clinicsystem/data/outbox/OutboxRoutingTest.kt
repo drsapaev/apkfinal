@@ -116,9 +116,10 @@ class OutboxRoutingTest {
                 OutboxOperation.CREATE_APPOINTMENT_SELF.code,
                 OutboxOperation.CREATE_APPOINTMENT_STAFF.code,
                 OutboxOperation.UPDATE_STATUS.code,
+                OutboxOperation.UPDATE_APPOINTMENT.code,
                 OutboxOperation.CREATE_MEDICAL_RECORD.code,
             )
-        assertEquals(5, codes.size)
+        assertEquals(6, codes.size)
         // Round-trip through fromCode — new codes must stay parseable.
         assertEquals(OutboxOperation.CREATE_APPOINTMENT_SELF, OutboxOperation.fromCode("CREATE_APPOINTMENT_SELF"))
         assertEquals(OutboxOperation.CREATE_APPOINTMENT_STAFF, OutboxOperation.fromCode("CREATE_APPOINTMENT_STAFF"))

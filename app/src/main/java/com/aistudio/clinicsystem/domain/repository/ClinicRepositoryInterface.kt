@@ -76,6 +76,9 @@ interface ClinicRepositoryInterface {
     /**
      * TASK-1: `actorIsPatient` selects the route (mobile cancel vs staff PUT)
      * and is recorded in the outbox so retries replay the original scenario.
+     * TASK-2: returns a [com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome]
+     * so the UI can distinguish a server confirmation from a queued draft
+     * and from a server rejection.
      */
     suspend fun updateAppointmentStatusOnServerAndLocal(
         token: String?,
@@ -83,7 +86,7 @@ interface ClinicRepositoryInterface {
         status: String,
         cancelReason: String = "",
         actorIsPatient: Boolean = false,
-    ): com.aistudio.clinicsystem.data.db.AppointmentEntity?
+    ): com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome?
 
     suspend fun retryUnsyncedWrites(token: String?): Boolean
 

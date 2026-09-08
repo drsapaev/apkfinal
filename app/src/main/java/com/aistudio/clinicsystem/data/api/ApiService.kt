@@ -338,6 +338,26 @@ data class AppointmentOutboxPayload(
 )
 
 /**
+ * TASK-2: structured outbox payload for UPDATE_APPOINTMENT rows — a full
+ * edit of an existing appointment that could not be delivered immediately
+ * (offline, 5xx, 408/429). Carries the serverId of the target appointment
+ * so the retry hits the same row; `rowVersion`/`localId` let the retry
+ * reconcile the local entity afterwards.
+ */
+@JsonClass(generateAdapter = true)
+data class AppointmentEditOutboxPayload(
+    @Json(name = "server_id") val serverId: Int,
+    @Json(name = "local_id") val localId: String,
+    @Json(name = "doctor_id") val doctorId: Int? = null,
+    @Json(name = "doctor_name") val doctorName: String = "",
+    @Json(name = "date") val date: String = "",
+    @Json(name = "time") val time: String = "",
+    @Json(name = "reason") val reason: String = "",
+    @Json(name = "status") val status: String = "",
+    @Json(name = "notes") val notes: String? = null,
+)
+
+/**
  * M-CONTRACT-FIX: [AppointmentDto] and [MedicalRecordDto] are kept ONLY as
  * the outbox payload format (`PendingSyncEntity.payload`, written by
  * ClinicRepository when a write is queued offline). They are parsed back

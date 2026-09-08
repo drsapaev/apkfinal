@@ -116,6 +116,17 @@ private fun StaffScreenContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val undoState by viewModel.undoAction.collectAsStateWithLifecycle()
 
+    // TASK-2: surface the real write outcomes (confirmed/queued/rejected)
+    // coming from the staff ViewModel.
+    LaunchedEffect(Unit) {
+        viewModel.staffMessageEvent.collect { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long,
+            )
+        }
+    }
+
     // BUILD-FIX: hoist composable stringResource calls out of LaunchedEffect.
     val actionDoneMsg = stringResource(R.string.staff_action_done)
     val undoLabel = stringResource(R.string.staff_undo)

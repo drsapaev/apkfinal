@@ -126,6 +126,13 @@ class PatientViewModel
                 when (action) {
                     is UndoAction.RestoreAppointment -> {
                         repository.updateAppointment(action.oldAppt)
+                        // TASK-2: a restored unsynced draft must be re-queued
+                        // for delivery — restoring the local row alone would
+                        // leave a draft that never reaches the server.
+                        repository.reEnqueueCreateForUnsynced(
+                            action.oldAppt,
+                            com.aistudio.clinicsystem.data.outbox.OutboxRouting.OWNER_PATIENT,
+                        )
                         repository.addSyncLog("↩️ Действие отменено (Запись #${action.oldAppt.id} восстановлена).", "SYSTEM_SYNC")
                     }
                 }
@@ -259,21 +266,32 @@ class PatientViewModel
                 _isBookingInProgress.value = true
                 try {
                     val token = sessionRepository.accessToken
-                    repository.createAppointmentOnServerAndLocal(
-                        token = token,
-                        patientId = null, // mobile contract derives the patient from the JWT
-                        patientPhone = user.phone,
-                        patientName = user.fullName,
-                        doctorId = doctorServerId,
-                        doctorName = doctorName,
-                        specialty = specialty,
-                        date = date,
-                        time = time,
-                        reason = reason,
-                    )
+                    val saved =
+                        repository.createAppointmentOnServerAndLocal(
+                            token = token,
+                            patientId = null, // mobile contract derives the patient from the JWT
+                            patientPhone = user.phone,
+                            patientName = user.fullName,
+                            doctorId = doctorServerId,
+                            doctorName = doctorName,
+                            specialty = specialty,
+                            date = date,
+                            time = time,
+                            reason = reason,
+                        )
 
-                    // P-17 fix: emit event for Snackbar
-                    _appointmentCreatedEvent.tryEmit("Запись к врачу $doctorName на $date в $time создана. Ожидает подтверждения клиники.")
+                    // TASK-2: the message reflects the REAL outcome — server
+                    // confirmation, queued draft, or rejection. No fake "saved".
+                    _appointmentCreatedEvent.tryEmit(
+                        when (saved.syncState) {
+                            com.aistudio.clinicsystem.data.db.AppointmentEntity.SYNC_STATE_REJECTED ->
+                                "Сервер отклонил запись. Измените параметры и повторите — запись помечена как отклонённая."
+                            com.aistudio.clinicsystem.data.db.AppointmentEntity.SYNC_STATE_QUEUED ->
+                                "Нет связи с сервером: запись сохранена и будет отправлена автоматически."
+                            else ->
+                                "Запись к врачу $doctorName на $date в $time создана."
+                        },
+                    )
 
                     // High-4 audit fix: replaced `delay(400)` + fake sync log
                     // with a note that the backend's book endpoint already
@@ -312,12 +330,33 @@ class PatientViewModel
                         actorIsPatient = true,
                     )
                 if (updated != null) {
-                    // P-18 fix: set undo action if we have the old state
-                    if (oldAppt != null) {
+                    // P-18 fix: set undo action if we have the old state.
+                    // TASK-2: undo must NOT be offered for a server-confirmed
+                    // cancel as a "restore" that lies — restoring a cancelled
+                    // appointment re-books it via the original route. Only a
+                    // Queued/CancelledLocally/Rejected cancel offers undo.
+                    if (oldAppt != null &&
+                        updated !is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Confirmed
+                    ) {
                         _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                     }
 
-                    val patientUser = repository.getUserByPhone(updated.patientPhone)
+                    // TASK-2: surface the real outcome — no fake "saved".
+                    _appointmentCreatedEvent.tryEmit(
+                        when (updated) {
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Confirmed ->
+                                "Приём отменён на сервере."
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued ->
+                                "Отмена сохранена локально и будет отправлена автоматически."
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Rejected ->
+                                "Сервер отклонил отмену: ${updated.message}"
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.CancelledLocally ->
+                                "Offline-запись отменена (черновик удалён, на сервере не создавался)."
+                        },
+                    )
+
+                    val entity = updated.entity
+                    val patientUser = repository.getUserByPhone(entity.patientPhone)
                     val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
                     // Stage 6 TODO: NotificationHelper should accept a Context
                     // from Hilt-provided ApplicationContext, not via getApplication().

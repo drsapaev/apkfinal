@@ -104,6 +104,21 @@ interface PendingSyncDao {
         updatedAt: Long = System.currentTimeMillis(),
     )
 
+    /** TASK-2: rewrite the stored payload of an outbox row (draft amendment). */
+    @Query("UPDATE pending_syncs SET payload = :payload, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updatePayload(
+        id: String,
+        payload: String,
+        updatedAt: Long = System.currentTimeMillis(),
+    )
+
+    /** TASK-2: drop outbox rows of the given types for a client request id. */
+    @Query("DELETE FROM pending_syncs WHERE clientRequestId = :requestId AND type IN (:types)")
+    suspend fun deleteByClientRequestIdAndTypes(
+        requestId: String,
+        types: List<String>,
+    )
+
     @Query(
         """UPDATE pending_syncs
            SET status = :status, retryCount = :retryCount,
@@ -301,7 +316,7 @@ interface LabResultDao {
         LabResultEntity::class,
     ],
     // Stage 6: bumped 8 → 9. Migration 8→9 adds lab_results table.
-    version = 9,
+    version = 10,
     // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
     // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/8.json
     // on every build. This file must be committed to git — it is the
