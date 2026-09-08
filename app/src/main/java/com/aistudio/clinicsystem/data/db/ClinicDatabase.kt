@@ -210,6 +210,10 @@ interface MedicalRecordDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: MedicalRecordEntity): Long
 
+    /** TASK-3: update after an EMR v2 save anchors the note server-side. */
+    @Update
+    suspend fun updateRecord(record: MedicalRecordEntity)
+
     @Query("SELECT * FROM medical_records WHERE id = :id LIMIT 1")
     suspend fun getRecordById(id: String): MedicalRecordEntity?
 

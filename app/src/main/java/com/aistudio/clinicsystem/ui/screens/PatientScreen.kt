@@ -61,6 +61,7 @@ private fun PatientScreenContent(
     val isFetchingRecords by viewModel.isFetchingReports.collectAsStateWithLifecycle()
     val isBookingInProgress by viewModel.isBookingInProgress.collectAsStateWithLifecycle()
     val cachedQueueSnapshots by viewModel.cachedQueueSnapshots.collectAsStateWithLifecycle()
+    val labResults by viewModel.patientLabResults.collectAsStateWithLifecycle()
 
     var showEditProfile by remember { mutableStateOf(false) }
     var editNameInput by remember { mutableStateOf(currentUser?.fullName ?: "") }
@@ -335,6 +336,7 @@ private fun PatientScreenContent(
                             expandedRecords = expandedRecords,
                             isFetching = isFetchingRecords,
                             onFetchClick = { viewModel.fetchMedicalReports() },
+                            labResults = labResults,
                             onRecordToggle = { id ->
                                 expandedRecords =
                                     if (expandedRecords.contains(id)) {

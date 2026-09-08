@@ -108,11 +108,29 @@ interface ClinicRepositoryInterface {
         recommendations: String,
     ): com.aistudio.clinicsystem.data.db.MedicalRecordEntity
 
-    suspend fun fetchMedicalRecordsFromServer(
+    /**
+     * TASK-3: staff clinical note anchored to a real visit via EMR v2.
+     * Roles without EMR write rights get a LocalDraft outcome instead of a
+     * fake "saved medical record". 409 conflicts never destroy the draft.
+     */
+    suspend fun saveMedicalRecordWithEmr(
+        token: String?,
+        patientPhone: String,
+        doctorName: String,
+        diagnosis: String,
+        prescription: String,
+        recommendations: String,
+        actorRole: String? = null,
+    ): com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome
+
+    /**
+     * TASK-3: lab results land in the dedicated lab_results table — they are
+     * never mapped into medical records (no testName→diagnosis substitution).
+     */
+    suspend fun fetchLabResultsFromServer(
         token: String?,
         phone: String,
-        onNewRecordAction: (com.aistudio.clinicsystem.data.db.MedicalRecordEntity) -> Unit = {},
-    ): List<com.aistudio.clinicsystem.data.db.MedicalRecordEntity>
+    ): List<com.aistudio.clinicsystem.data.db.LabResultEntity>
 
     // ── Queue Operations ──
     // M-CONTRACT-FIX: the backend removed POST /api/v1/queue/register —

@@ -28,6 +28,7 @@ fun PatientMedicalTab(
     isFetching: Boolean,
     onFetchClick: () -> Unit,
     onRecordToggle: (String) -> Unit,
+    labResults: List<com.aistudio.clinicsystem.data.db.LabResultEntity> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val filteredRecords =
@@ -58,6 +59,15 @@ fun PatientMedicalTab(
             isFetching = isFetching,
             onFetchClick = onFetchClick,
             onRecordToggle = onRecordToggle,
+        )
+
+        // TASK-3: lab results have their OWN section with their OWN data —
+        // a test name is never displayed as a diagnosis, a result value is
+        // never displayed as a prescription.
+        LabResultsSection(
+            labResults = labResults,
+            isFetching = isFetching,
+            onFetchClick = onFetchClick,
         )
 
         Spacer(modifier = Modifier.height(80.dp))

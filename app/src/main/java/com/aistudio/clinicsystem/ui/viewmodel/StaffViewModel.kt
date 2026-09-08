@@ -451,16 +451,22 @@ class StaffViewModel
                 val activeUser = currentUser.value
                 val doctor = activeUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_duty_doctor)
                 val token = sessionRepository.accessToken
+                // TASK-3: the backend role decides whether an EMR v2 save is
+                // attempted; Registrar/Lab notes stay local drafts.
+                val actorRole =
+                    (sessionRepository.sessionState.value as? SessionState.Authenticated)?.user?.role
 
-                val saved =
-                    repository.createMedicalRecordOnServerAndLocal(
+                val outcome =
+                    repository.saveMedicalRecordWithEmr(
                         token = token,
                         patientPhone = patientPhone,
                         doctorName = doctor,
                         diagnosis = diagnosis,
                         prescription = prescription,
                         recommendations = recommendations,
+                        actorRole = actorRole,
                     )
+                val saved = outcome.entity
 
                 val patientUser = repository.getUserByPhone(patientPhone)
                 val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
@@ -471,6 +477,22 @@ class StaffViewModel
                     doctor,
                     diagnosis,
                     patientName,
+                )
+
+                // TASK-3: surface the real outcome — a local draft is NEVER
+                // reported as a saved medical record; signing never happens
+                // automatically.
+                _staffMessageEvent.tryEmit(
+                    when (outcome) {
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Confirmed ->
+                            "Запись сохранена в EMR визита #${outcome.visitId} (черновик, без подписания)."
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft ->
+                            "Сохранено как ЛОКАЛЬНЫЙ черновик (${outcome.reason})."
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Conflict ->
+                            "Конфликт версии EMR — черновик сохранён локально: ${outcome.message}"
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Rejected ->
+                            "Сервер отклонил запись (HTTP ${outcome.httpCode}) — черновик сохранён локально."
+                    },
                 )
 
                 if (patientUser?.telegramChatId != null) {

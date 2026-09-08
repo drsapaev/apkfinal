@@ -75,6 +75,17 @@ class PatientViewModel
                 records.filter { it.patientPhone == phone }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+        // TASK-3: dedicated lab results flow (testName/result/unit/reference —
+        // shown in the Lab section, never as diagnoses/prescriptions).
+        val patientLabResults: StateFlow<List<com.aistudio.clinicsystem.data.db.LabResultEntity>> =
+            combine(
+                repository.allLabResults,
+                currentUser,
+            ) { labs, user ->
+                val phone = user?.phone ?: ""
+                labs.filter { it.patientPhone == phone }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
         val cachedQueueSnapshots: StateFlow<List<QueueSnapshotEntity>> =
             repository.allQueueSnapshots
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -377,6 +388,11 @@ class PatientViewModel
             }
         }
 
+        /**
+         * TASK-3: fetches LAB RESULTS into the dedicated lab_results table.
+         * No lab→medical-record mapping anymore: a test name is a test name,
+         * never a diagnosis.
+         */
         fun fetchMedicalReports() {
             val user = currentUser.value ?: return
             viewModelScope.launch {
@@ -384,13 +400,9 @@ class PatientViewModel
                 _isFetchingReports.value = true
 
                 val token = sessionRepository.accessToken
-                repository.fetchMedicalRecordsFromServer(
+                repository.fetchLabResultsFromServer(
                     token = token,
                     phone = user.phone,
-                    onNewRecordAction = { record ->
-                        // Stage 6 TODO: same as cancelAppointment — notification
-                        // wiring via Hilt-injected NotificationController.
-                    },
                 )
                 _isFetchingReports.value = false
             }

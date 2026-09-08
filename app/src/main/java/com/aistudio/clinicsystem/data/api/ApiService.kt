@@ -114,7 +114,84 @@ interface ApiService {
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 50,
     ): Response<StaffUsersPageDto>
+
+    // ── Visits + EMR v2 (TASK-3) ──────────────────────────────────────────
+
+    /**
+     * TASK-3: visits of a patient (GET /api/v1/visits?patient_id=…).
+     * Roles: Admin, Registrar, Doctor-family, Cashier, Lab.
+     * Used to anchor a clinical note to a real visit for EMR v2.
+     */
+    @GET("api/v1/visits")
+    suspend fun getVisitsForPatient(
+        @Query("patient_id") patientId: Int,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+    ): Response<List<StaffVisitDto>>
+
+    /** TASK-3: current EMR of a visit (GET /api/v1/emr/{visit_id}). */
+    @GET("api/v1/emr/{visit_id}")
+    suspend fun getEmrForVisit(
+        @Path("visit_id") visitId: Int,
+    ): Response<EmrRecordDto>
+
+    /**
+     * TASK-3: save EMR of a visit (POST /api/v1/emr/{visit_id}) with
+     * optimistic locking (row_version; 409 on conflict). Signing is a
+     * SEPARATE endpoint and is never triggered here — saves are drafts.
+     * Roles: Admin + Doctor family (backend EMR_V2_WRITE_ROLES).
+     */
+    @POST("api/v1/emr/{visit_id}")
+    suspend fun saveEmrForVisit(
+        @Path("visit_id") visitId: Int,
+        @Body payload: EmrSaveRequest,
+    ): Response<EmrRecordDto>
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// DTOs — visits + EMR v2 (TASK-3)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Minimal visit row (backend `VisitOut`). */
+@JsonClass(generateAdapter = true)
+data class StaffVisitDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "patient_id") val patientId: Int? = null,
+    @Json(name = "doctor_id") val doctorId: Int? = null,
+    @Json(name = "status") val status: String = "open",
+    @Json(name = "notes") val notes: String? = null,
+    @Json(name = "visit_date") val visitDate: String? = null,
+    @Json(name = "visit_time") val visitTime: String? = null,
+)
+
+/**
+ * TASK-3: EMR v2 record (backend `EMRRecordOut`). `data` is the clinical
+ * JSON blob; Moshi's Any-adapter parses it into Map/List/String/Number —
+ * the client only reads/extends its own flat keys (diagnosis, prescription,
+ * recommendations) and never assumes nested shapes from other clients.
+ */
+@JsonClass(generateAdapter = true)
+data class EmrRecordDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "patient_id") val patientId: Int? = null,
+    @Json(name = "visit_id") val visitId: Int,
+    @Json(name = "version") val version: Int = 1,
+    @Json(name = "row_version") val rowVersion: Int = 0,
+    @Json(name = "data") val data: Any? = null,
+    @Json(name = "diagnosis_main") val diagnosisMain: String? = null,
+    @Json(name = "status") val status: String = "draft",
+    @Json(name = "signed_at") val signedAt: String? = null,
+    @Json(name = "is_active") val isActive: Boolean = true,
+)
+
+/** TASK-3: body of POST /api/v1/emr/{visit_id} (backend `EMRSaveRequest`). */
+@JsonClass(generateAdapter = true)
+data class EmrSaveRequest(
+    @Json(name = "data") val data: Any,
+    @Json(name = "row_version") val rowVersion: Int = 0,
+    @Json(name = "client_session_id") val clientSessionId: String? = null,
+    @Json(name = "is_draft") val isDraft: Boolean = true,
+)
 
 // ─────────────────────────────────────────────────────────────────────────
 // DTOs — system users (backend `app/schemas/user_management.py`)

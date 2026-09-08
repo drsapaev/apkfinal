@@ -48,6 +48,8 @@ class ClinicRepository
         override val allMedicalRecords: Flow<List<MedicalRecordEntity>> = medicalRecordDao.getAllRecordsFlow()
         override val recentLogs: Flow<List<SyncLogEntity>> = syncLogDao.getRecentLogsFlow()
         override val allQueueSnapshots: Flow<List<QueueSnapshotEntity>> = queueSnapshotDao.getAllQueueSnapshotsFlow()
+    // TASK-3: dedicated lab results flow
+    val allLabResults: Flow<List<LabResultEntity>> = labResultDao.getAllResultsFlow()
         override val allPendingSyncs: Flow<List<com.aistudio.clinicsystem.data.db.PendingSyncEntity>> =
             pendingSyncDao
                 .observeAllPendingSyncs()
@@ -1644,67 +1646,215 @@ class ClinicRepository
             return savedRecord
         }
 
-        override suspend fun fetchMedicalRecordsFromServer(
+        /**
+         * TASK-3: lab results are fetched into the DEDICATED lab_results
+         * table (LabResultEntity). They are NEVER mapped into
+         * medical_records — the previous testName→diagnosis /
+         * resultValue→prescription / notes→doctorName mapping displayed a
+         * lab test as a diagnosis, a result as a prescription and an
+         * arbitrary note as a doctor's name, which is clinically wrong.
+         */
+        override suspend fun fetchLabResultsFromServer(
             token: String?,
             phone: String,
-            onNewRecordAction: (MedicalRecordEntity) -> Unit,
-        ): List<MedicalRecordEntity> {
-            // High-2 audit fix: prefer the mobile contract endpoint
-            // GET /api/v1/mobile/lab/results over the legacy
-            // GET /api/v1/patients/records/{phone}. The mobile endpoint:
-            //   - authenticates via JWT (no need to pass phone — backend
-            //     derives patient_id from current_user)
-            //   - returns List<LabResultOut> with typed fields
-            //   - enforces patient-scoped access (no cross-patient leak)
-            //
-            // The legacy endpoint accepted an arbitrary phone number in the
-            // URL path — any authenticated user could read any patient's
-            // medical records by guessing/enumerating phone numbers. The
-            // mobile endpoint is patient-scoped by design.
-            //
-            // We map LabResultOut → MedicalRecordEntity for backward compat
-            // with the existing UI (which expects MedicalRecordEntity). The
-            // mapping is semantic: testName→diagnosis, resultValue→
-            // prescription, resultDate→visitDate, referenceRange→
-            // recommendations, notes→doctorName.
-            addSyncLog("🛰️ CONNECTING to API: GET /api/v1/mobile/lab/results", "CLOUD_SYNC_SIMULATOR")
+        ): List<LabResultEntity> {
+            addSyncLog("🛰️ GET /api/v1/mobile/lab/results (lab_results table)", "CLOUD_SYNC_SIMULATOR")
             try {
                 val response = mobileApiService.getLabResults()
                 if (response.isSuccessful && response.body() != null) {
                     val labResults = response.body()!!
-                    addSyncLog("✓ УСПЕШНЫЙ ЗАПРОС: Импортировано ${labResults.size} lab results с сервера final.", "CLOUD_SYNC_SIMULATOR")
-                    val results = mutableListOf<MedicalRecordEntity>()
-                    for (dto in labResults) {
-                        // High-1 audit fix: LabResultOut field mapping
-                        val recordEntity =
-                            MedicalRecordEntity(
-                                id =
-                                    java.util.UUID
-                                        .randomUUID()
-                                        .toString(),
+                    addSyncLog("✓ Импортировано ${labResults.size} лабораторных результатов.", "CLOUD_SYNC_SIMULATOR")
+                    val entities =
+                        labResults.map { dto ->
+                            LabResultEntity(
+                                id = java.util.UUID.randomUUID().toString(),
                                 serverId = dto.id,
-                                patientPhone = phone, // backend doesn't return it; use caller's phone
-                                doctorName = dto.notes ?: "",
-                                diagnosis = dto.testName,
-                                prescription = dto.resultValue,
-                                visitDate = dto.resultDate,
-                                recommendations = dto.referenceRange,
+                                patientPhone = phone,
+                                testName = dto.testName,
+                                result = dto.resultValue,
+                                unit = dto.unit,
+                                referenceRange = dto.referenceRange,
+                                status = dto.status,
+                                performedAt = dto.resultDate,
+                                doctorName = dto.notes,
                             )
-                        val existing = medicalRecordDao.getMedicalRecordByServerId(dto.id)
-                        if (existing == null) {
-                            insertMedicalRecord(recordEntity)
-                            onNewRecordAction(recordEntity)
                         }
-                        results.add(recordEntity)
+                    database.withTransaction {
+                        for (entity in entities) {
+                            if (labResultDao.getLabResultByServerId(entity.serverId ?: -1) == null) {
+                                labResultDao.insertAll(listOf(entity))
+                            }
+                        }
                     }
-                    return results
+                    return entities
                 } else {
-                    addSyncLog("⚠️ Сервер вернул код ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
+                    addSyncLog("⚠️ Лабораторные результаты: сервер вернул код ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
                 }
             } catch (e: Exception) {
                 addSyncLog("⏳ Сервер временно недоступен: (${e.localizedMessage}).", "CLOUD_SYNC_SIMULATOR")
             }
             return emptyList()
+        }
+
+        /**
+         * TASK-3: staff clinical notes anchored to a real visit through the
+         * visit-based EMR v2 (POST /api/v1/emr/{visit_id}).
+         *
+         * Behavior:
+         *   1. The note is ALWAYS stored locally first (a local draft —
+         *      serverId == null marks it as a draft in the UI).
+         *   2. Only roles allowed by [com.aistudio.clinicsystem.domain.model.EmrAccessPolicy]
+         *      attempt the EMR save; a registrar's note stays a local draft.
+         *   3. The visit is resolved structurally (GET /visits?patient_id=…);
+         *      the current EMR row_version is fetched to satisfy optimistic
+         *      locking; is_draft=true — signing NEVER happens automatically.
+         *   4. 409 CONFLICT preserves the local draft and surfaces the
+         *      conflict — a conflict never destroys work.
+         *
+         * @param actorRole backend role of the signed-in staff user.
+         */
+        override suspend fun saveMedicalRecordWithEmr(
+            token: String?,
+            patientPhone: String,
+            doctorName: String,
+            diagnosis: String,
+            prescription: String,
+            recommendations: String,
+            actorRole: String?,
+        ): com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome {
+            // 1. Local draft first — the note is never lost.
+            val visitDate =
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val newRecord =
+                MedicalRecordEntity(
+                    patientPhone = patientPhone,
+                    doctorName = doctorName,
+                    diagnosis = diagnosis,
+                    prescription = prescription,
+                    visitDate = visitDate,
+                    recommendations = recommendations,
+                )
+            val savedRecord = insertMedicalRecord(newRecord)
+
+            // 2. Role gate — Registrar/Lab/Patient notes stay local drafts.
+            if (!com.aistudio.clinicsystem.domain.model.EmrAccessPolicy.canAttemptEmr(actorRole)) {
+                addSyncLog(
+                    "📝 Запись сохранена как локальный черновик: роль '$actorRole' не имеет прав записи EMR v2.",
+                    "CLOUD_SYNC_SIMULATOR",
+                )
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                    savedRecord,
+                    "роль '$actorRole' не имеет прав записи EMR",
+                )
+            }
+
+            // 3. Resolve the patient on the server, then their visit.
+            val patientId = resolvePatientIdByPhone(patientPhone)
+            if (patientId == null) {
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                    savedRecord,
+                    "пациент не найден на сервере — визит не определён",
+                )
+            }
+
+            try {
+                val visitsResponse = legacyApiService.getVisitsForPatient(patientId = patientId, limit = 20)
+                val visit =
+                    if (visitsResponse.isSuccessful) {
+                        visitsResponse.body()
+                            ?.firstOrNull()
+                            ?: return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                                savedRecord,
+                                "у пациента нет визита — черновик не привязан к визиту",
+                            )
+                    } else {
+                        return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                            savedRecord,
+                            "визит недоступен (HTTP ${visitsResponse.code()})",
+                        )
+                    }
+
+                // 4. Current EMR + row_version for optimistic locking.
+                val existingEmrResponse = legacyApiService.getEmrForVisit(visit.id)
+                var rowVersion = 0
+                var existingData: MutableMap<String, Any?>? = null
+                if (existingEmrResponse.isSuccessful) {
+                    val existing = existingEmrResponse.body()
+                    if (existing != null) {
+                        rowVersion = existing.rowVersion
+                        @Suppress("UNCHECKED_CAST")
+                        existingData =
+                            (existing.data as? Map<String, Any?>)?.let { LinkedHashMap(it) }
+                    }
+                }
+
+                // Extend the existing clinical data (or start a flat payload) —
+                // other clients' nested keys are preserved as-is.
+                val data =
+                    existingData ?: LinkedHashMap<String, Any?>().also {
+                        it["doctor_name"] = doctorName
+                    }
+                data["diagnosis"] = diagnosis
+                data["prescription"] = prescription
+                data["recommendations"] = recommendations
+                data["doctor_name"] = doctorName
+                data["source"] = "android_mobile"
+
+                val saveResponse =
+                    legacyApiService.saveEmrForVisit(
+                        visitId = visit.id,
+                        payload =
+                            com.aistudio.clinicsystem.data.api.EmrSaveRequest(
+                                data = data,
+                                rowVersion = rowVersion,
+                                clientSessionId = java.util.UUID.randomUUID().toString(),
+                                isDraft = true, // signing is an explicit separate action
+                            ),
+                    )
+
+                if (saveResponse.isSuccessful && saveResponse.body() != null) {
+                    val emr = saveResponse.body()!!
+                    val persisted =
+                        savedRecord.copy(
+                            serverId = emr.id,
+                            visitDate = visitDate,
+                        )
+                    medicalRecordDao.updateRecord(persisted)
+                    addSyncLog(
+                        "🟢 EMR v2: запись сохранена в визите #${emr.visitId} (EMR #${emr.id}, draft=true, без подписания).",
+                        "CLOUD_SYNC_SIMULATOR",
+                    )
+                    return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Confirmed(
+                        persisted,
+                        emr.id,
+                        emr.visitId,
+                    )
+                }
+
+                val code = saveResponse.code()
+                if (code == 409) {
+                    // CONFLICT — never destroy the draft.
+                    addSyncLog(
+                        "⚠️ EMR v2: конфликт версии (409) для визита #${visit.id}. Локальный черновик сохранён; обновите данные и повторите.",
+                        "SYSTEM_SYNC",
+                    )
+                    return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Conflict(
+                        savedRecord,
+                        null,
+                        "конфликт версии EMR (409): на сервере более новая версия",
+                    )
+                }
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Rejected(
+                    savedRecord,
+                    code,
+                    "сервер отклонил сохранение (HTTP $code)",
+                )
+            } catch (e: Exception) {
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                    savedRecord,
+                    "сервер недоступен: ${e.localizedMessage ?: e.javaClass.simpleName}",
+                )
+            }
         }
 
         override suspend fun syncAllAppointmentsFromServer(token: String?): Boolean {
@@ -2227,9 +2377,12 @@ class ClinicRepository
             )
 
         /**
-         * M2/E5.3: Observes medical records with offline-first sync.
-         *
-         * Same pattern as [observeAppointmentsWithSync] but for medical records.
+         * TASK-3: clinical documentation flow — LOCAL data only. Lab results
+         * are NOT fetched/mapped here anymore (they live in lab_results via
+         * [observeLabResultsWithSync] / [fetchLabResultsFromServer]).
+         * Server-side clinical documentation arrives through EMR v2 saves
+         * ([saveMedicalRecordWithEmr]) — a local row with serverId == null
+         * is a LOCAL DRAFT by definition.
          */
         fun observeMedicalRecordsWithSync(patientPhone: String): Flow<Resource<List<MedicalRecordEntity>>> =
             networkBoundResource(
@@ -2237,50 +2390,20 @@ class ClinicRepository
                     medicalRecordDao.getRecordsByPatientFlow(patientPhone)
                 },
                 fetch = {
-                    mobileApiService.getLabResults()
+                    // Nothing to fetch from /mobile/lab/results — that data
+                    // belongs to lab_results. Keep an empty typed response so
+                    // the NBR contract stays intact.
+                    retrofit2.Response.success(emptyList<com.aistudio.clinicsystem.data.api.LabResultOut>())
                 },
                 saveFetchResult = { response ->
-                    if (response.isSuccessful && response.body() != null) {
-                        val serverList = response.body()!!
-                        // Stage 6: lab results are now stored in lab_results table
-                        // via observeLabResultsWithSync. This method still fetches
-                        // from /mobile/lab/results for backward compatibility, but
-                        // the data is also written to the lab_results table.
-                        database.withTransaction {
-                            for (dto in serverList) {
-                                val existing = medicalRecordDao.getMedicalRecordByServerId(dto.id)
-                                if (existing == null) {
-                                    // High-1 audit fix: aligned with backend LabResultOut DTO.
-                                    // Backend no longer returns patientPhone/doctorName/result/
-                                    // performedAt as separate fields — these are now derived
-                                    // from the new backend contract (result_value, result_date,
-                                    // notes). The medical_records table fields are mapped
-                                    // semantically: testName→diagnosis, resultValue→
-                                    // prescription, resultDate→visitDate, referenceRange→
-                                    // recommendations, notes→doctorName.
-                                    val entity =
-                                        MedicalRecordEntity(
-                                            id =
-                                                java.util.UUID
-                                                    .randomUUID()
-                                                    .toString(),
-                                            serverId = dto.id,
-                                            patientPhone = patientPhone,
-                                            doctorName = dto.notes ?: "",
-                                            diagnosis = dto.testName,
-                                            prescription = dto.resultValue,
-                                            visitDate = dto.resultDate,
-                                            recommendations = dto.referenceRange,
-                                        )
-                                    medicalRecordDao.insertRecord(entity)
-                                }
-                            }
-                        }
-                        addSyncLog("✓ NBR: Synced ${serverList.size} records from server", "SYSTEM_SYNC")
+                    // TASK-3: no lab→record mapping. Records are created
+                    // locally by staff drafts and by EMR v2 saves only.
+                    if (response.isSuccessful && response.body() != null && response.body()!!.isNotEmpty()) {
+                        addSyncLog("ℹ️ NBR: unexpected lab payload ignored (TASK-3)", "SYSTEM_SYNC")
                     }
                 },
-                shouldFetch = { cachedData ->
-                    cachedData.isEmpty()
+                shouldFetch = { _ ->
+                    false // local documentation only
                 },
                 onFetchFailed = { throwable ->
                     addSyncLog("⚠️ NBR: Medical records fetch failed: ${throwable.message}", "SYSTEM_SYNC")
