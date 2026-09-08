@@ -441,3 +441,13 @@ ktlint {
         exclude("**/generated/**")
     }
 }
+
+// JVM-target alignment: compileOptions pins javac to 17, but the Kotlin
+// compiler (via KSP) silently inherited the Gradle JVM (21 on some hosts),
+// which fails the build with "Inconsistent JVM-target compatibility".
+// Pin the Kotlin jvmTarget to the same 17 so every host builds identically.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}

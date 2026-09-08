@@ -672,13 +672,7 @@ class ClinicRepository
          * backend appointment statuses (scheduled/confirmed/completed/cancelled).
          */
         private fun toServerStatus(clientStatus: String): String =
-            when (clientStatus.uppercase()) {
-                "PENDING", "PLANNED" -> "scheduled"
-                "APPROVED", "CONFIRMED" -> "confirmed"
-                "CANCELLED" -> "cancelled"
-                "COMPLETED" -> "completed"
-                else -> clientStatus.lowercase()
-            }
+            com.aistudio.clinicsystem.utils.ServerStatusMapper.toServer(clientStatus)
 
         private fun normalizeQueueStatus(status: String): String =
             when (status.lowercase()) {
@@ -918,13 +912,7 @@ class ClinicRepository
         }
 
         private fun fromServerStatus(status: String): String =
-            when (status.lowercase()) {
-                "scheduled" -> "PENDING"
-                "confirmed" -> "APPROVED"
-                "completed" -> "COMPLETED"
-                "cancelled", "canceled" -> "CANCELLED"
-                else -> status.uppercase()
-            }
+            com.aistudio.clinicsystem.utils.ServerStatusMapper.fromServer(status)
 
         override suspend fun createMedicalRecordOnServerAndLocal(
             token: String?,
@@ -1168,9 +1156,22 @@ class ClinicRepository
                             }
 
                         val snapshotsList = mutableListOf<QueueSnapshotEntity>()
+                        var anyQueueFetchSucceeded = false
                         for (specialist in specialists) {
-                            val statusResponse = legacyApiService.getQueueStatus(specialist.id)
-                            if (!statusResponse.isSuccessful) continue
+                            val statusResponse =
+                                try {
+                                    legacyApiService.getQueueStatus(specialist.id)
+                                } catch (e: Exception) {
+                                    addSyncLog("⚠️ Queue status #${specialist.id}: ${e.message}", "CLOUD_SYNC_SIMULATOR")
+                                    null
+                                }
+                            if (statusResponse == null || !statusResponse.isSuccessful) {
+                                statusResponse?.let {
+                                    addSyncLog("⚠️ Queue status #${specialist.id}: HTTP ${it.code()}.", "CLOUD_SYNC_SIMULATOR")
+                                }
+                                continue
+                            }
+                            anyQueueFetchSucceeded = true
                             val status = statusResponse.body() ?: continue
                             for (entry in status.entries) {
                                 snapshotsList.add(
@@ -1185,7 +1186,13 @@ class ClinicRepository
                                 )
                             }
                         }
-                        if (snapshotsList.isNotEmpty()) {
+                        // CODEX-P2-FIX (PR #147): a successful-but-EMPTY result
+                        // is a valid state (last patient left). Only transport
+                        // failures keep the previous cache; whenever at least one
+                        // specialist status request succeeded we REPLACE the
+                        // whole cache — including with an empty list — so stale
+                        // entries never stay actionable in the staff console.
+                        if (anyQueueFetchSucceeded) {
                             addSyncLog("✓ Активная очередь: ${snapshotsList.size} пациент(ов) у специалистов.", "CLOUD_SYNC_SIMULATOR")
                             database.withTransaction {
                                 queueSnapshotDao.clearQueueSnapshots()
@@ -1270,6 +1277,11 @@ class ClinicRepository
 
             if (existing == null) {
                 // New appointment from server — insert with a fresh local UUID.
+                // CODEX-P1-FIX (PR #147): the staff endpoint returns lowercase
+                // backend statuses ("scheduled"/"confirmed"/…) while the staff
+                // UI only recognizes client statuses ("PENDING"/"APPROVED"/…).
+                // Normalize on INSERT — otherwise freshly synced rows render
+                // as an unknown state and lose the approve/complete actions.
                 val entity =
                     AppointmentEntity(
                         id =
@@ -1283,7 +1295,7 @@ class ClinicRepository
                         specialty = specialty,
                         date = appDto.appointmentDate,
                         time = appDto.appointmentTime ?: "",
-                        status = appDto.status,
+                        status = fromServerStatus(appDto.status),
                         reason = "",
                         notes = appDto.notes ?: "",
                         clinicId = "clinic_base",
@@ -1311,6 +1323,8 @@ class ClinicRepository
             }
 
             // Server is the source of truth for shared fields — overwrite local.
+            // CODEX-P1-FIX (PR #147): normalize the server status on UPDATE as
+            // well — see the insert comment above.
             val merged =
                 existing.copy(
                     patientName = appDto.patientName ?: existing.patientName,
@@ -1318,7 +1332,7 @@ class ClinicRepository
                     specialty = specialty.ifBlank { existing.specialty },
                     date = appDto.appointmentDate,
                     time = appDto.appointmentTime ?: existing.time,
-                    status = appDto.status,
+                    status = fromServerStatus(appDto.status),
                     notes = appDto.notes ?: existing.notes,
                     updatedAt = updatedAtMs,
                     etag = null,
@@ -1400,12 +1414,22 @@ class ClinicRepository
             snapshotId: Int,
             newStatus: String,
         ): Boolean {
+            // CODEX-P1-FIX (PR #147): Retrofit throws on transport errors
+            // before a Response is produced. The ViewModel calls this from an
+            // unguarded coroutine, so the exception reached the uncaught-
+            // exception handler. Catch and report failure — the cached state
+            // stays intact.
             val response =
-                when (newStatus) {
-                    "CALLED" -> legacyApiService.callQueueEntry(snapshotId)
-                    "IN_PROGRESS" -> legacyApiService.startQueueVisit(snapshotId)
-                    "COMPLETED" -> legacyApiService.completeQueueVisit(snapshotId)
-                    else -> return false
+                try {
+                    when (newStatus) {
+                        "CALLED" -> legacyApiService.callQueueEntry(snapshotId)
+                        "IN_PROGRESS" -> legacyApiService.startQueueVisit(snapshotId)
+                        "COMPLETED" -> legacyApiService.completeQueueVisit(snapshotId)
+                        else -> return false
+                    }
+                } catch (e: Exception) {
+                    addSyncLog("⚠️ Сеть недоступна: статус очереди #$snapshotId не изменён (${e.message}).", "CLOUD_SYNC_SIMULATOR")
+                    return false
                 }
             if (!response.isSuccessful) {
                 addSyncLog("⚠️ Сервер не изменил статус очереди #$snapshotId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
@@ -1420,7 +1444,15 @@ class ClinicRepository
         }
 
         suspend fun removeQueueEntryOnServerAndLocal(snapshotId: Int): Boolean {
-            val response = legacyApiService.cancelQueueEntry(snapshotId)
+            // CODEX-P1-FIX (PR #147): same transport-error handling as above —
+            // a dropped connection must not crash the staff console.
+            val response =
+                try {
+                    legacyApiService.cancelQueueEntry(snapshotId)
+                } catch (e: Exception) {
+                    addSyncLog("⚠️ Сеть недоступна: пациент #$snapshotId не удалён из очереди (${e.message}).", "CLOUD_SYNC_SIMULATOR")
+                    return false
+                }
             if (!response.isSuccessful) {
                 addSyncLog("⚠️ Сервер не удалил пациента из очереди #$snapshotId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
                 return false
