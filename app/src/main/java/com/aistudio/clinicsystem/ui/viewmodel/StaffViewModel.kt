@@ -161,10 +161,11 @@ class StaffViewModel
 
         val draftCreatePatientPhone = MutableStateFlow(prefs.getString("draft_create_patient_phone", "") ?: "")
         val draftCreatePatientName = MutableStateFlow(prefs.getString("draft_create_patient_name", "") ?: "")
+        // TASK-4: no hardcoded default doctor — the registrar must pick a
+        // real doctor from the synced directory.
         val draftCreateDoctorSelected =
             MutableStateFlow(
-                prefs.getString("draft_create_doctor_selected", appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev))
-                    ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev),
+                prefs.getString("draft_create_doctor_selected", "") ?: "",
             )
         val draftCreateSpecialtySelected =
             MutableStateFlow(
@@ -174,7 +175,12 @@ class StaffViewModel
                 )
                     ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry),
             )
-        val draftCreateDate = MutableStateFlow(prefs.getString("draft_create_date", "2026-06-10") ?: "2026-06-10")
+        // TASK-4: default to TODAY — the fixed "2026-06-10" let registrars
+        // silently create appointments in the past.
+        private val todayDateStr: String =
+            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                .format(java.util.Date())
+        val draftCreateDate = MutableStateFlow(prefs.getString("draft_create_date", todayDateStr) ?: todayDateStr)
         val draftCreateTime = MutableStateFlow(prefs.getString("draft_create_time", "10:00") ?: "10:00")
         val draftCreateReason =
             MutableStateFlow(
@@ -264,10 +270,10 @@ class StaffViewModel
                 .apply()
             draftCreatePatientPhone.value = ""
             draftCreatePatientName.value = ""
-            draftCreateDoctorSelected.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev)
+            draftCreateDoctorSelected.value = "" // TASK-4: explicit pick required
             draftCreateSpecialtySelected.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry)
-            draftCreateDate.value = "2026-06-10"
-            draftCreateTime.value = "10:00"
+            draftCreateDate.value = todayDateStr
+            draftCreateTime.value = "" // TASK-4: time must be picked from real availability
             draftCreateReason.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_routine_checkup)
         }
 

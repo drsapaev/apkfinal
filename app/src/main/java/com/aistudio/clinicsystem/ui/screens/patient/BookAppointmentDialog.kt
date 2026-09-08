@@ -73,6 +73,7 @@ fun BookAppointmentDialog(
     doctors: List<Pair<String, String>>,
     bookingDatesList: List<String>,
     timeSlots: List<String>,
+    slotsLoading: Boolean = false,
     selectedDoctor: String,
     selectedSpecialty: String,
     selectedDateIdx: Int,
@@ -261,6 +262,19 @@ fun BookAppointmentDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (slotsLoading) {
+                        Text(
+                            text = "Загрузка слотов…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else if (timeSlots.isEmpty()) {
+                        Text(
+                            text = "На этот день свободных слотов нет — выберите другого врача или дату",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                     val row1 = timeSlots.take(4)
                     val row2 = timeSlots.drop(4)
 

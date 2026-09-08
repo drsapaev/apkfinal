@@ -33,12 +33,65 @@ class PatientViewModel
             doctorRepository.allDoctors
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-        init {
-            // P-04: seed fallback doctors if cache is empty, then sync from backend
+        // TASK-4: real availability slots derived from the backend schedule
+        // (GET /mobile/doctors/{id}/schedule) instead of a hardcoded list.
+        private val _availableTimeSlots = MutableStateFlow<List<String>>(emptyList())
+        val availableTimeSlots: StateFlow<List<String>> = _availableTimeSlots.asStateFlow()
+
+        private val _slotsLoading = MutableStateFlow(false)
+        val slotsLoading: StateFlow<Boolean> = _slotsLoading.asStateFlow()
+
+        fun loadTimeSlots(doctorServerId: Int?, date: String) {
+            if (doctorServerId == null) {
+                _availableTimeSlots.value = emptyList()
+                return
+            }
             viewModelScope.launch {
-                doctorRepository.seedFallbackDoctorsIfEmpty()
+                _slotsLoading.value = true
+                try {
+                    _availableTimeSlots.value =
+                        doctorRepository.getAvailableTimeSlots(doctorServerId, date)
+                } catch (e: Exception) {
+                    _availableTimeSlots.value = emptyList()
+                } finally {
+                    _slotsLoading.value = false
+                }
+            }
+        }
+
+        // TASK-4: doctor directory load state — loading / error / retry, so
+        // a clean installation shows REAL doctors, an explicit empty state,
+        // or an error — never fictitious demo doctors.
+        private val _doctorsLoading = MutableStateFlow(false)
+        val doctorsLoading: StateFlow<Boolean> = _doctorsLoading.asStateFlow()
+
+        private val _doctorsError = MutableStateFlow<String?>(null)
+        val doctorsError: StateFlow<String?> = _doctorsError.asStateFlow()
+
+        fun refreshDoctors() {
+            if (_doctorsLoading.value) return
+            viewModelScope.launch {
+                _doctorsLoading.value = true
+                _doctorsError.value = null
+                try {
+                    val ok = doctorRepository.syncDoctors()
+                    if (!ok) {
+                        _doctorsError.value = "Не удалось загрузить справочник врачей"
+                    }
+                } catch (e: Exception) {
+                    _doctorsError.value = e.localizedMessage ?: "Ошибка сети"
+                } finally {
+                    _doctorsLoading.value = false
+                }
+            }
+        }
+
+        init {
+            // TASK-4: no demo seeding. Refresh the directory when stale
+            // (shouldRefresh keeps the 24h TTL for repeat visits).
+            viewModelScope.launch {
                 if (doctorRepository.shouldRefresh()) {
-                    doctorRepository.syncDoctors()
+                    refreshDoctors()
                 }
             }
         }

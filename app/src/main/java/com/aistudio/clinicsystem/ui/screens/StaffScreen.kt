@@ -540,6 +540,9 @@ private fun StaffScreenContent(
         onDoctorSelectedChange = {
             createDoctorSelected = it
             viewModel.setDraftCreateDoctorSelected(it)
+            // TASK-4: a time picked for another doctor/day must not survive.
+            createTime = ""
+            viewModel.setDraftCreateTime("")
         },
         specialtySelected = createSpecialtySelected,
         onSpecialtySelectedChange = {
@@ -550,6 +553,9 @@ private fun StaffScreenContent(
         onDateChange = {
             createDate = it
             viewModel.setDraftCreateDate(it)
+            // TASK-4: reset the time on day change as well.
+            createTime = ""
+            viewModel.setDraftCreateTime("")
         },
         time = createTime,
         onTimeChange = {
@@ -562,7 +568,9 @@ private fun StaffScreenContent(
             viewModel.setDraftCreateReason(it)
         },
         onCreate = {
-            if (createPatientPhone.isNotBlank() && createPatientName.isNotBlank()) {
+            // TASK-4: a doctor must be explicitly picked from the real
+            // directory — no implicit/fictitious doctor bookings.
+            if (createPatientPhone.isNotBlank() && createPatientName.isNotBlank() && createDoctorSelected.isNotBlank()) {
                 // TASK-1: resolve the structured doctor id from the synced
                 // directory — the staff booking carries doctor_id + patient
                 // identity, never a name-derived guess.
