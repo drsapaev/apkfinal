@@ -62,6 +62,12 @@ private fun PatientScreenContent(
     val isBookingInProgress by viewModel.isBookingInProgress.collectAsStateWithLifecycle()
     val cachedQueueSnapshots by viewModel.cachedQueueSnapshots.collectAsStateWithLifecycle()
     val labResults by viewModel.patientLabResults.collectAsStateWithLifecycle()
+    val queueState by viewModel.queueState.collectAsStateWithLifecycle()
+
+    // TASK-6: refresh the patient's queue positions when the screen opens.
+    LaunchedEffect(Unit) {
+        viewModel.refreshQueuePositions()
+    }
 
     var showEditProfile by remember { mutableStateOf(false) }
     var editNameInput by remember { mutableStateOf(currentUser?.fullName ?: "") }
@@ -332,6 +338,8 @@ private fun PatientScreenContent(
                             appointments = appointments,
                             records = records,
                             cachedQueueSnapshots = cachedQueueSnapshots,
+                            queueState = queueState,
+                            onQueueRefresh = { viewModel.refreshQueuePositions() },
                         )
                     1 ->
                         PatientAppointmentsTab(

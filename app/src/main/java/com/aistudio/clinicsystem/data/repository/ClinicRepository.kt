@@ -1857,6 +1857,50 @@ class ClinicRepository
             }
         }
 
+        /**
+         * TASK-6: structured fetch of the patient's queue positions.
+         * Distinguishes three outcomes the UI must not confuse:
+         *   - Success(positions) — fresh data;
+         *   - Empty — the server SUCCESSFULLY reported no active positions:
+         *     old cached positions must be cleared;
+         *   - Error — transport/HTTP failure: the UI keeps showing stale
+         *     data with a warning instead of silently wiping the queue.
+         */
+        suspend fun fetchMyQueuePositions(): com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult {
+            return try {
+                val response = mobileApiService.getMyQueuePosition()
+                if (response.isSuccessful && response.body() != null) {
+                    val positions =
+                        response.body()!!.positions.map { pos ->
+                            com.aistudio.clinicsystem.domain.model.PatientQueuePosition(
+                                queueId = pos.queueId,
+                                doctorName = pos.doctorName,
+                                specialty = pos.specialty,
+                                myNumber = pos.myNumber,
+                                currentNumber = pos.currentNumber,
+                                patientsBeforeMe = pos.patientsBeforeMe,
+                                estimatedWaitMinutes = pos.estimatedWaitMinutes,
+                                status = pos.status,
+                            )
+                        }
+                    if (positions.isEmpty()) {
+                        com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Empty
+                    } else {
+                        com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Success(positions)
+                    }
+                } else if (response.code() == 404) {
+                    // No patient profile on the backend → no queues.
+                    com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Empty
+                } else {
+                    com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Error(
+                        IllegalStateException("HTTP ${response.code()}"),
+                    )
+                }
+            } catch (e: Exception) {
+                com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Error(e)
+            }
+        }
+
         override suspend fun syncAllAppointmentsFromServer(token: String?): Boolean {
             val startTime = System.currentTimeMillis()
             addSyncLog("🟢 ПОДКЛЮЧЕНИЕ к серверу FastAPI 'final'...", "CLOUD_SYNC_SIMULATOR")

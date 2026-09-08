@@ -33,6 +33,40 @@ class PatientViewModel
             doctorRepository.allDoctors
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+        // TASK-6: live queue state of the patient's own queues. A successful
+        // empty response clears old positions; a failed fetch keeps the last
+        // data and flags it stale.
+        private val _queueState =
+            MutableStateFlow(com.aistudio.clinicsystem.domain.model.PatientQueueUiState())
+        val queueState: StateFlow<com.aistudio.clinicsystem.domain.model.PatientQueueUiState> =
+            _queueState.asStateFlow()
+
+        fun refreshQueuePositions() {
+            if (_queueState.value.isLoading) return
+            viewModelScope.launch {
+                _queueState.value = _queueState.value.copy(isLoading = true)
+                when (val result = repository.fetchMyQueuePositions()) {
+                    is com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Success ->
+                        _queueState.value =
+                            com.aistudio.clinicsystem.domain.model.PatientQueueUiState(
+                                positions = result.positions,
+                                lastUpdated = System.currentTimeMillis(),
+                                isStale = false,
+                            )
+                    com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Empty ->
+                        _queueState.value =
+                            com.aistudio.clinicsystem.domain.model.PatientQueueUiState(
+                                positions = emptyList(),
+                                lastUpdated = System.currentTimeMillis(),
+                                isStale = false,
+                            )
+                    is com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Error ->
+                        _queueState.value =
+                            _queueState.value.copy(isLoading = false, isStale = true)
+                }
+            }
+        }
+
         // TASK-4: real availability slots derived from the backend schedule
         // (GET /mobile/doctors/{id}/schedule) instead of a hardcoded list.
         private val _availableTimeSlots = MutableStateFlow<List<String>>(emptyList())
