@@ -400,12 +400,17 @@ private fun PatientScreenContent(
             onReasonInputChange = { bookingReasonInput = it },
             onConfirm = {
                 if (!isBookingInProgress) {
+                    // TASK-1: resolve the structured doctor id from the synced
+                    // directory — the booking carries doctor_id, not just a name.
+                    val selectedEntity =
+                        doctors.firstOrNull { it.fullName == selectedDoctor }
                     viewModel.createAppointment(
                         doctorName = selectedDoctor,
                         specialty = selectedSpecialty,
                         date = bookingDatesList[selectedDateIdx],
                         time = selectedTimeSlot,
                         reason = bookingReasonInput.ifBlank { defaultBookingReason },
+                        doctorServerId = selectedEntity?.serverId,
                     )
                     showBookDialog = false
                     bookingReasonInput = ""

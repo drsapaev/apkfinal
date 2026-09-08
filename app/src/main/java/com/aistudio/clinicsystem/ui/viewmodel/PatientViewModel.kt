@@ -240,12 +240,18 @@ class PatientViewModel
             }
         }
 
+        /**
+         * TASK-1: patient self-booking. `doctorServerId` comes from the selected
+         * [DoctorEntity] in the doctor directory — the booking identity is
+         * structural, never derived from the display name.
+         */
         fun createAppointment(
             doctorName: String,
             specialty: String,
             date: String,
             time: String,
             reason: String,
+            doctorServerId: Int? = null,
         ) {
             if (_isBookingInProgress.value) return
             val user = currentUser.value ?: return
@@ -255,8 +261,10 @@ class PatientViewModel
                     val token = sessionRepository.accessToken
                     repository.createAppointmentOnServerAndLocal(
                         token = token,
+                        patientId = null, // mobile contract derives the patient from the JWT
                         patientPhone = user.phone,
                         patientName = user.fullName,
+                        doctorId = doctorServerId,
                         doctorName = doctorName,
                         specialty = specialty,
                         date = date,
@@ -299,6 +307,9 @@ class PatientViewModel
                         id = id,
                         status = "CANCELLED",
                         cancelReason = cancelReason,
+                        // TASK-1: the patient cancels their own appointment
+                        // through the mobile contract — no staff-route fallback.
+                        actorIsPatient = true,
                     )
                 if (updated != null) {
                     // P-18 fix: set undo action if we have the old state

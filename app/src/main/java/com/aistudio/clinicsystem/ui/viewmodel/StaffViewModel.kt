@@ -494,14 +494,20 @@ class StaffViewModel
             date: String,
             time: String,
             reason: String,
+            doctorServerId: Int? = null,
         ) {
             viewModelScope.launch {
                 val token = sessionRepository.accessToken
+                // TASK-1: the registrar books the CHOSEN patient through the
+                // staff endpoint (never the mobile self-booking route);
+                // doctorServerId is the structured doctor identity.
                 val newApp =
-                    repository.createAppointmentOnServerAndLocal(
+                    repository.createAppointmentForPatientOnServerAndLocal(
                         token = token,
+                        patientId = null, // resolved from the phone via the patient registry
                         patientPhone = patientPhone,
                         patientName = patientName,
+                        doctorId = doctorServerId,
                         doctorName = doctorName,
                         specialty = specialty,
                         date = date,

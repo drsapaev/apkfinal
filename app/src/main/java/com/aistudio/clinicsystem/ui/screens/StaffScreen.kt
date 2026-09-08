@@ -552,6 +552,11 @@ private fun StaffScreenContent(
         },
         onCreate = {
             if (createPatientPhone.isNotBlank() && createPatientName.isNotBlank()) {
+                // TASK-1: resolve the structured doctor id from the synced
+                // directory — the staff booking carries doctor_id + patient
+                // identity, never a name-derived guess.
+                val selectedDoctorEntity =
+                    allDoctors.firstOrNull { it.fullName == createDoctorSelected }
                 viewModel.createAppointment(
                     patientPhone = createPatientPhone,
                     patientName = createPatientName,
@@ -560,6 +565,7 @@ private fun StaffScreenContent(
                     date = createDate,
                     time = createTime,
                     reason = createReason,
+                    doctorServerId = selectedDoctorEntity?.serverId,
                 )
                 viewModel.clearCreateAppointmentDraft()
                 showCreateAppointmentDialog = false

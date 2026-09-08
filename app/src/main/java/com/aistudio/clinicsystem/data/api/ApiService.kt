@@ -309,6 +309,35 @@ data class QueueDto(
 )
 
 /**
+ * TASK-1: structured outbox payload for appointment creation rows
+ * (CREATE_APPOINTMENT_SELF / CREATE_APPOINTMENT_STAFF).
+ *
+ * Unlike the legacy [AppointmentDto], this carries the STRUCTURED
+ * identifiers (patient_id / doctor_id) captured at booking time plus the
+ * operation owner, so the outbox retry replays the ORIGINAL scenario:
+ *   - owner=PATIENT  → POST /api/v1/mobile/appointments/book  (self-booking)
+ *   - owner=STAFF    → POST /api/v1/appointments              (staff books a patient)
+ * No route switching after a server rejection; identity is never
+ * re-derived from the display name alone (serverId is re-resolved only
+ * as a fallback when null, and a failed resolution dead-letters the row).
+ */
+@JsonClass(generateAdapter = true)
+data class AppointmentOutboxPayload(
+    /** PATIENT = self-booking by the signed-in patient; STAFF = registrar/doctor booking for a chosen patient. */
+    @Json(name = "owner") val owner: String,
+    @Json(name = "patient_id") val patientId: Int? = null,
+    @Json(name = "patient_phone") val patientPhone: String = "",
+    @Json(name = "patient_name") val patientName: String = "",
+    @Json(name = "doctor_id") val doctorId: Int? = null,
+    @Json(name = "doctor_name") val doctorName: String = "",
+    @Json(name = "specialty") val specialty: String = "",
+    @Json(name = "date") val date: String = "",
+    @Json(name = "time") val time: String = "",
+    @Json(name = "reason") val reason: String = "",
+    @Json(name = "status") val status: String = "PENDING",
+)
+
+/**
  * M-CONTRACT-FIX: [AppointmentDto] and [MedicalRecordDto] are kept ONLY as
  * the outbox payload format (`PendingSyncEntity.payload`, written by
  * ClinicRepository when a write is queued offline). They are parsed back

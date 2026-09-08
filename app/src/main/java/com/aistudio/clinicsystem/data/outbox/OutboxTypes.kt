@@ -47,6 +47,23 @@ enum class OutboxOperation(
     val code: String,
 ) {
     CREATE_APPOINTMENT("CREATE_APPOINTMENT"),
+
+    /**
+     * TASK-1: patient self-booking. Owner = the signed-in patient; the row is
+     * retried EXCLUSIVELY through the mobile contract
+     * (POST /api/v1/mobile/appointments/book, JWT-scoped to the caller).
+     * Never dispatched to the staff endpoint — a patient cannot create
+     * appointments for arbitrary patients, and a server rejection must not
+     * fall through to a different route.
+     */
+    CREATE_APPOINTMENT_SELF("CREATE_APPOINTMENT_SELF"),
+
+    /**
+     * TASK-1: registrar/doctor books for a chosen patient. Owner = staff;
+     * the row is retried EXCLUSIVELY through the staff endpoint
+     * (POST /api/v1/appointments, patient_id resolved structurally).
+     */
+    CREATE_APPOINTMENT_STAFF("CREATE_APPOINTMENT_STAFF"),
     UPDATE_STATUS("UPDATE_STATUS"),
     CREATE_MEDICAL_RECORD("CREATE_MEDICAL_RECORD"),
     ;

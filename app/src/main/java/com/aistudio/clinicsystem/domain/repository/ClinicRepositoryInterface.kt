@@ -38,10 +38,17 @@ interface ClinicRepositoryInterface {
     suspend fun deleteAppointment(id: String)
 
     // ── Appointment Sync Operations ──
+    /**
+     * TASK-1: patient self-booking. Books the signed-in patient for
+     * themselves via the mobile contract; retried exclusively on the
+     * mobile route. `patientId`/`doctorId` are structured identifiers.
+     */
     suspend fun createAppointmentOnServerAndLocal(
         token: String?,
+        patientId: Int?,
         patientPhone: String,
         patientName: String,
+        doctorId: Int?,
         doctorName: String,
         specialty: String,
         date: String,
@@ -49,11 +56,33 @@ interface ClinicRepositoryInterface {
         reason: String,
     ): com.aistudio.clinicsystem.data.db.AppointmentEntity
 
+    /**
+     * TASK-1: staff booking for a chosen patient. Books the SPECIFIC patient
+     * via the staff endpoint; retried exclusively on the staff route.
+     */
+    suspend fun createAppointmentForPatientOnServerAndLocal(
+        token: String?,
+        patientId: Int?,
+        patientPhone: String,
+        patientName: String,
+        doctorId: Int?,
+        doctorName: String,
+        specialty: String,
+        date: String,
+        time: String,
+        reason: String,
+    ): com.aistudio.clinicsystem.data.db.AppointmentEntity
+
+    /**
+     * TASK-1: `actorIsPatient` selects the route (mobile cancel vs staff PUT)
+     * and is recorded in the outbox so retries replay the original scenario.
+     */
     suspend fun updateAppointmentStatusOnServerAndLocal(
         token: String?,
         id: String,
         status: String,
         cancelReason: String = "",
+        actorIsPatient: Boolean = false,
     ): com.aistudio.clinicsystem.data.db.AppointmentEntity?
 
     suspend fun retryUnsyncedWrites(token: String?): Boolean
