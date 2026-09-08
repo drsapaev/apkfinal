@@ -429,7 +429,9 @@ class ClinicWebSocketClient
                     if (isPending) {
                         database.syncLogDao().insertLog(
                             com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                                logMessage = "🛡️ Реконсиляция: Отклонено WS-обновление для приема #$serverId — есть локальные отложенные изменения.",
+                                logMessage =
+                                    "🛡️ Реконсиляция: Отклонено WS-обновление для приема #$serverId " +
+                                        "— есть локальные отложенные изменения.",
                                 direction = "SYSTEM_SYNC",
                             ),
                         )
@@ -573,7 +575,9 @@ class ClinicWebSocketClient
 
                     database.syncLogDao().insertLog(
                         com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                            logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) сейчас ожидает (сохранено в кэш)",
+                            logMessage =
+                                "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) " +
+                                    "сейчас ожидает (сохранено в кэш)",
                             direction = "SYSTEM_SYNC",
                         ),
                     )

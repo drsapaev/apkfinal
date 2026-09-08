@@ -327,10 +327,10 @@ abstract class ClinicDatabase : RoomDatabase() {
 
     companion object {
         @Volatile
-        private var INSTANCE: ClinicDatabase? = null
+        private var instance: ClinicDatabase? = null
 
         fun getDatabase(context: Context): ClinicDatabase =
-            INSTANCE ?: synchronized(this) {
+            instance ?: synchronized(this) {
                 try {
                     System.loadLibrary("sqlcipher")
                 } catch (e: Throwable) {
@@ -352,7 +352,7 @@ abstract class ClinicDatabase : RoomDatabase() {
                                 "User must be prompted to re-authenticate.",
                         )
                 val factory = SupportOpenHelperFactory(passphrase)
-                val instance =
+                val built =
                     Room
                         .databaseBuilder(
                             context.applicationContext,
@@ -383,8 +383,8 @@ abstract class ClinicDatabase : RoomDatabase() {
                         // M1/E4.3: register known migrations.
                         .addMigrations(*Migrations.ALL)
                         .build()
-                INSTANCE = instance
-                instance
+                instance = built
+                built
             }
     }
 }
