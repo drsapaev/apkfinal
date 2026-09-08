@@ -2357,6 +2357,176 @@ class ClinicRepository
          * does not implement; StaffViewModel falls back to the local queue
          * snapshot when this throws.
          */
+        /**
+         * TASK-7: per-queue cache replacement. Fetches the CURRENT queue of
+         * ONE specialist (GET /queue/status/{specialist_id}) and replaces
+         * ONLY that specialist's rows — queues of different doctors are never
+         * mixed, and a successful empty queue clears that specialist's cache.
+         */
+        suspend fun refreshQueueForSpecialist(specialistId: Int): Boolean {
+            return try {
+                val response = legacyApiService.getQueueStatus(specialistId)
+                if (!response.isSuccessful || response.body() == null) {
+                    addSyncLog("⚠️ Queue status #${specialistId}: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
+                    return false
+                }
+                val status = response.body()!!
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val fresh =
+                    status.entries.map { entry ->
+                        QueueSnapshotEntity(
+                            id = entry.id,
+                            patientName = entry.patientName ?: "",
+                            appointmentId = entry.id,
+                            position = entry.number,
+                            status = normalizeQueueStatus(entry.status),
+                            timestamp = System.currentTimeMillis(),
+                            queueId = status.queueId,
+                            specialistId = specialistId,
+                            day = status.day ?: today,
+                        )
+                    }
+                database.withTransaction {
+                    queueSnapshotDao.deleteBySpecialist(specialistId)
+                    queueSnapshotDao.insertQueueSnapshots(fresh)
+                }
+                addSyncLog(
+                    "✓ Очередь специалиста #${specialistId} обновлена: ${fresh.size} пациент(ов) (queueId=${status.queueId}).",
+                    "CLOUD_SYNC_SIMULATOR",
+                )
+                true
+            } catch (e: Exception) {
+                addSyncLog("⚠️ Обновление очереди #${specialistId}: ${e.message}", "CLOUD_SYNC_SIMULATOR")
+                false
+            }
+        }
+
+        /**
+         * TASK-7: server-side queue registration (batch endpoint). The ticket
+         * is created by the SERVER only — on any failure NO local "live"
+         * ticket is created (the old local-fallback is removed), the cache is
+         * not touched, and the error is surfaced to the registrar.
+         *
+         * Service ids come from the patient's latest visit (the registrar
+         * authors services in the web client); the queue specialist is the
+         * appointment's doctor.
+         */
+        suspend fun registerPatientInQueueOnServer(
+            appointmentId: String,
+            specialistId: Int?,
+        ): com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome {
+            val appt = getAppointmentById(appointmentId)
+                ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed("приём не найден локально")
+            val resolvedSpecialist =
+                specialistId
+                    ?: resolveDoctorServerId(appt.doctorName)
+                ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                    "не определён специалист (doctor_id) — регистрация невозможна",
+                )
+            val patientId =
+                resolvePatientIdByPhone(appt.patientPhone)
+                    ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                        "пациент не найден на сервере",
+                    )
+
+            return try {
+                // Latest visit of the patient carries the authored services.
+                val visitsResponse = legacyApiService.getVisitsForPatient(patientId = patientId, limit = 5)
+                val visitId =
+                    if (visitsResponse.isSuccessful) {
+                        visitsResponse.body()?.firstOrNull()?.id
+                            ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                                "у пациента нет визита с услугами",
+                            )
+                    } else {
+                        return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                            "визиты недоступны (HTTP ${visitsResponse.code()})",
+                        )
+                    }
+                val visitResponse = legacyApiService.getVisitWithServices(visitId)
+                val services =
+                    if (visitResponse.isSuccessful) {
+                        visitResponse.body()?.services ?: emptyList()
+                    } else {
+                        emptyList()
+                    }
+                if (services.isEmpty()) {
+                    return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                        "в визите нет услуг — нечего ставить в очередь",
+                    )
+                }
+                val request =
+                    com.aistudio.clinicsystem.data.api.BatchQueueEntriesRequest(
+                        patientId = patientId,
+                        source = "desk",
+                        services =
+                            services.map { svc ->
+                                com.aistudio.clinicsystem.data.api.BatchServiceItem(
+                                    specialistId = resolvedSpecialist,
+                                    serviceId = svc.serviceId ?: svc.id,
+                                    quantity = svc.qty,
+                                )
+                            },
+                    )
+                val response = legacyApiService.createQueueEntriesBatch(request)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val entries = response.body()!!.entries
+                    addSyncLog(
+                        "🎟️ Сервер: пациент поставлен в очередь (${entries.size} запись/ей, specialist #$resolvedSpecialist).",
+                        "CLOUD_SYNC_SIMULATOR",
+                    )
+                    // Per-queue cache refresh from the server.
+                    refreshQueueForSpecialist(resolvedSpecialist)
+                    com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Registered(entries.map { it.number })
+                } else {
+                    com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                        "сервер отклонил регистрацию (HTTP ${response.code()})",
+                    )
+                }
+            } catch (e: Exception) {
+                com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                    "сеть недоступна: ${e.localizedMessage ?: e.javaClass.simpleName}",
+                )
+            }
+        }
+
+        /**
+         * TASK-7: reorder through the SERVER (PUT /queue/move-entry). The
+         * local cache is updated ONLY from the server response — a failed
+         * move never mutates the confirmed order locally.
+         */
+        suspend fun moveQueueEntryOnServer(
+            entryId: Int,
+            newPosition: Int,
+        ): Boolean {
+            return try {
+                val response =
+                    legacyApiService.moveQueueEntry(
+                        com.aistudio.clinicsystem.data.api.QueueEntryMoveRequest(
+                            entryId = entryId,
+                            newPosition = newPosition,
+                        ),
+                    )
+                if (response.isSuccessful && response.body()?.success == true) {
+                    addSyncLog("↕️ Сервер: порядок очереди обновлён (entry #$entryId → позиция $newPosition).", "CLOUD_SYNC_SIMULATOR")
+                    // Refresh the owning specialist's queue from the server.
+                    val specialistId =
+                        queueSnapshotDao.getAllQueueSnapshots()
+                            .firstOrNull { it.id == entryId }?.specialistId
+                    if (specialistId != null) {
+                        refreshQueueForSpecialist(specialistId)
+                    }
+                    true
+                } else {
+                    addSyncLog("⚠️ Сервер не переместил entry #$entryId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
+                    false
+                }
+            } catch (e: Exception) {
+                addSyncLog("⚠️ Сеть недоступна: перемещение не выполнено (${e.message}).", "CLOUD_SYNC_SIMULATOR")
+                false
+            }
+        }
+
         override suspend fun registerInQueue(appointmentId: String): Unit =
             throw UnsupportedOperationException(
                 "Сервер не поддерживает запись в очередь по ID приёма — используйте QR-регистрацию.",

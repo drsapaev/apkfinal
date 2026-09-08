@@ -600,36 +600,18 @@ class StaffViewModel
 
         fun registerPatientInQueue(appointmentId: String) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
-                // M-CONTRACT-FIX: the backend removed POST /api/v1/queue/register —
-                // joining a queue now works only through the QR-token flow, which
-                // the app does not implement. repository.registerInQueue throws
-                // UnsupportedOperationException; keep the local-snapshot fallback
-                // so the registrar console stays usable.
-                try {
-                    repository.registerInQueue(appointmentId = appointmentId)
-                    repository.addSyncLog("🎟️ Пациент успешно добавлен в живую очередь ожидания.", "SYSTEM_SYNC")
-                } catch (e: Exception) {
-                    val appt = repository.getAppointmentById(appointmentId)
-                    if (appt != null) {
-                        val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                        val nextPosition = (snapshots.maxOfOrNull { it.position } ?: 0) + 1
-                        val localSnapshot =
-                            QueueSnapshotEntity(
-                                id = (appt.serverId ?: 0),
-                                patientName = appt.patientName,
-                                appointmentId = (appt.serverId ?: 0),
-                                position = nextPosition,
-                                status = "WAITING",
-                            )
-                        database.queueSnapshotDao().insertQueueSnapshots(listOf(localSnapshot))
-                        repository.addSyncLog(
-                            "🎟️ Очередь (local-fallback): ${e.message ?: "серверная регистрация недоступна"} Пациент зарегистрирован локально.",
-                            "SYSTEM_SYNC",
+                // TASK-7: server-side registration ONLY. No local "live"
+                // ticket may appear when the server refuses — the old
+                // local-fallback created a phantom entry that never existed
+                // for the web client.
+                val outcome = repository.registerPatientInQueueOnServer(appointmentId, null)
+                when (outcome) {
+                    is com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Registered ->
+                        _staffMessageEvent.tryEmit(
+                            "Пациент поставлен в очередь. Талон(ы): ${outcome.numbers.joinToString(", ")}.",
                         )
-                    }
+                    is com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed ->
+                        _staffMessageEvent.tryEmit("Регистрация в очередь не выполнена: ${outcome.reason}")
                 }
             }
         }
@@ -639,13 +621,18 @@ class StaffViewModel
             newStatus: String,
         ) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
                 val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
                 val target = snapshots.find { it.id == snapshotId }
                 if (target != null) {
-                    repository.updateQueueStatusOnServerAndLocal(snapshotId, newStatus)
+                    val ok = repository.updateQueueStatusOnServerAndLocal(snapshotId, newStatus)
+                    if (ok) {
+                        // TASK-7: refresh the queue of THIS specialist only.
+                        target.specialistId?.let {
+                            repository.refreshQueueForSpecialist(it)
+                        }
+                    } else {
+                        _staffMessageEvent.tryEmit("Не удалось изменить статус на сервере — состояние очереди не изменилось.")
+                    }
                 }
             }
         }
@@ -655,46 +642,39 @@ class StaffViewModel
             up: Boolean,
         ) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
+                // TASK-7: reorder through the SERVER. The local cache is
+                // replaced from the server response only — a failed move
+                // never changes the confirmed order locally.
                 val snapshots = database.queueSnapshotDao().getAllQueueSnapshots().sortedBy { it.position }
                 val index = snapshots.indexOfFirst { it.id == snapshotId }
                 if (index == -1) return@launch
 
-                if (up && index > 0) {
-                    val current = snapshots[index]
-                    val prev = snapshots[index - 1]
-                    val updated =
-                        listOf(
-                            current.copy(position = prev.position),
-                            prev.copy(position = current.position),
-                        )
-                    database.queueSnapshotDao().insertQueueSnapshots(updated)
-                    repository.addSyncLog("↕️ Очередь переопределена: смещение вверх.", "SYSTEM_SYNC")
-                } else if (!up && index < snapshots.size - 1) {
-                    val current = snapshots[index]
-                    val next = snapshots[index + 1]
-                    val updated =
-                        listOf(
-                            current.copy(position = next.position),
-                            next.copy(position = current.position),
-                        )
-                    database.queueSnapshotDao().insertQueueSnapshots(updated)
-                    repository.addSyncLog("↕️ Очередь переопределена: смещение вниз.", "SYSTEM_SYNC")
+                val targetPosition =
+                    when {
+                        up && index > 0 -> snapshots[index - 1].position
+                        !up && index < snapshots.size - 1 -> snapshots[index + 1].position
+                        else -> return@launch
+                    }
+                val ok = repository.moveQueueEntryOnServer(snapshotId, targetPosition)
+                if (!ok) {
+                    _staffMessageEvent.tryEmit("Перемещение не выполнено: сервер недоступен или отклонил операцию.")
                 }
             }
         }
 
         fun removeQueuePatient(snapshotId: Int) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
                 val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
                 val target = snapshots.find { it.id == snapshotId }
                 if (target != null) {
-                    repository.removeQueueEntryOnServerAndLocal(snapshotId)
+                    val ok = repository.removeQueueEntryOnServerAndLocal(snapshotId)
+                    if (ok) {
+                        target.specialistId?.let {
+                            repository.refreshQueueForSpecialist(it)
+                        }
+                    } else {
+                        _staffMessageEvent.tryEmit("Удаление из очереди не выполнено: сервер недоступен или отклонил операцию.")
+                    }
                 }
             }
         }

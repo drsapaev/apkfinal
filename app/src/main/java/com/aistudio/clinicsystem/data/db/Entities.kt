@@ -98,6 +98,14 @@ data class QueueSnapshotEntity(
     val clinicId: String = "clinic_base",
     val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
     val timestamp: Long = System.currentTimeMillis(),
+    // TASK-7: identity of the row on the server — the entry belongs to a
+    // specific DAILY QUEUE of a specific SPECIALIST on a specific DAY. The
+    // three ids are stored SEPARATELY so queues of two doctors can never be
+    // mixed and per-queue cache replacement is possible.
+    val queueId: Int? = null,
+    val specialistId: Int? = null,
+    /** "YYYY-MM-DD" — the queue day the entry belongs to. */
+    val day: String = "",
 )
 
 @Entity(

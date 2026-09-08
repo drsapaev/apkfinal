@@ -146,7 +146,108 @@ interface ApiService {
         @Path("visit_id") visitId: Int,
         @Body payload: EmrSaveRequest,
     ): Response<EmrRecordDto>
+
+    // ── Queue registration / reorder (TASK-7) ─────────────────────────────
+
+    /**
+     * TASK-7: server-side queue registration via the batch endpoint
+     * (POST /api/v1/registrar-integration/queue/entries/batch).
+     * Roles: Admin, Registrar. One entry per specialist is created.
+     */
+    @POST("api/v1/registrar-integration/queue/entries/batch")
+    suspend fun createQueueEntriesBatch(
+        @Body request: BatchQueueEntriesRequest,
+    ): Response<BatchQueueEntriesResponse>
+
+    /**
+     * TASK-7: move a single queue entry to a new position
+     * (PUT /api/v1/queue/move-entry). Roles: Admin, Registrar, Doctor.
+     */
+    @PUT("api/v1/queue/move-entry")
+    suspend fun moveQueueEntry(
+        @Body request: QueueEntryMoveRequest,
+    ): Response<QueueMoveResponse>
+
+    /** TASK-7: visit with its services (source of service ids for batch). */
+    @GET("api/v1/visits/{visit_id}")
+    suspend fun getVisitWithServices(
+        @Path("visit_id") visitId: Int,
+    ): Response<VisitWithServicesDto>
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// DTOs — queue batch registration / reorder (TASK-7)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Body of POST /registrar-integration/queue/entries/batch. */
+@JsonClass(generateAdapter = true)
+data class BatchQueueEntriesRequest(
+    @Json(name = "patient_id") val patientId: Int,
+    /** online | desk | morning_assignment. */
+    @Json(name = "source") val source: String = "desk",
+    @Json(name = "services") val services: List<BatchServiceItem>,
+)
+
+@JsonClass(generateAdapter = true)
+data class BatchServiceItem(
+    @Json(name = "specialist_id") val specialistId: Int,
+    @Json(name = "service_id") val serviceId: Int,
+    @Json(name = "quantity") val quantity: Int = 1,
+)
+
+@JsonClass(generateAdapter = true)
+data class BatchQueueEntriesResponse(
+    @Json(name = "success") val success: Boolean = false,
+    @Json(name = "entries") val entries: List<BatchQueueEntryOut> = emptyList(),
+    @Json(name = "message") val message: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class BatchQueueEntryOut(
+    @Json(name = "specialist_id") val specialistId: Int,
+    @Json(name = "queue_id") val queueId: Int,
+    @Json(name = "number") val number: Int,
+    @Json(name = "queue_time") val queueTime: String? = null,
+)
+
+/** Body of PUT /queue/move-entry. */
+@JsonClass(generateAdapter = true)
+data class QueueEntryMoveRequest(
+    @Json(name = "entry_id") val entryId: Int,
+    @Json(name = "new_position") val newPosition: Int,
+)
+
+@JsonClass(generateAdapter = true)
+data class QueueMoveResponse(
+    @Json(name = "success") val success: Boolean = false,
+    @Json(name = "message") val message: String? = null,
+    @Json(name = "updated_entries") val updatedEntries: Int = 0,
+)
+
+/** Minimal visit-with-services (backend `VisitWithServices`). */
+@JsonClass(generateAdapter = true)
+data class VisitWithServicesDto(
+    @Json(name = "visit") val visit: StaffVisitDto? = null,
+    @Json(name = "services") val services: List<VisitServiceOutDto> = emptyList(),
+)
+
+@JsonClass(generateAdapter = true)
+data class VisitServiceOutDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "visit_id") val visitId: Int? = null,
+    /**
+     * Catalog Service.id — the value the batch queue-registration endpoint
+     * expects. NOTE: the current backend `VisitServiceOut` schema does NOT
+     * expose service_id (documented limitation in the task report); when
+     * absent the client falls back to the visit-service row id and tolerates
+     * a server 404 by NOT creating any local ticket.
+     */
+    @Json(name = "service_id") val serviceId: Int? = null,
+    @Json(name = "code") val code: String? = null,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "price") val price: Double? = null,
+    @Json(name = "qty") val qty: Int = 1,
+)
 
 // ─────────────────────────────────────────────────────────────────────────
 // DTOs — visits + EMR v2 (TASK-3)

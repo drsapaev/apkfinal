@@ -66,6 +66,10 @@ interface QueueSnapshotDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQueueSnapshots(snapshots: List<QueueSnapshotEntity>)
 
+    /** TASK-7: per-queue cache replacement — drop one specialist's rows. */
+    @Query("DELETE FROM queue_snapshots WHERE specialistId = :specialistId")
+    suspend fun deleteBySpecialist(specialistId: Int)
+
     @Query("DELETE FROM queue_snapshots")
     suspend fun clearQueueSnapshots()
 }
@@ -320,7 +324,7 @@ interface LabResultDao {
         LabResultEntity::class,
     ],
     // Stage 6: bumped 8 → 9. Migration 8→9 adds lab_results table.
-    version = 10,
+    version = 11,
     // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
     // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/8.json
     // on every build. This file must be committed to git — it is the
