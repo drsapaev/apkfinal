@@ -85,6 +85,7 @@ class StaffViewModelTest {
                 authRepository = authRepository,
                 sessionRepository = sessionRepository,
                 apiService = mockk(relaxed = true),
+                webSocketClient = mockk(relaxed = true),
             )
     }
 
