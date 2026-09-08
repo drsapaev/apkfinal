@@ -10,8 +10,10 @@ import javax.inject.Singleton
  * Called by SessionRepository.restoreSession() and ClinicViewModel.refreshSession().
  */
 @Singleton
-class VerifySessionUseCase @Inject constructor(
-    private val authRepository: AuthRepositoryInterface,
-) {
-    suspend operator fun invoke(): Result<UserDto> = authRepository.verifyCurrentSession()
-}
+class VerifySessionUseCase
+    @Inject
+    constructor(
+        private val authRepository: AuthRepositoryInterface,
+    ) {
+        suspend operator fun invoke(): Result<UserDto> = authRepository.verifyCurrentSession()
+    }

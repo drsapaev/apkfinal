@@ -1,7 +1,7 @@
 package com.aistudio.clinicsystem.data.session
 
-import com.aistudio.clinicsystem.domain.model.UserRole
 import com.aistudio.clinicsystem.data.db.UserEntity
+import com.aistudio.clinicsystem.domain.model.UserRole
 
 /**
  * Stage 2.2: Sealed hierarchy of session states.
@@ -41,7 +41,10 @@ sealed interface SessionState {
      * short-lived token the backend issued; it must be exchanged for full
      * access+refresh tokens via /api/v1/2fa/verify.
      */
-    data class RequiresTwoFactor(val challengeToken: String, val phone: String) : SessionState
+    data class RequiresTwoFactor(
+        val challengeToken: String,
+        val phone: String,
+    ) : SessionState
 
     /**
      * Fully authenticated. [user] is the cached Room entity (may be null on
@@ -72,10 +75,11 @@ sealed interface SessionState {
  * for code that only cares about role-based branching.
  */
 val SessionState.role: UserRole?
-    get() = when (this) {
-        is SessionState.Authenticated -> this.user?.role?.let { UserRole.fromBackend(it) }
-        else -> null
-    }
+    get() =
+        when (this) {
+            is SessionState.Authenticated -> this.user?.role?.let { UserRole.fromBackend(it) }
+            else -> null
+        }
 
 /**
  * True if the user is fully authenticated (not in 2FA, not loading, not

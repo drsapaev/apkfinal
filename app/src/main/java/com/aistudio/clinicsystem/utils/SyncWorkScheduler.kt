@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit
  *      recover from a transient outage before we hammer it again.
  */
 object SyncWorkScheduler {
-
     /**
      * Schedules the periodic outbox-retry worker. Should be called ONCE
      * per process — from [com.aistudio.clinicsystem.ClinicSystemApplication.onCreate].
@@ -44,28 +43,30 @@ object SyncWorkScheduler {
      *   - The manual "refresh" button in the UI
      */
     fun schedulePeriodicSync(context: Context) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .setRequiresBatteryNotLow(true)
-            .setRequiresStorageNotLow(true)
-            .build()
+        val constraints =
+            Constraints
+                .Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .setRequiresStorageNotLow(true)
+                .build()
 
         // Stage 3.7 (PERF-13): 6 hours — was 15 minutes. 15 min was the
         // WorkManager minimum, which is aggressive for a medical app that
         // already has a real-time WebSocket. 6 hours is enough to catch
         // any outbox rows that failed all retries during normal usage.
-        val syncRequest = PeriodicWorkRequest.Builder(
-            SyncWorker::class.java,
-            6,
-            TimeUnit.HOURS,
-        )
-            .setConstraints(constraints)
-            .setBackoffCriteria(
-                BackoffPolicy.EXPONENTIAL,
-                30, // was 10 — more forgiving for transient outages
-                TimeUnit.SECONDS,
-            )
-            .build()
+        val syncRequest =
+            PeriodicWorkRequest
+                .Builder(
+                    SyncWorker::class.java,
+                    6,
+                    TimeUnit.HOURS,
+                ).setConstraints(constraints)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    30, // was 10 — more forgiving for transient outages
+                    TimeUnit.SECONDS,
+                ).build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "PeriodicSyncWork",
@@ -84,20 +85,24 @@ object SyncWorkScheduler {
      * expedited quota, otherwise falls back to a normal work request.
      */
     fun triggerImmediateSync(context: Context) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        val constraints =
+            Constraints
+                .Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
 
-        val syncRequest = OneTimeWorkRequest.Builder(SyncWorker::class.java)
-            .setConstraints(constraints)
-            .setBackoffCriteria(
-                BackoffPolicy.EXPONENTIAL,
-                30,
-                TimeUnit.SECONDS,
-            )
-            // Stage 3.7: expedited — runs immediately if quota available.
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .build()
+        val syncRequest =
+            OneTimeWorkRequest
+                .Builder(SyncWorker::class.java)
+                .setConstraints(constraints)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    30,
+                    TimeUnit.SECONDS,
+                )
+                // Stage 3.7: expedited — runs immediately if quota available.
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             "ImmediateSyncWork",

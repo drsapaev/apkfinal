@@ -1,8 +1,5 @@
 package com.aistudio.clinicsystem.ui.screens.staff
 
-import com.aistudio.clinicsystem.ui.theme.Spacing
-import com.aistudio.clinicsystem.ui.theme.Radius
-import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -42,9 +39,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.data.db.QueueSnapshotEntity
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
 
 /**
  * Section 0: Live Waiting Room Queue.
@@ -61,63 +60,66 @@ fun StaffQueueSection(
     adminColor: Color,
     onShiftQueuePosition: (Int, Boolean) -> Unit,
     onUpdateQueueStatus: (Int, String) -> Unit,
-    onRemoveQueuePatient: (QueueSnapshotEntity) -> Unit
+    onRemoveQueuePatient: (QueueSnapshotEntity) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
-            .padding(Spacing.l),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.large))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(Radius.large))
+                .padding(Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.QueuePlayNext,
                     contentDescription = null,
                     tint = adminColor,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
                 Spacer(modifier = Modifier.width(Spacing.s))
                 Text(
                     text = stringResource(R.string.queue_title),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.surface
+                    color = MaterialTheme.colorScheme.surface,
                 )
             }
             Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(Radius.small))
-                    .background(adminColor.copy(alpha = 0.15f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(Radius.small))
+                        .background(adminColor.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text(
                     text = stringResource(R.string.queue_patients_count, cachedQueueSnapshots.size),
                     fontSize = AppFontSize.bodySmall,
                     color = adminColor,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
 
         if (cachedQueueSnapshots.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.medium))
-                    .padding(Spacing.l),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(Radius.medium))
+                        .padding(Spacing.l),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(R.string.queue_empty_text),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = AppFontSize.body,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
             }
         } else {
@@ -126,27 +128,28 @@ fun StaffQueueSection(
                     Card(
                         shape = RoundedCornerShape(Radius.medium),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(modifier = Modifier.padding(Spacing.m)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(
-                                        modifier = Modifier
-                                            .size(22.dp)
-                                            .clip(CircleShape)
-                                            .background(adminColor),
-                                        contentAlignment = Alignment.Center
+                                        modifier =
+                                            Modifier
+                                                .size(22.dp)
+                                                .clip(CircleShape)
+                                                .background(adminColor),
+                                        contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
                                             text = "${q.position}",
                                             color = MaterialTheme.colorScheme.surface,
                                             fontSize = AppFontSize.bodySmall,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(Spacing.s))
@@ -155,41 +158,44 @@ fun StaffQueueSection(
                                             text = q.patientName,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = AppFontSize.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = MaterialTheme.colorScheme.onSurface,
                                         )
                                         Text(
                                             text = stringResource(R.string.queue_appointment_id, q.appointmentId),
                                             fontSize = AppFontSize.caption,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 }
 
-                                val qStatusColor = when (q.status) {
-                                    "WAITING" -> MaterialTheme.colorScheme.tertiary
-                                    "CALLED" -> MaterialTheme.colorScheme.secondary
-                                    "IN_PROGRESS" -> MaterialTheme.colorScheme.primary
-                                    "COMPLETED" -> MaterialTheme.colorScheme.primary
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                                val qStatusText = when (q.status) {
-                                    "WAITING" -> stringResource(R.string.st_waiting)
-                                    "CALLED" -> stringResource(R.string.st_called)
-                                    "IN_PROGRESS" -> stringResource(R.string.st_in_progress)
-                                    "COMPLETED" -> stringResource(R.string.st_seen)
-                                    else -> q.status
-                                }
+                                val qStatusColor =
+                                    when (q.status) {
+                                        "WAITING" -> MaterialTheme.colorScheme.tertiary
+                                        "CALLED" -> MaterialTheme.colorScheme.secondary
+                                        "IN_PROGRESS" -> MaterialTheme.colorScheme.primary
+                                        "COMPLETED" -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                val qStatusText =
+                                    when (q.status) {
+                                        "WAITING" -> stringResource(R.string.st_waiting)
+                                        "CALLED" -> stringResource(R.string.st_called)
+                                        "IN_PROGRESS" -> stringResource(R.string.st_in_progress)
+                                        "COMPLETED" -> stringResource(R.string.st_seen)
+                                        else -> q.status
+                                    }
                                 Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(Radius.small))
-                                        .background(qStatusColor.copy(alpha = 0.12f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    modifier =
+                                        Modifier
+                                            .clip(RoundedCornerShape(Radius.small))
+                                            .background(qStatusColor.copy(alpha = 0.12f))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
                                 ) {
                                     Text(
                                         text = qStatusText,
                                         fontSize = AppFontSize.caption,
                                         fontWeight = FontWeight.Bold,
-                                        color = qStatusColor
+                                        color = qStatusColor,
                                     )
                                 }
                             }
@@ -199,21 +205,31 @@ fun StaffQueueSection(
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 IconButton(
                                     onClick = { onShiftQueuePosition(q.id, true) },
-                                    modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small))
+                                    modifier =
+                                        Modifier
+                                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small)),
                                 ) {
-                                    Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(R.string.ui_up), modifier = Modifier.size(16.dp))
+                                    Icon(
+                                        Icons.Default.ArrowUpward,
+                                        contentDescription = stringResource(R.string.ui_up),
+                                        modifier = Modifier.size(16.dp),
+                                    )
                                 }
                                 IconButton(
                                     onClick = { onShiftQueuePosition(q.id, false) },
-                                    modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small))
+                                    modifier =
+                                        Modifier
+                                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.small)),
                                 ) {
-                                    Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.ui_down), modifier = Modifier.size(16.dp))
+                                    Icon(
+                                        Icons.Default.ArrowDownward,
+                                        contentDescription = stringResource(R.string.ui_down),
+                                        modifier = Modifier.size(16.dp),
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.weight(1f))
@@ -223,34 +239,46 @@ fun StaffQueueSection(
                                         onClick = { onUpdateQueueStatus(q.id, "CALLED") },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
-                                        modifier = Modifier.heightIn(min = 44.dp)
+                                        modifier = Modifier.heightIn(min = 44.dp),
                                     ) {
-                                        Text(stringResource(R.string.ui_call_to_doctor), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
+                                        Text(
+                                            stringResource(R.string.ui_call_to_doctor),
+                                            fontSize = AppFontSize.caption,
+                                            color = MaterialTheme.colorScheme.surface,
+                                        )
                                     }
                                 } else if (q.status == "CALLED") {
                                     Button(
                                         onClick = { onUpdateQueueStatus(q.id, "IN_PROGRESS") },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
-                                        modifier = Modifier.heightIn(min = 44.dp)
+                                        modifier = Modifier.heightIn(min = 44.dp),
                                     ) {
-                                        Text(stringResource(R.string.queue_start_visit), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
+                                        Text(
+                                            stringResource(R.string.queue_start_visit),
+                                            fontSize = AppFontSize.caption,
+                                            color = MaterialTheme.colorScheme.surface,
+                                        )
                                     }
                                 } else if (q.status == "IN_PROGRESS") {
                                     Button(
                                         onClick = { onUpdateQueueStatus(q.id, "COMPLETED") },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
-                                        modifier = Modifier.heightIn(min = 44.dp)
+                                        modifier = Modifier.heightIn(min = 44.dp),
                                     ) {
-                                        Text(stringResource(R.string.queue_complete), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
+                                        Text(
+                                            stringResource(R.string.queue_complete),
+                                            fontSize = AppFontSize.caption,
+                                            color = MaterialTheme.colorScheme.surface,
+                                        )
                                     }
                                 }
 
                                 TextButton(
                                     onClick = { onRemoveQueuePatient(q) },
                                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                    modifier = Modifier.heightIn(min = 44.dp).testTag("remove_queue_patient_button")
+                                    modifier = Modifier.heightIn(min = 44.dp).testTag("remove_queue_patient_button"),
                                 ) {
                                     Text(stringResource(R.string.ui_ubrat), fontSize = AppFontSize.caption)
                                 }

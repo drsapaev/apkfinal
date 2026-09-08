@@ -7,8 +7,8 @@ import com.aistudio.clinicsystem.data.session.SessionState
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -28,7 +28,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RealtimeManagerTest {
-
     private lateinit var realtimeManager: RealtimeManager
     private lateinit var mockContext: Context
     private lateinit var mockDatabase: ClinicDatabase
@@ -42,16 +41,18 @@ class RealtimeManagerTest {
         mockDatabase = mockk(relaxed = true)
         mockSessionRepo = mockk(relaxed = true)
 
-        every { mockSessionRepo.sessionState } returns MutableStateFlow(
-            SessionState.Unauthenticated,
-        )
+        every { mockSessionRepo.sessionState } returns
+            MutableStateFlow(
+                SessionState.Unauthenticated,
+            )
 
-        realtimeManager = RealtimeManager(
-            context = mockContext,
-            database = mockDatabase,
-            sessionRepository = mockSessionRepo,
-            wsClient = mockk(relaxed = true),
-        )
+        realtimeManager =
+            RealtimeManager(
+                context = mockContext,
+                database = mockDatabase,
+                sessionRepository = mockSessionRepo,
+                wsClient = mockk(relaxed = true),
+            )
     }
 
     @After
@@ -117,9 +118,10 @@ class RealtimeManagerTest {
     fun `emitEvent delivers to SharedFlow subscribers`() {
         kotlinx.coroutines.runBlocking {
             val collected = mutableListOf<RealtimeEvent>()
-            val job = kotlinx.coroutines.GlobalScope.launch(Dispatchers.Unconfined) {
-                realtimeManager.events.collect { collected.add(it) }
-            }
+            val job =
+                kotlinx.coroutines.GlobalScope.launch(Dispatchers.Unconfined) {
+                    realtimeManager.events.collect { collected.add(it) }
+                }
             realtimeManager.emitEvent(RealtimeEvent.ConnectionState.Connected)
             realtimeManager.emitEvent(RealtimeEvent.ConnectionState.Disconnected)
             kotlinx.coroutines.delay(100)

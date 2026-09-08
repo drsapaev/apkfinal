@@ -18,13 +18,13 @@ import org.junit.Test
  *  - Jitter is within ±20% of the base delay
  */
 class OutboxRetryPolicyTest {
-
-    private val policy = OutboxRetryPolicy(
-        maxRetries = 5,
-        initialBackoffMs = 2_000,
-        maxBackoffMs = 300_000,
-        backoffMultiplier = 2.0,
-    )
+    private val policy =
+        OutboxRetryPolicy(
+            maxRetries = 5,
+            initialBackoffMs = 2_000,
+            maxBackoffMs = 300_000,
+            backoffMultiplier = 2.0,
+        )
 
     @Test
     fun `backoffFor 0 returns approximately 2000ms with jitter`() {

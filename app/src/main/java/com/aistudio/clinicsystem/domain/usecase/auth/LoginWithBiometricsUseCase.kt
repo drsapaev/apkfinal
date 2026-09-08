@@ -25,20 +25,25 @@ import javax.inject.Singleton
  * path.
  */
 @Singleton
-class LoginWithBiometricsUseCase @Inject constructor(
-    private val authRepository: AuthRepositoryInterface,
-) {
-    suspend operator fun invoke(phone: String, cipher: Cipher?): Result<UserDto> {
-        if (cipher == null) {
-            return Result.failure(
-                IllegalStateException("Биометрический ключ недоступен. Войдите по паролю.")
-            )
+class LoginWithBiometricsUseCase
+    @Inject
+    constructor(
+        private val authRepository: AuthRepositoryInterface,
+    ) {
+        suspend operator fun invoke(
+            phone: String,
+            cipher: Cipher?,
+        ): Result<UserDto> {
+            if (cipher == null) {
+                return Result.failure(
+                    IllegalStateException("Биометрический ключ недоступен. Войдите по паролю."),
+                )
+            }
+            if (phone.isBlank()) {
+                return Result.failure(
+                    IllegalArgumentException("Телефон не может быть пустым"),
+                )
+            }
+            return authRepository.loginWithBiometricRefreshToken(phone.trim(), cipher)
         }
-        if (phone.isBlank()) {
-            return Result.failure(
-                IllegalArgumentException("Телефон не может быть пустым")
-            )
-        }
-        return authRepository.loginWithBiometricRefreshToken(phone.trim(), cipher)
     }
-}

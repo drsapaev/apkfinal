@@ -27,12 +27,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class TokenAuthenticatorTest {
-
     private lateinit var mockWebServer: MockWebServer
     private lateinit var sessionManager: SessionManager
     private var sessionInvalidatedCalled = false
     private lateinit var authenticator: TokenAuthenticator
-    private val moshi = com.squareup.moshi.Moshi.Builder().build()
+    private val moshi =
+        com.squareup.moshi.Moshi
+            .Builder()
+            .build()
 
     @Before
     fun setUp() {
@@ -40,12 +42,13 @@ class TokenAuthenticatorTest {
         sessionManager = mockk(relaxed = true)
         sessionInvalidatedCalled = false
 
-        authenticator = TokenAuthenticator(
-            sessionManager = sessionManager,
-            moshi = moshi,
-            baseUrlProvider = { mockWebServer.url("/").toString() },
-            onSessionInvalidated = { sessionInvalidatedCalled = true },
-        )
+        authenticator =
+            TokenAuthenticator(
+                sessionManager = sessionManager,
+                moshi = moshi,
+                baseUrlProvider = { mockWebServer.url("/").toString() },
+                onSessionInvalidated = { sessionInvalidatedCalled = true },
+            )
     }
 
     @After
@@ -53,8 +56,12 @@ class TokenAuthenticatorTest {
         mockWebServer.shutdown()
     }
 
-    private fun build401Response(request: Request, priorResponse: Response? = null): Response =
-        Response.Builder()
+    private fun build401Response(
+        request: Request,
+        priorResponse: Response? = null,
+    ): Response =
+        Response
+            .Builder()
             .request(request)
             .protocol(okhttp3.Protocol.HTTP_1_1)
             .code(401)
@@ -63,13 +70,16 @@ class TokenAuthenticatorTest {
             .build()
 
     private fun buildPrior401Response(request: Request): Response {
-        val prior = Response.Builder()
-            .request(request)
-            .protocol(okhttp3.Protocol.HTTP_1_1)
-            .code(401)
-            .message("Unauthorized")
-            .build()
-        return Response.Builder()
+        val prior =
+            Response
+                .Builder()
+                .request(request)
+                .protocol(okhttp3.Protocol.HTTP_1_1)
+                .code(401)
+                .message("Unauthorized")
+                .build()
+        return Response
+            .Builder()
             .request(request)
             .protocol(okhttp3.Protocol.HTTP_1_1)
             .code(401)
@@ -79,10 +89,12 @@ class TokenAuthenticatorTest {
     }
 
     private val testRequest: Request
-        get() = Request.Builder()
-            .url(mockWebServer.url("/api/v1/appointments"))
-            .header("Authorization", "Bearer old-access-token")
-            .build()
+        get() =
+            Request
+                .Builder()
+                .url(mockWebServer.url("/api/v1/appointments"))
+                .header("Authorization", "Bearer old-access-token")
+                .build()
 
     @Test
     fun `401 with valid refresh token retries with new access token`() {

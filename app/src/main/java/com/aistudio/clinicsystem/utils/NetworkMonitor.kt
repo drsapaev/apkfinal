@@ -49,121 +49,129 @@ import javax.inject.Singleton
  * [com.aistudio.clinicsystem.ClinicSystemApplication.onCreate].
  */
 @Singleton
-class NetworkMonitor @Inject constructor(
-    @ApplicationContext private val appContext: Context,
-    private val realtimeManager: RealtimeManager,
-    private val syncLogDao: com.aistudio.clinicsystem.data.db.SyncLogDao,
-) {
-    // Medium-1 audit fix: TAG constant removed — Timber auto-tags with class name.
+class NetworkMonitor
+    @Inject
+    constructor(
+        @ApplicationContext private val appContext: Context,
+        private val realtimeManager: RealtimeManager,
+        private val syncLogDao: com.aistudio.clinicsystem.data.db.SyncLogDao,
+    ) {
+        // Medium-1 audit fix: TAG constant removed — Timber auto-tags with class name.
 
-    private val _isOnline = MutableStateFlow(true)
-    val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
+        private val _isOnline = MutableStateFlow(true)
+        val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    @Volatile
-    private var started = false
+        @Volatile
+        private var started = false
 
-    private var connectivityManager: ConnectivityManager? = null
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+        private var connectivityManager: ConnectivityManager? = null
+        private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
-    /**
-     * Registers the network callback. Idempotent — safe to call multiple
-     * times. Should be called exactly once from Application.onCreate.
-     */
-    fun startMonitoring() {
-        if (started) {
-            Timber.d("startMonitoring() already started — ignoring")
-            return
-        }
-        started = true
+        /**
+         * Registers the network callback. Idempotent — safe to call multiple
+         * times. Should be called exactly once from Application.onCreate.
+         */
+        fun startMonitoring() {
+            if (started) {
+                Timber.d("startMonitoring() already started — ignoring")
+                return
+            }
+            started = true
 
-        connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE)
-            as ConnectivityManager
+            connectivityManager =
+                appContext.getSystemService(Context.CONNECTIVITY_SERVICE)
+                    as ConnectivityManager
 
-        // Check initial state
-        try {
-            val initialCapabilities = connectivityManager?.getNetworkCapabilities(
-                connectivityManager?.activeNetwork,
-            )
-            val initialOnline = initialCapabilities?.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET,
-            ) == true
-            _isOnline.value = initialOnline
-        } catch (e: Exception) {
-            _isOnline.value = true
-        }
+            // Check initial state
+            try {
+                val initialCapabilities =
+                    connectivityManager?.getNetworkCapabilities(
+                        connectivityManager?.activeNetwork,
+                    )
+                val initialOnline =
+                    initialCapabilities?.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                    ) == true
+                _isOnline.value = initialOnline
+            } catch (e: Exception) {
+                _isOnline.value = true
+            }
 
-        networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                if (!_isOnline.value) {
-                    _isOnline.value = true
-                    Timber.d("Network connection is AVAILABLE")
-                    scope.launch {
-                        syncLogDao.insertLog(
-                            SyncLogEntity(
-                                logMessage = "📶 Сеть восстановлена: Запуск фонового примирения данных и синхронизации.",
-                                direction = "SYSTEM_SYNC",
-                                timestamp = System.currentTimeMillis(),
-                            ),
-                        )
-                        // Stage 2.5 (H-3 fix): call reconnectNow() on the
-                        // SINGLETON RealtimeManager — Hilt guarantees this
-                        // is the same instance ClinicViewModel holds.
-                        // No more `RealtimeManager(...).reconnect()` no-op.
-                        try {
-                            realtimeManager.reconnectNow()
-                        } catch (e: Exception) {
-                            Timber.e("WebSocket reconnect failed", e)
+            networkCallback =
+                object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        if (!_isOnline.value) {
+                            _isOnline.value = true
+                            Timber.d("Network connection is AVAILABLE")
+                            scope.launch {
+                                syncLogDao.insertLog(
+                                    SyncLogEntity(
+                                        logMessage = "📶 Сеть восстановлена: Запуск фонового примирения данных и синхронизации.",
+                                        direction = "SYSTEM_SYNC",
+                                        timestamp = System.currentTimeMillis(),
+                                    ),
+                                )
+                                // Stage 2.5 (H-3 fix): call reconnectNow() on the
+                                // SINGLETON RealtimeManager — Hilt guarantees this
+                                // is the same instance ClinicViewModel holds.
+                                // No more `RealtimeManager(...).reconnect()` no-op.
+                                try {
+                                    realtimeManager.reconnectNow()
+                                } catch (e: Exception) {
+                                    Timber.e("WebSocket reconnect failed", e)
+                                }
+                                // Trigger WorkManager instant syncer
+                                SyncWorkScheduler.triggerImmediateSync(appContext)
+                            }
                         }
-                        // Trigger WorkManager instant syncer
-                        SyncWorkScheduler.triggerImmediateSync(appContext)
+                    }
+
+                    override fun onLost(network: Network) {
+                        if (_isOnline.value) {
+                            _isOnline.value = false
+                            Timber.d("Network connection was LOST")
+                            scope.launch {
+                                syncLogDao.insertLog(
+                                    SyncLogEntity(
+                                        logMessage = "⚠️ Соединение потеряно: Переход в автономный режим работы (Room DB).",
+                                        direction = "SYSTEM_SYNC",
+                                        timestamp = System.currentTimeMillis(),
+                                    ),
+                                )
+                            }
+                        }
                     }
                 }
-            }
 
-            override fun onLost(network: Network) {
-                if (_isOnline.value) {
-                    _isOnline.value = false
-                    Timber.d("Network connection was LOST")
-                    scope.launch {
-                        syncLogDao.insertLog(
-                            SyncLogEntity(
-                                logMessage = "⚠️ Соединение потеряно: Переход в автономный режим работы (Room DB).",
-                                direction = "SYSTEM_SYNC",
-                                timestamp = System.currentTimeMillis(),
-                            ),
-                        )
-                    }
-                }
+            val request =
+                NetworkRequest
+                    .Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build()
+
+            try {
+                connectivityManager?.registerNetworkCallback(request, networkCallback!!)
+            } catch (e: Exception) {
+                Timber.e("Failed to register network callback", e)
             }
         }
 
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-
-        try {
-            connectivityManager?.registerNetworkCallback(request, networkCallback!!)
-        } catch (e: Exception) {
-            Timber.e("Failed to register network callback", e)
+        /**
+         * Unregisters the network callback and cancels the internal scope.
+         * Safe to call multiple times. In practice this is only called from
+         * tests — the singleton lives for the process lifetime.
+         */
+        fun stopMonitoring() {
+            if (!started) return
+            try {
+                networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
+            } catch (e: Exception) {
+                Timber.e("Failed to unregister network callback", e)
+            }
+            networkCallback = null
+            connectivityManager = null
+            started = false
         }
     }
-
-    /**
-     * Unregisters the network callback and cancels the internal scope.
-     * Safe to call multiple times. In practice this is only called from
-     * tests — the singleton lives for the process lifetime.
-     */
-    fun stopMonitoring() {
-        if (!started) return
-        try {
-            networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
-        } catch (e: Exception) {
-            Timber.e("Failed to unregister network callback", e)
-        }
-        networkCallback = null
-        connectivityManager = null
-        started = false
-    }
-}

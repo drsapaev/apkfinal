@@ -13,9 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.aistudio.clinicsystem.R
-import com.aistudio.clinicsystem.ui.theme.Radius
 
 /**
  * P-02 completion: extracted from StaffScreen.kt — cancel appointment dialog
@@ -30,7 +28,7 @@ fun StaffCancelReasonDialog(
     onReasonInputChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    accentColor: Color
+    accentColor: Color,
 ) {
     if (!visible) return
 
@@ -43,17 +41,18 @@ fun StaffCancelReasonDialog(
                 onValueChange = onReasonInputChange,
                 label = { Text(stringResource(R.string.dlg_cancel_reason)) },
                 placeholder = { Text(stringResource(R.string.dlg_cancel_placeholder)) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
-                    focusedLabelColor = accentColor
-                ),
-                modifier = Modifier.fillMaxWidth()
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = accentColor,
+                        focusedLabelColor = accentColor,
+                    ),
+                modifier = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             ) {
                 Text(stringResource(R.string.dlg_cancel_btn), color = MaterialTheme.colorScheme.surface)
             }
@@ -62,6 +61,6 @@ fun StaffCancelReasonDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.ui_nazad))
             }
-        }
+        },
     )
 }

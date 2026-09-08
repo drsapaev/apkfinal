@@ -17,25 +17,27 @@ import javax.inject.Singleton
  * recovery path the backend supports.
  */
 @Singleton
-class Verify2FAUseCase @Inject constructor(
-    private val authRepository: AuthRepositoryInterface,
-) {
-    suspend operator fun invoke(
-        challengeToken: String,
-        totpCode: String,
-        rememberDevice: Boolean,
-    ): Result<LoginOutcome> {
-        if (challengeToken.isBlank()) {
-            return Result.failure(IllegalStateException("Сессия 2FA истекла, войдите заново"))
+class Verify2FAUseCase
+    @Inject
+    constructor(
+        private val authRepository: AuthRepositoryInterface,
+    ) {
+        suspend operator fun invoke(
+            challengeToken: String,
+            totpCode: String,
+            rememberDevice: Boolean,
+        ): Result<LoginOutcome> {
+            if (challengeToken.isBlank()) {
+                return Result.failure(IllegalStateException("Сессия 2FA истекла, войдите заново"))
+            }
+            val code = totpCode.trim()
+            val isTotp = code.length == 6 && code.all { it.isDigit() }
+            val isBackup = code.length in 8..10 && code.all { it.isLetterOrDigit() }
+            if (!isTotp && !isBackup) {
+                return Result.failure(
+                    IllegalArgumentException("Код должен состоять из 6 цифр (TOTP) или быть резервным кодом (8-10 символов)"),
+                )
+            }
+            return authRepository.verify2FA(challengeToken, code, rememberDevice)
         }
-        val code = totpCode.trim()
-        val isTotp = code.length == 6 && code.all { it.isDigit() }
-        val isBackup = code.length in 8..10 && code.all { it.isLetterOrDigit() }
-        if (!isTotp && !isBackup) {
-            return Result.failure(
-                IllegalArgumentException("Код должен состоять из 6 цифр (TOTP) или быть резервным кодом (8-10 символов)")
-            )
-        }
-        return authRepository.verify2FA(challengeToken, code, rememberDevice)
     }
-}

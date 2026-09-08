@@ -26,7 +26,6 @@ import org.junit.Test
  * Pydantic schemas and endpoint implementations) to prevent regressions.
  */
 class BackendDtoContractTest {
-
     private lateinit var moshi: Moshi
 
     @Before
@@ -41,7 +40,8 @@ class BackendDtoContractTest {
     @Test
     fun `PatientProfileOut parses real backend response`() {
         // Sample from backend app/schemas/mobile.py:PatientProfileOut
-        val json = """
+        val json =
+            """
             {
               "id": 42,
               "fio": "Иванов Иван Иванович",
@@ -51,7 +51,7 @@ class BackendDtoContractTest {
               "telegram_id": "123456789",
               "created_at": "2026-01-15T10:30:00Z"
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val adapter = moshi.adapter(PatientProfileOut::class.java)
         val profile = adapter.fromJson(json)!!
@@ -67,7 +67,8 @@ class BackendDtoContractTest {
 
     @Test
     fun `PatientProfileOut handles null optional fields`() {
-        val json = """
+        val json =
+            """
             {
               "id": 1,
               "fio": "Test User",
@@ -77,7 +78,7 @@ class BackendDtoContractTest {
               "telegram_id": null,
               "created_at": "2026-07-10T00:00:00Z"
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val profile = moshi.adapter(PatientProfileOut::class.java).fromJson(json)!!
         assertNull(profile.birthYear)
@@ -107,7 +108,8 @@ class BackendDtoContractTest {
     @Test
     fun `AppointmentUpcomingOut parses real backend response`() {
         // Sample from backend app/schemas/mobile.py:AppointmentUpcomingOut
-        val json = """
+        val json =
+            """
             {
               "id": 100,
               "doctor_name": "Д-р Сапаев",
@@ -116,7 +118,7 @@ class BackendDtoContractTest {
               "status": "APPROVED",
               "clinic_address": "г. Ташкент, ул. Амира Темура, 1"
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val appt = moshi.adapter(AppointmentUpcomingOut::class.java).fromJson(json)!!
         assertEquals(100, appt.id)
@@ -129,33 +131,40 @@ class BackendDtoContractTest {
 
     @Test
     fun `AppointmentUpcomingOut date accessor extracts YYYY-MM-DD from ISO datetime`() {
-        val json = """{"id":1,"doctor_name":"X","specialty":"Y","appointment_date":"2026-07-15T14:30:00Z","status":"S","clinic_address":"A"}"""
+        val json = """
+                {"id":1,"doctor_name":"X","specialty":"Y","appointment_date":"2026-07-15T14:30:00Z","status":"S","clinic_address":"A"}
+            """
         val appt = moshi.adapter(AppointmentUpcomingOut::class.java).fromJson(json)!!
         assertEquals("2026-07-15", appt.date)
     }
 
     @Test
     fun `AppointmentUpcomingOut time accessor extracts HH-MM from ISO datetime`() {
-        val json = """{"id":1,"doctor_name":"X","specialty":"Y","appointment_date":"2026-07-15T14:30:00Z","status":"S","clinic_address":"A"}"""
+        val json = """
+                {"id":1,"doctor_name":"X","specialty":"Y","appointment_date":"2026-07-15T14:30:00Z","status":"S","clinic_address":"A"}
+            """
         val appt = moshi.adapter(AppointmentUpcomingOut::class.java).fromJson(json)!!
         assertEquals("14:30", appt.time)
     }
 
     @Test
     fun `AppointmentUpcomingOut time accessor handles fractional seconds`() {
-        val json = """{"id":1,"doctor_name":"X","specialty":"Y","appointment_date":"2026-07-15T14:30:45.123Z","status":"S","clinic_address":"A"}"""
+        val json = """
+                {"id":1,"doctor_name":"X","specialty":"Y","appointment_date":"2026-07-15T14:30:45.123Z","status":"S","clinic_address":"A"}
+            """
         val appt = moshi.adapter(AppointmentUpcomingOut::class.java).fromJson(json)!!
         assertEquals("14:30", appt.time)
     }
 
     @Test
     fun `AppointmentUpcomingOut parses list of upcoming appointments`() {
-        val json = """
+        val json =
+            """
             [
               {"id":1,"doctor_name":"Dr. A","specialty":"Cardio","appointment_date":"2026-07-15T10:00:00Z","status":"APPROVED","clinic_address":"Addr A"},
               {"id":2,"doctor_name":"Dr. B","specialty":"Dental","appointment_date":"2026-07-16T11:00:00Z","status":"PENDING","clinic_address":"Addr B"}
             ]
-        """.trimIndent()
+            """.trimIndent()
         val type = Types.newParameterizedType(List::class.java, AppointmentUpcomingOut::class.java)
         val list = moshi.adapter<List<AppointmentUpcomingOut>>(type).fromJson(json)!!
         assertEquals(2, list.size)
@@ -170,7 +179,8 @@ class BackendDtoContractTest {
     @Test
     fun `LabResultOut parses real backend response`() {
         // Sample from backend app/schemas/mobile.py:LabResultOut
-        val json = """
+        val json =
+            """
             {
               "id": 55,
               "test_name": "Глюкоза крови",
@@ -181,7 +191,7 @@ class BackendDtoContractTest {
               "status": "normal",
               "notes": "Результат в норме"
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val lab = moshi.adapter(LabResultOut::class.java).fromJson(json)!!
         assertEquals(55, lab.id)
@@ -196,7 +206,8 @@ class BackendDtoContractTest {
 
     @Test
     fun `LabResultOut handles null notes`() {
-        val json = """
+        val json =
+            """
             {
               "id": 1,
               "test_name": "Test",
@@ -207,19 +218,20 @@ class BackendDtoContractTest {
               "status": "normal",
               "notes": null
             }
-        """.trimIndent()
+            """.trimIndent()
         val lab = moshi.adapter(LabResultOut::class.java).fromJson(json)!!
         assertNull(lab.notes)
     }
 
     @Test
     fun `LabResultOut parses list of results`() {
-        val json = """
+        val json =
+            """
             [
               {"id":1,"test_name":"A","result_value":"1","reference_range":"R","unit":"U","result_date":"2026-07-01T00:00:00Z","status":"normal"},
               {"id":2,"test_name":"B","result_value":"2","reference_range":"R","unit":"U","result_date":"2026-07-02T00:00:00Z","status":"abnormal","notes":"High"}
             ]
-        """.trimIndent()
+            """.trimIndent()
         val type = Types.newParameterizedType(List::class.java, LabResultOut::class.java)
         val list = moshi.adapter<List<LabResultOut>>(type).fromJson(json)!!
         assertEquals(2, list.size)
@@ -238,7 +250,8 @@ class BackendDtoContractTest {
         // Sample from backend mobile_api.py:459-470 — the endpoint
         // returns list[dict] (NOT a Pydantic model), with these fields:
         //   id, title, message, type, data, sent_at, read
-        val json = """
+        val json =
+            """
             {
               "id": 789,
               "title": "Запись подтверждена",
@@ -248,7 +261,7 @@ class BackendDtoContractTest {
               "sent_at": "2026-07-10T12:00:00Z",
               "read": false
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val notif = moshi.adapter(NotificationOut::class.java).fromJson(json)!!
         assertEquals(789, notif.id)
@@ -284,7 +297,8 @@ class BackendDtoContractTest {
     @Test
     fun `MobileQuickStats parses real backend response`() {
         // Sample from backend app/schemas/mobile.py:MobileQuickStats
-        val json = """
+        val json =
+            """
             {
               "total_appointments": 15,
               "upcoming_appointments": 2,
@@ -294,7 +308,7 @@ class BackendDtoContractTest {
               "favorite_doctor": "Д-р Сапаев",
               "pending_payments": 1
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val stats = moshi.adapter(MobileQuickStats::class.java).fromJson(json)!!
         assertEquals(15, stats.totalAppointments)
@@ -326,7 +340,8 @@ class BackendDtoContractTest {
     @Test
     fun `NotificationSettingsOut parses real backend response`() {
         // Sample from backend app/schemas/mobile.py:MobileNotificationSettings
-        val json = """
+        val json =
+            """
             {
               "appointment_reminders": true,
               "queue_updates": true,
@@ -336,7 +351,7 @@ class BackendDtoContractTest {
               "email_enabled": false,
               "sms_enabled": true
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val settings = moshi.adapter(NotificationSettingsOut::class.java).fromJson(json)!!
         assertTrue(settings.appointmentReminders)
@@ -372,14 +387,15 @@ class BackendDtoContractTest {
     fun `AppointmentBookRequest serialises preferred_date and complaint for POST mobile appointments book`() {
         // Backend MobileBookAppointmentRequest (app/schemas/mobile.py:110):
         // {doctor_id, preferred_date, preferred_time?, complaint?, services, notes?}
-        val request = AppointmentBookRequest(
-            doctorId = 12,
-            preferredDate = "2026-09-15",
-            preferredTime = "14:30",
-            complaint = "Болит зуб",
-            services = listOf(3, 8),
-            notes = null,
-        )
+        val request =
+            AppointmentBookRequest(
+                doctorId = 12,
+                preferredDate = "2026-09-15",
+                preferredTime = "14:30",
+                complaint = "Болит зуб",
+                services = listOf(3, 8),
+                notes = null,
+            )
         val json = moshi.adapter(AppointmentBookRequest::class.java).toJson(request)
 
         assertTrue("must send preferred_date", json.contains("\"preferred_date\":\"2026-09-15\""))
@@ -398,7 +414,8 @@ class BackendDtoContractTest {
         // Backend mobile_api_extended.py:get_my_queue_position returns
         // { "positions": [ {queue_id, doctor_name, specialty, my_number,
         //   current_number, patients_before_me, estimated_wait_minutes, status} ] }
-        val json = """
+        val json =
+            """
             {
               "positions": [
                 {
@@ -413,7 +430,7 @@ class BackendDtoContractTest {
                 }
               ]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val response = moshi.adapter(QueuePositionsResponse::class.java).fromJson(json)!!
         assertEquals(1, response.positions.size)
@@ -438,12 +455,13 @@ class BackendDtoContractTest {
         // Backend mobile_api.py:list_mobile_doctors returns
         // [{id, name, specialty, cabinet, active}] — the previous client
         // DTO expected full_name/is_active and crashed on sync.
-        val json = """
+        val json =
+            """
             [
               {"id": 1, "name": "Иванов Иван", "specialty": "Кардиолог", "cabinet": "204", "active": true},
               {"id": 2, "name": "Петров Пётр", "specialty": "Стоматолог", "cabinet": null, "active": false}
             ]
-        """.trimIndent()
+            """.trimIndent()
         val type = Types.newParameterizedType(List::class.java, DoctorDto::class.java)
         val list = moshi.adapter<List<DoctorDto>>(type).fromJson(json)!!
 
@@ -463,7 +481,8 @@ class BackendDtoContractTest {
     fun `DoctorScheduleResponse parses mobile doctors schedule grid`() {
         // Backend mobile_api_extended.py:get_doctor_schedule returns
         // {doctor_id, schedule: [{date, weekday, start_time, end_time, appointments}]}
-        val json = """
+        val json =
+            """
             {
               "doctor_id": 12,
               "schedule": [
@@ -485,7 +504,7 @@ class BackendDtoContractTest {
                 }
               ]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val schedule = moshi.adapter(DoctorScheduleResponse::class.java).fromJson(json)!!
         assertEquals(12, schedule.doctorId)
@@ -500,11 +519,12 @@ class BackendDtoContractTest {
     @Test
     fun `TwoFAVerifyRequest serialises backup_code path`() {
         // The mid-challenge recovery goes through /2fa/verify with backup_code.
-        val request = TwoFAVerifyRequest(
-            pending2faToken = "pending-token",
-            backupCode = "AB12CD34",
-            rememberDevice = false,
-        )
+        val request =
+            TwoFAVerifyRequest(
+                pending2faToken = "pending-token",
+                backupCode = "AB12CD34",
+                rememberDevice = false,
+            )
         val json = moshi.adapter(TwoFAVerifyRequest::class.java).toJson(request)
         assertTrue("must send pending_2fa_token", json.contains("\"pending_2fa_token\":\"pending-token\""))
         assertTrue("must send backup_code", json.contains("\"backup_code\":\"AB12CD34\""))
@@ -515,28 +535,30 @@ class BackendDtoContractTest {
     fun `TwoFactorVerifyResponse parses success with tokens`() {
         // Backend returns HTTP 200 with success=false for a wrong code —
         // callers must check `success`, not just the HTTP status.
-        val ok = moshi.adapter(TwoFactorVerifyResponse::class.java).fromJson(
-            """
-            {
-              "success": true,
-              "message": "Код принят",
-              "session_token": "sess-1",
-              "device_trusted": true,
-              "access_token": "at",
-              "refresh_token": "rt",
-              "token_type": "bearer",
-              "expires_in": 1800
-            }
-            """.trimIndent()
-        )!!
+        val ok =
+            moshi.adapter(TwoFactorVerifyResponse::class.java).fromJson(
+                """
+                {
+                  "success": true,
+                  "message": "Код принят",
+                  "session_token": "sess-1",
+                  "device_trusted": true,
+                  "access_token": "at",
+                  "refresh_token": "rt",
+                  "token_type": "bearer",
+                  "expires_in": 1800
+                }
+                """.trimIndent(),
+            )!!
         assertTrue(ok.success)
         assertEquals("at", ok.accessToken)
         assertEquals("rt", ok.refreshToken)
         assertEquals(1800, ok.expiresIn)
 
-        val rejected = moshi.adapter(TwoFactorVerifyResponse::class.java).fromJson(
-            """{"success": false, "message": "Неверный код"}"""
-        )!!
+        val rejected =
+            moshi.adapter(TwoFactorVerifyResponse::class.java).fromJson(
+                """{"success": false, "message": "Неверный код"}""",
+            )!!
         assertFalse(rejected.success)
         assertNull(rejected.accessToken)
     }
@@ -545,10 +567,11 @@ class BackendDtoContractTest {
     fun `TwoFARecoveryRequest serialises recovery_type and recovery_value`() {
         // Backend TwoFactorRecoveryRequest (schemas/two_factor_auth.py:257) —
         // the old pending_2fa_token/method body was rejected with 422.
-        val request = TwoFARecoveryRequest(
-            recoveryType = "email",
-            recoveryValue = "user@example.com",
-        )
+        val request =
+            TwoFARecoveryRequest(
+                recoveryType = "email",
+                recoveryValue = "user@example.com",
+            )
         val json = moshi.adapter(TwoFARecoveryRequest::class.java).toJson(request)
         assertTrue("must send recovery_type", json.contains("\"recovery_type\":\"email\""))
         assertTrue("must send recovery_value", json.contains("\"recovery_value\":\"user@example.com\""))

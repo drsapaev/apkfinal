@@ -1,7 +1,5 @@
 package com.aistudio.clinicsystem.domain.repository
 
-import com.aistudio.clinicsystem.domain.model.LoginResult
-import com.aistudio.clinicsystem.domain.model.User
 import javax.crypto.Cipher
 
 /**
@@ -22,8 +20,10 @@ import javax.crypto.Cipher
  * `/authentication/refresh` endpoint.
  */
 interface AuthRepositoryInterface {
-
-    suspend fun login(username: String, password: String): Result<com.aistudio.clinicsystem.data.repository.LoginOutcome>
+    suspend fun login(
+        username: String,
+        password: String,
+    ): Result<com.aistudio.clinicsystem.data.repository.LoginOutcome>
 
     /**
      * Completes the 2FA challenge. [totpCode] accepts BOTH a 6-digit TOTP

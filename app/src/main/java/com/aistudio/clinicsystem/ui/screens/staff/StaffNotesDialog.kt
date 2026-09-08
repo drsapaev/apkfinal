@@ -28,7 +28,7 @@ fun StaffNotesDialog(
     onNotesInputChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    accentColor: Color
+    accentColor: Color,
 ) {
     if (!visible) return
 
@@ -41,17 +41,18 @@ fun StaffNotesDialog(
                 onValueChange = onNotesInputChange,
                 label = { Text(stringResource(R.string.dlg_notes)) },
                 placeholder = { Text(stringResource(R.string.dlg_notes_placeholder)) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
-                    focusedLabelColor = accentColor
-                ),
-                modifier = Modifier.fillMaxWidth()
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = accentColor,
+                        focusedLabelColor = accentColor,
+                    ),
+                modifier = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
             ) {
                 Text(stringResource(R.string.ui_sohranit), color = MaterialTheme.colorScheme.surface)
             }
@@ -60,6 +61,6 @@ fun StaffNotesDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.ui_otmena))
             }
-        }
+        },
     )
 }

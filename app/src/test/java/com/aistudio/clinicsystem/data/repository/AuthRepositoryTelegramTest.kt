@@ -37,7 +37,6 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AuthRepositoryTelegramTest {
-
     private lateinit var mockWebServer: MockWebServer
     private lateinit var repository: AuthRepository
     private lateinit var context: android.content.Context
@@ -49,10 +48,13 @@ class AuthRepositoryTelegramTest {
         context = ApplicationProvider.getApplicationContext()
         mockWebServer = MockWebServer().apply { start() }
 
-        database = androidx.room.Room.inMemoryDatabaseBuilder(
-            context,
-            ClinicDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        database =
+            androidx.room.Room
+                .inMemoryDatabaseBuilder(
+                    context,
+                    ClinicDatabase::class.java,
+                ).allowMainThreadQueries()
+                .build()
 
         sessionRepository = mockk(relaxed = true)
 
@@ -73,19 +75,22 @@ class AuthRepositoryTelegramTest {
             )
         }
 
-        val mobileApiService = Retrofit.Builder()
-            .baseUrl(mockWebServer.url("/"))
-            .client(OkHttpClient.Builder().build())
-            .addConverterFactory(MoshiConverterFactory.create())
-            .build()
-            .create(MobileApiService::class.java)
+        val mobileApiService =
+            Retrofit
+                .Builder()
+                .baseUrl(mockWebServer.url("/"))
+                .client(OkHttpClient.Builder().build())
+                .addConverterFactory(MoshiConverterFactory.create())
+                .build()
+                .create(MobileApiService::class.java)
 
-        repository = AuthRepository(
-            context = context,
-            database = database,
-            mobileApiService = mobileApiService,
-            sessionRepository = sessionRepository,
-        )
+        repository =
+            AuthRepository(
+                context = context,
+                database = database,
+                mobileApiService = mobileApiService,
+                sessionRepository = sessionRepository,
+            )
     }
 
     @After
@@ -97,88 +102,94 @@ class AuthRepositoryTelegramTest {
     // ─── linkTelegram ────────────────────────────────────────────────
 
     @Test
-    fun `linkTelegram fails fast — endpoint removed from backend`() = runBlocking {
-        val result = repository.linkTelegram("999999")
+    fun `linkTelegram fails fast — endpoint removed from backend`() =
+        runBlocking {
+            val result = repository.linkTelegram("999999")
 
-        assertTrue("linkTelegram must fail (endpoint removed on backend)", result.isFailure)
-        assertTrue(
-            "Failure must explain that Telegram linking happens via the bot",
-            result.exceptionOrNull()?.message?.contains("бот", ignoreCase = true) == true,
-        )
-    }
+            assertTrue("linkTelegram must fail (endpoint removed on backend)", result.isFailure)
+            assertTrue(
+                "Failure must explain that Telegram linking happens via the bot",
+                result.exceptionOrNull()?.message?.contains("бот", ignoreCase = true) == true,
+            )
+        }
 
     // ─── unlinkTelegram ──────────────────────────────────────────────
 
     @Test
-    fun `unlinkTelegram fails fast — endpoint removed from backend`() = runBlocking {
-        val result = repository.unlinkTelegram()
+    fun `unlinkTelegram fails fast — endpoint removed from backend`() =
+        runBlocking {
+            val result = repository.unlinkTelegram()
 
-        assertTrue("unlinkTelegram must fail (endpoint removed on backend)", result.isFailure)
-    }
+            assertTrue("unlinkTelegram must fail (endpoint removed on backend)", result.isFailure)
+        }
 
     // ─── sendTestTelegramNotification ────────────────────────────────
 
     @Test
-    fun `sendTestTelegramNotification success on HTTP 200`() = runBlocking {
-        // The OkHttp call goes to MockWebServer
-        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true}"""))
-
-        val result = repository.sendTestTelegramNotification()
-
-        assertTrue(
-            "sendTestTelegramNotification should succeed on HTTP 200",
-            result.isSuccess,
-        )
-
-        // Verify the request actually reached the network
-        val recorded = mockWebServer.takeRequest()
-        assertTrue(
-            "Request must hit /api/v1/telegram-integration/send-notification, was: ${recorded.path}",
-            recorded.path?.contains("/api/v1/telegram-integration/send-notification") == true,
-        )
-        assertTrue(
-            "Request must carry Authorization header",
-            recorded.getHeader("Authorization")?.contains("Bearer fake-test-token") == true,
-        )
-    }
-
-    @Test
-    fun `sendTestTelegramNotification failure on HTTP error`() = runBlocking {
-        mockWebServer.enqueue(MockResponse().setResponseCode(500).setBody("""{"detail":"error"}"""))
-
-        val result = repository.sendTestTelegramNotification()
-
-        assertTrue(
-            "sendTestTelegramNotification should fail on HTTP 500",
-            result.isFailure,
-        )
-    }
-
-    @Test
-    fun `sendTestTelegramNotification failure when not authenticated`() = runBlocking {
-        every { sessionRepository.accessToken } returns null
-
-        val result = repository.sendTestTelegramNotification()
-
-        assertTrue(
-            "sendTestTelegramNotification should fail when not authenticated",
-            result.isFailure,
-        )
-    }
-
-    @Test
-    fun `sendTestTelegramNotification failure when telegram not linked`() = runBlocking {
-        // Clear the user's telegramChatId
+    fun `sendTestTelegramNotification success on HTTP 200`() =
         runBlocking {
-            val user = database.userDao().getUserByPhone("+77771112233")
-            database.userDao().updateUser(user!!.copy(telegramChatId = null))
+            // The OkHttp call goes to MockWebServer
+            mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true}"""))
+
+            val result = repository.sendTestTelegramNotification()
+
+            assertTrue(
+                "sendTestTelegramNotification should succeed on HTTP 200",
+                result.isSuccess,
+            )
+
+            // Verify the request actually reached the network
+            val recorded = mockWebServer.takeRequest()
+            assertTrue(
+                "Request must hit /api/v1/telegram-integration/send-notification, was: ${recorded.path}",
+                recorded.path?.contains("/api/v1/telegram-integration/send-notification") == true,
+            )
+            assertTrue(
+                "Request must carry Authorization header",
+                recorded.getHeader("Authorization")?.contains("Bearer fake-test-token") == true,
+            )
         }
 
-        val result = repository.sendTestTelegramNotification()
+    @Test
+    fun `sendTestTelegramNotification failure on HTTP error`() =
+        runBlocking {
+            mockWebServer.enqueue(MockResponse().setResponseCode(500).setBody("""{"detail":"error"}"""))
 
-        assertTrue(
-            "sendTestTelegramNotification should fail when telegram is not linked",
-            result.isFailure,
-        )
-    }
+            val result = repository.sendTestTelegramNotification()
+
+            assertTrue(
+                "sendTestTelegramNotification should fail on HTTP 500",
+                result.isFailure,
+            )
+        }
+
+    @Test
+    fun `sendTestTelegramNotification failure when not authenticated`() =
+        runBlocking {
+            every { sessionRepository.accessToken } returns null
+
+            val result = repository.sendTestTelegramNotification()
+
+            assertTrue(
+                "sendTestTelegramNotification should fail when not authenticated",
+                result.isFailure,
+            )
+        }
+
+    @Test
+    fun `sendTestTelegramNotification failure when telegram not linked`() =
+        runBlocking {
+            // Clear the user's telegramChatId
+            runBlocking {
+                val user = database.userDao().getUserByPhone("+77771112233")
+                database.userDao().updateUser(user!!.copy(telegramChatId = null))
+            }
+
+            val result = repository.sendTestTelegramNotification()
+
+            assertTrue(
+                "sendTestTelegramNotification should fail when telegram is not linked",
+                result.isFailure,
+            )
+        }
 }

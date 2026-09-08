@@ -1,8 +1,5 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
-import com.aistudio.clinicsystem.ui.theme.Spacing
-import com.aistudio.clinicsystem.ui.theme.Radius
-import com.aistudio.clinicsystem.ui.theme.AppFontSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,12 +8,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,12 +46,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.aistudio.clinicsystem.R
+import com.aistudio.clinicsystem.ui.theme.AppFontSize
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import java.text.SimpleDateFormat
 
 /**
  * P-07 refactor: extracted from PatientScreen.kt (was 758 LOC).
@@ -68,7 +67,7 @@ import java.text.SimpleDateFormat
  * State is hoisted via parameters — caller owns all mutable state and
  * invokes viewModel.createAppointment() via [onConfirm].
  */
-@Suppress("UnusedParameter")  // selectedSpecialty kept for API symmetry with caller
+@Suppress("UnusedParameter") // selectedSpecialty kept for API symmetry with caller
 @Composable
 fun BookAppointmentDialog(
     doctors: List<Pair<String, String>>,
@@ -88,31 +87,34 @@ fun BookAppointmentDialog(
     onDismiss: () -> Unit,
     tealPrimary: Color,
     tealLight: Color,
-    accentNavy: Color
+    accentNavy: Color,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(Radius.xl),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
         ) {
             Column(
-                modifier = Modifier
-                    .padding(Spacing.l)
-                    .imePadding().verticalScroll(rememberScrollState())
+                modifier =
+                    Modifier
+                        .padding(Spacing.l)
+                        .imePadding()
+                        .verticalScroll(rememberScrollState()),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = stringResource(R.string.pat_new_appointment),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = accentNavy
+                        color = accentNavy,
                     )
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close dialogue")
@@ -124,7 +126,7 @@ fun BookAppointmentDialog(
                 Text(
                     text = stringResource(R.string.ui_select_specialist),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = tealPrimary
+                    color = tealPrimary,
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -132,26 +134,27 @@ fun BookAppointmentDialog(
                 doctors.forEach { (doc, spec) ->
                     val isSelected = selectedDoctor == doc
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clip(RoundedCornerShape(Radius.medium))
-                            .background(if (isSelected) tealLight.copy(alpha = 0.6f) else Color.Transparent)
-                            .border(
-                                border = BorderStroke(
-                                    width = if (isSelected) 1.5.dp else 1.dp,
-                                    color = if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant
-                                ),
-                                shape = RoundedCornerShape(Radius.medium)
-                            )
-                            .clickable { onSelectDoctor(doc, spec.substringBefore(" (")) }
-                            .padding(Spacing.s)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(Radius.medium))
+                                .background(if (isSelected) tealLight.copy(alpha = 0.6f) else Color.Transparent)
+                                .border(
+                                    border =
+                                        BorderStroke(
+                                            width = if (isSelected) 1.5.dp else 1.dp,
+                                            color = if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant,
+                                        ),
+                                    shape = RoundedCornerShape(Radius.medium),
+                                ).clickable { onSelectDoctor(doc, spec.substringBefore(" (")) }
+                                .padding(Spacing.s),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
                                 selected = isSelected,
                                 onClick = { onSelectDoctor(doc, spec.substringBefore(" (")) },
-                                colors = RadioButtonDefaults.colors(selectedColor = tealPrimary)
+                                colors = RadioButtonDefaults.colors(selectedColor = tealPrimary),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Column {
@@ -159,12 +162,12 @@ fun BookAppointmentDialog(
                                     text = doc,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = AppFontSize.title,
-                                    color = accentNavy
+                                    color = accentNavy,
                                 )
                                 Text(
                                     text = spec,
                                     fontSize = AppFontSize.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -176,14 +179,14 @@ fun BookAppointmentDialog(
                 Text(
                     text = stringResource(R.string.ui_select_date),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = tealPrimary
+                    color = tealPrimary,
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     bookingDatesList.forEachIndexed { idx, dStr ->
                         val isSelected = selectedDateIdx == idx
@@ -193,38 +196,54 @@ fun BookAppointmentDialog(
 
                         Box(
                             contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(0.95f)
-                                .clip(RoundedCornerShape(Radius.medium))
-                                .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surface)
-                                .border(
-                                    border = BorderStroke(1.dp, if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant),
-                                    shape = RoundedCornerShape(Radius.medium)
-                                )
-                                .clickable { onSelectDateIdx(idx) }
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .aspectRatio(0.95f)
+                                    .clip(RoundedCornerShape(Radius.medium))
+                                    .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surface)
+                                    .border(
+                                        border =
+                                            BorderStroke(
+                                                1.dp,
+                                                if (isSelected) tealPrimary else MaterialTheme.colorScheme.outlineVariant,
+                                            ),
+                                        shape = RoundedCornerShape(Radius.medium),
+                                    ).clickable { onSelectDateIdx(idx) },
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = day,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = AppFontSize.titleLarge,
-                                    color = if (isSelected) MaterialTheme.colorScheme.surface else accentNavy
+                                    color = if (isSelected) MaterialTheme.colorScheme.surface else accentNavy,
                                 )
                                 Text(
                                     // P-28 fix: Locale-aware month name
-                                    text = remember(month) {
-                                        try {
-                                            val monthNum = month.toIntOrNull()
-                                            if (monthNum != null && monthNum in 1..12) {
-                                                val cal = Calendar.getInstance()
-                                                cal.set(Calendar.MONTH, monthNum - 1)
-                                                SimpleDateFormat("MMM", Locale.getDefault()).format(cal.time)
-                                            } else month
-                                        } catch (e: Exception) { month }
-                                    },
+                                    text =
+                                        remember(month) {
+                                            try {
+                                                val monthNum = month.toIntOrNull()
+                                                if (monthNum != null && monthNum in 1..12) {
+                                                    val cal = Calendar.getInstance()
+                                                    cal.set(Calendar.MONTH, monthNum - 1)
+                                                    SimpleDateFormat("MMM", Locale.getDefault()).format(cal.time)
+                                                } else {
+                                                    month
+                                                }
+                                            } catch (e: Exception) {
+                                                month
+                                            }
+                                        },
                                     fontSize = AppFontSize.caption,
-                                    color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color =
+                                        if (isSelected) {
+                                            MaterialTheme.colorScheme.surface.copy(
+                                                alpha = 0.8f,
+                                            )
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
                                 )
                             }
                         }
@@ -236,7 +255,7 @@ fun BookAppointmentDialog(
                 Text(
                     text = stringResource(R.string.ui_select_time),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = tealPrimary
+                    color = tealPrimary,
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -247,28 +266,28 @@ fun BookAppointmentDialog(
 
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         row1.forEach { slot ->
                             TimeSlotButton(
                                 slot = slot,
                                 isSelected = selectedTimeSlot == slot,
                                 onSelect = onSelectTimeSlot,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
 
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth().padding(end = 40.dp)
+                        modifier = Modifier.fillMaxWidth().padding(end = 40.dp),
                     ) {
                         row2.forEach { slot ->
                             TimeSlotButton(
                                 slot = slot,
                                 isSelected = selectedTimeSlot == slot,
                                 onSelect = onSelectTimeSlot,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
@@ -279,7 +298,7 @@ fun BookAppointmentDialog(
                 Text(
                     text = stringResource(R.string.ui_describe_complaint),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = tealPrimary
+                    color = tealPrimary,
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -289,13 +308,15 @@ fun BookAppointmentDialog(
                     onValueChange = onReasonInputChange,
                     placeholder = { Text(stringResource(R.string.ui_complaint_placeholder)) },
                     maxLines = 3,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("booking_reason_input"),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = tealPrimary,
-                        focusedLabelColor = tealPrimary
-                    )
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .testTag("booking_reason_input"),
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = tealPrimary,
+                            focusedLabelColor = tealPrimary,
+                        ),
                 )
 
                 Spacer(modifier = Modifier.height(Spacing.l))
@@ -303,11 +324,11 @@ fun BookAppointmentDialog(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
                     ) {
                         Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -317,18 +338,23 @@ fun BookAppointmentDialog(
                         enabled = !isBookingInProgress,
                         colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                         shape = RoundedCornerShape(Radius.medium),
-                        modifier = Modifier
-                            .testTag("confirm_booking_button")
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        modifier =
+                            Modifier
+                                .testTag("confirm_booking_button")
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
                     ) {
                         if (isBookingInProgress) {
                             CircularProgressIndicator(
                                 color = MaterialTheme.colorScheme.surface,
                                 modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
+                                strokeWidth = 2.dp,
                             )
                         } else {
-                            Text(stringResource(R.string.ui_zapisatsya), color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+                            Text(
+                                stringResource(R.string.ui_zapisatsya),
+                                color = MaterialTheme.colorScheme.surface,
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                     }
                 }
@@ -343,21 +369,22 @@ private fun TimeSlotButton(
     isSelected: Boolean,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
-    tealPrimary: Color = MaterialTheme.colorScheme.primary
+    tealPrimary: Color = MaterialTheme.colorScheme.primary,
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
-            .clip(RoundedCornerShape(Radius.small))
-            .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surfaceVariant)
-            .clickable { onSelect(slot) }
-            .padding(vertical = 8.dp)
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(Radius.small))
+                .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { onSelect(slot) }
+                .padding(vertical = 8.dp),
     ) {
         Text(
             text = slot,
             fontSize = AppFontSize.body,
             fontWeight = FontWeight.Bold,
-            color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant
+            color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

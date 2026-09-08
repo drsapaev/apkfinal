@@ -33,39 +33,40 @@ import timber.log.Timber
  * so this worker does NOT return Result.retry() for them.
  */
 @HiltWorker
-class SyncWorker @AssistedInject constructor(
-    @Assisted appContext: Context,
-    @Assisted workerParams: WorkerParameters,
-    private val clinicRepository: ClinicRepository,
-    private val sessionRepository: SessionRepository,
-) : CoroutineWorker(appContext, workerParams) {
+class SyncWorker
+    @AssistedInject
+    constructor(
+        @Assisted appContext: Context,
+        @Assisted workerParams: WorkerParameters,
+        private val clinicRepository: ClinicRepository,
+        private val sessionRepository: SessionRepository,
+    ) : CoroutineWorker(appContext, workerParams) {
+        override suspend fun doWork(): Result {
+            Timber.d("Запущен фоновый процесс обработки отложенных транзакций (WorkManager)...")
+            val startTime = System.currentTimeMillis()
+            return try {
+                // Stage 2.2: token comes from the SSOT SessionRepository.
+                val token = sessionRepository.accessToken
 
-    override suspend fun doWork(): Result {
-        Timber.d("Запущен фоновый процесс обработки отложенных транзакций (WorkManager)...")
-        val startTime = System.currentTimeMillis()
-        return try {
-            // Stage 2.2: token comes from the SSOT SessionRepository.
-            val token = sessionRepository.accessToken
+                val success = clinicRepository.retryUnsyncedWrites(token)
+                val latency = System.currentTimeMillis() - startTime
 
-            val success = clinicRepository.retryUnsyncedWrites(token)
-            val latency = System.currentTimeMillis() - startTime
-
-            if (success) {
-                SyncMetricsManager.recordSuccess(latency)
-                Timber.d("Фоновая синхронизация завершена успешно за ${latency}мс")
-                Result.success()
-            } else {
+                if (success) {
+                    SyncMetricsManager.recordSuccess(latency)
+                    Timber.d("Фоновая синхронизация завершена успешно за ${latency}мс")
+                    Result.success()
+                } else {
+                    SyncMetricsManager.recordFailure()
+                    Timber.w("Сбой фоновой синхронизации, планируем повтор.")
+                    // Stage 3.6: retry is safe — claimForProcessing is atomic,
+                    // so retried rows won't be double-processed. Non-retriable
+                    // rows are already in DEAD_LETTER and won't be picked up.
+                    Result.retry()
+                }
+            } catch (e: Exception) {
                 SyncMetricsManager.recordFailure()
-                Timber.w("Сбой фоновой синхронизации, планируем повтор.")
-                // Stage 3.6: retry is safe — claimForProcessing is atomic,
-                // so retried rows won't be double-processed. Non-retriable
-                // rows are already in DEAD_LETTER and won't be picked up.
+                Timber.e("Исключение в фоновом воркере WorkManager", e)
                 Result.retry()
             }
-        } catch (e: Exception) {
-            SyncMetricsManager.recordFailure()
-            Timber.e("Исключение в фоновом воркере WorkManager", e)
-            Result.retry()
         }
     }
-}

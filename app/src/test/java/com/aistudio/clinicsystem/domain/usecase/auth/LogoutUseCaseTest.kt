@@ -15,7 +15,6 @@ import org.junit.Test
  * Verifies delegation to repository.logout().
  */
 class LogoutUseCaseTest {
-
     private lateinit var repository: AuthRepositoryInterface
     private lateinit var useCase: LogoutUseCase
 
@@ -26,26 +25,28 @@ class LogoutUseCaseTest {
     }
 
     @Test
-    fun `logout delegates to repository`() = runBlocking {
-        coEvery { repository.logout() } returns Result.success(Unit)
+    fun `logout delegates to repository`() =
+        runBlocking {
+            coEvery { repository.logout() } returns Result.success(Unit)
 
-        val result = useCase.invoke()
+            val result = useCase.invoke()
 
-        assertTrue("Should succeed", result.isSuccess)
-        coVerify(exactly = 1) { repository.logout() }
-    }
+            assertTrue("Should succeed", result.isSuccess)
+            coVerify(exactly = 1) { repository.logout() }
+        }
 
     @Test
-    fun `logout failure is propagated`() = runBlocking {
-        val error = RuntimeException("Network error")
-        coEvery { repository.logout() } returns Result.failure(error)
+    fun `logout failure is propagated`() =
+        runBlocking {
+            val error = RuntimeException("Network error")
+            coEvery { repository.logout() } returns Result.failure(error)
 
-        val result = useCase.invoke()
+            val result = useCase.invoke()
 
-        assertTrue("Should fail", result.isFailure)
-        assertTrue(
-            "Should propagate the same error",
-            result.exceptionOrNull() === error
-        )
-    }
+            assertTrue("Should fail", result.isFailure)
+            assertTrue(
+                "Should propagate the same error",
+                result.exceptionOrNull() === error,
+            )
+        }
 }

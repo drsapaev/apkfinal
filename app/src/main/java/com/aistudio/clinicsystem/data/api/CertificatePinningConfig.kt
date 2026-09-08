@@ -1,7 +1,6 @@
 package com.aistudio.clinicsystem.data.api
 
 import okhttp3.CertificatePinner
-import java.util.concurrent.TimeUnit
 
 /**
  * Stage 4.3 (H-3 build fix): Certificate Pinning configuration.
@@ -32,7 +31,6 @@ import java.util.concurrent.TimeUnit
  * Reference: https://square.github.io/okhttp/4.x/okhttp/okhttp3/-certificate-pinner/
  */
 object CertificatePinningConfig {
-
     /**
      * Builds a [CertificatePinner] from the configured pins. Returns null
      * if no pins are configured (development mode).
@@ -43,14 +41,18 @@ object CertificatePinningConfig {
      * `www.clinic.tld` if both serve the API).
      */
     fun buildPinner(): CertificatePinner? {
-        val pin1 = com.aistudio.clinicsystem.BuildConfig.CERT_PIN_PRIMARY
-            .takeIf { it.isNotBlank() && it != "UNSET" } ?: return null
-        val pin2 = com.aistudio.clinicsystem.BuildConfig.CERT_PIN_BACKUP
-            .takeIf { it.isNotBlank() && it != "UNSET" }
-        val host = extractHost(com.aistudio.clinicsystem.BuildConfig.BASE_URL)
-            ?: return null
+        val pin1 =
+            com.aistudio.clinicsystem.BuildConfig.CERT_PIN_PRIMARY
+                .takeIf { it.isNotBlank() && it != "UNSET" } ?: return null
+        val pin2 =
+            com.aistudio.clinicsystem.BuildConfig.CERT_PIN_BACKUP
+                .takeIf { it.isNotBlank() && it != "UNSET" }
+        val host =
+            extractHost(com.aistudio.clinicsystem.BuildConfig.BASE_URL)
+                ?: return null
 
-        return CertificatePinner.Builder()
+        return CertificatePinner
+            .Builder()
             .apply {
                 add(host, "sha256/$pin1")
                 // Backup pin — for the next key rotation. Without a backup
@@ -59,8 +61,7 @@ object CertificatePinningConfig {
                 if (pin2 != null) {
                     add(host, "sha256/$pin2")
                 }
-            }
-            .build()
+            }.build()
     }
 
     /**
@@ -72,8 +73,10 @@ object CertificatePinningConfig {
             val uri = java.net.URI(url)
             val host = uri.host ?: return null
             // Reject placeholder hosts — they don't have real pins.
-            if (host.contains("example.com") || host.contains("INVALID") ||
-                host.contains("10.0.2.2") || host.contains("localhost")
+            if (host.contains("example.com") ||
+                host.contains("INVALID") ||
+                host.contains("10.0.2.2") ||
+                host.contains("localhost")
             ) {
                 null
             } else {

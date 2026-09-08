@@ -38,14 +38,16 @@ fun LabResultsSection(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Radius.large),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Spacing.l),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(Spacing.l),
         ) {
             // Header
             Row(
@@ -107,14 +109,16 @@ private fun LabResultCard(result: LabResultEntity) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Radius.medium),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Spacing.m),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(Spacing.m),
         ) {
             // Test name + status
             Row(
@@ -138,11 +142,12 @@ private fun LabResultCard(result: LabResultEntity) {
             // Result + unit
             if (!result.result.isNullOrBlank()) {
                 Text(
-                    text = stringResource(
-                        R.string.lab_result_value,
-                        result.result,
-                        result.unit?.let { " $it" } ?: ""
-                    ),
+                    text =
+                        stringResource(
+                            R.string.lab_result_value,
+                            result.result,
+                            result.unit?.let { " $it" } ?: "",
+                        ),
                     fontSize = AppFontSize.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -160,11 +165,12 @@ private fun LabResultCard(result: LabResultEntity) {
             // Performed date + doctor
             if (!result.performedAt.isNullOrBlank()) {
                 Text(
-                    text = stringResource(
-                        R.string.lab_result_date,
-                        result.performedAt,
-                        result.doctorName?.let { " — $it" } ?: ""
-                    ),
+                    text =
+                        stringResource(
+                            R.string.lab_result_date,
+                            result.performedAt,
+                            result.doctorName?.let { " — $it" } ?: "",
+                        ),
                     fontSize = AppFontSize.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -41,7 +41,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class SyncWorkerTest {
-
     private lateinit var context: Context
     private lateinit var mockRepository: ClinicRepository
     private lateinit var mockSessionRepository: SessionRepository
@@ -73,62 +72,68 @@ class SyncWorkerTest {
     }
 
     @Test
-    fun `doWork returns success when retryUnsyncedWrites succeeds`() = runBlocking {
-        every { mockSessionRepository.accessToken } returns "valid-token"
-        coEvery { mockRepository.retryUnsyncedWrites(any()) } returns true
+    fun `doWork returns success when retryUnsyncedWrites succeeds`() =
+        runBlocking {
+            every { mockSessionRepository.accessToken } returns "valid-token"
+            coEvery { mockRepository.retryUnsyncedWrites(any()) } returns true
 
-        val result = createWorker().doWork()
+            val result = createWorker().doWork()
 
-        assertTrue("Should return Result.success()", result is androidx.work.ListenableWorker.Result.Success)
-    }
-
-    @Test
-    fun `doWork returns retry when retryUnsyncedWrites fails`() = runBlocking {
-        every { mockSessionRepository.accessToken } returns "valid-token"
-        coEvery { mockRepository.retryUnsyncedWrites(any()) } returns false
-
-        val result = createWorker().doWork()
-
-        assertTrue("Should return Result.retry()", result is androidx.work.ListenableWorker.Result.Retry)
-    }
+            assertTrue("Should return Result.success()", result is androidx.work.ListenableWorker.Result.Success)
+        }
 
     @Test
-    fun `doWork returns retry on exception`() = runBlocking {
-        every { mockSessionRepository.accessToken } returns "valid-token"
-        coEvery { mockRepository.retryUnsyncedWrites(any()) } throws RuntimeException("DB corruption")
+    fun `doWork returns retry when retryUnsyncedWrites fails`() =
+        runBlocking {
+            every { mockSessionRepository.accessToken } returns "valid-token"
+            coEvery { mockRepository.retryUnsyncedWrites(any()) } returns false
 
-        val result = createWorker().doWork()
+            val result = createWorker().doWork()
 
-        assertTrue("Should return Result.retry() on exception", result is androidx.work.ListenableWorker.Result.Retry)
-    }
-
-    @Test
-    fun `doWork handles null token gracefully`() = runBlocking {
-        every { mockSessionRepository.accessToken } returns null
-        coEvery { mockRepository.retryUnsyncedWrites(any()) } returns true
-
-        val result = createWorker().doWork()
-
-        assertTrue("Should handle null token", result is androidx.work.ListenableWorker.Result.Success)
-    }
+            assertTrue("Should return Result.retry()", result is androidx.work.ListenableWorker.Result.Retry)
+        }
 
     @Test
-    fun `doWork handles empty token`() = runBlocking {
-        every { mockSessionRepository.accessToken } returns ""
-        coEvery { mockRepository.retryUnsyncedWrites(any()) } returns true
+    fun `doWork returns retry on exception`() =
+        runBlocking {
+            every { mockSessionRepository.accessToken } returns "valid-token"
+            coEvery { mockRepository.retryUnsyncedWrites(any()) } throws RuntimeException("DB corruption")
 
-        val result = createWorker().doWork()
+            val result = createWorker().doWork()
 
-        assertTrue("Should handle empty token", result is androidx.work.ListenableWorker.Result.Success)
-    }
+            assertTrue("Should return Result.retry() on exception", result is androidx.work.ListenableWorker.Result.Retry)
+        }
 
     @Test
-    fun `doWork with repository exception returns retry`() = runBlocking {
-        every { mockSessionRepository.accessToken } returns "token"
-        coEvery { mockRepository.retryUnsyncedWrites(any()) } throws java.io.IOException("Network I/O error")
+    fun `doWork handles null token gracefully`() =
+        runBlocking {
+            every { mockSessionRepository.accessToken } returns null
+            coEvery { mockRepository.retryUnsyncedWrites(any()) } returns true
 
-        val result = createWorker().doWork()
+            val result = createWorker().doWork()
 
-        assertTrue("Should retry on repository exception", result is androidx.work.ListenableWorker.Result.Retry)
-    }
+            assertTrue("Should handle null token", result is androidx.work.ListenableWorker.Result.Success)
+        }
+
+    @Test
+    fun `doWork handles empty token`() =
+        runBlocking {
+            every { mockSessionRepository.accessToken } returns ""
+            coEvery { mockRepository.retryUnsyncedWrites(any()) } returns true
+
+            val result = createWorker().doWork()
+
+            assertTrue("Should handle empty token", result is androidx.work.ListenableWorker.Result.Success)
+        }
+
+    @Test
+    fun `doWork with repository exception returns retry`() =
+        runBlocking {
+            every { mockSessionRepository.accessToken } returns "token"
+            coEvery { mockRepository.retryUnsyncedWrites(any()) } throws java.io.IOException("Network I/O error")
+
+            val result = createWorker().doWork()
+
+            assertTrue("Should retry on repository exception", result is androidx.work.ListenableWorker.Result.Retry)
+        }
 }

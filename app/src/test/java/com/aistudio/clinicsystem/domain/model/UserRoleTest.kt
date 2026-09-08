@@ -22,7 +22,6 @@ import org.junit.Test
  *   5. Case sensitivity is preserved (backend sends exact-case strings).
  */
 class UserRoleTest {
-
     @Test
     fun `Patient role parses correctly`() {
         assertEquals(UserRole.PATIENT, UserRole.fromBackend("Patient"))

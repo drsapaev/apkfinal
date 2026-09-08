@@ -14,7 +14,10 @@ import timber.log.Timber
  * Backend role string values are CASE-SENSITIVE (they come from the `role`
  * column in the `users` table). The mobile client preserves them verbatim.
  */
-enum class UserRole(val backendValue: String, val displayLabel: String) {
+enum class UserRole(
+    val backendValue: String,
+    val displayLabel: String,
+) {
     PATIENT("Patient", "Пациент"),
     DOCTOR("Doctor", "Врач"),
     REGISTRAR("Registrar", "Регистратор"),

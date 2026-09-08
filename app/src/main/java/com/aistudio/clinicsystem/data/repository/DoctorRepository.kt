@@ -5,7 +5,6 @@ import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.DoctorEntity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,186 +32,198 @@ import javax.inject.Singleton
  *   свободные слоты вычисляются на клиенте (окно работы минус занятые приёмы).
  */
 @Singleton
-class DoctorRepository @Inject constructor(
-    private val database: ClinicDatabase,
-    private val apiService: MobileApiService
-) {
-    private val doctorDao = database.doctorDao()
+class DoctorRepository
+    @Inject
+    constructor(
+        private val database: ClinicDatabase,
+        private val apiService: MobileApiService,
+    ) {
+        private val doctorDao = database.doctorDao()
 
-    /**
-     * Flow всех активных врачей из локального кеша.
-     * UI подписывается на этот Flow и получает мгновенные обновления.
-     */
-    val allDoctors: Flow<List<DoctorEntity>> = doctorDao.getAllDoctors()
+        /**
+         * Flow всех активных врачей из локального кеша.
+         * UI подписывается на этот Flow и получает мгновенные обновления.
+         */
+        val allDoctors: Flow<List<DoctorEntity>> = doctorDao.getAllDoctors()
 
-    /**
-     * Sync doctors from backend. Call this on app startup or when user
-     * pulls to refresh.
-     *
-     * @return true if sync succeeded, false on network/server error
-     */
-    suspend fun syncDoctors(): Boolean {
-        return try {
-            val response = apiService.getDoctors()
-            if (response.isSuccessful) {
-                val doctors = response.body() ?: emptyList()
-                database.withTransaction {
-                    doctorDao.clearDoctors()
-                    doctorDao.insertDoctors(doctors.map { it.toEntity() })
+        /**
+         * Sync doctors from backend. Call this on app startup or when user
+         * pulls to refresh.
+         *
+         * @return true if sync succeeded, false on network/server error
+         */
+        suspend fun syncDoctors(): Boolean =
+            try {
+                val response = apiService.getDoctors()
+                if (response.isSuccessful) {
+                    val doctors = response.body() ?: emptyList()
+                    database.withTransaction {
+                        doctorDao.clearDoctors()
+                        doctorDao.insertDoctors(doctors.map { it.toEntity() })
+                    }
+                    Timber.i("P-04: synced ${doctors.size} doctors from backend")
+                    true
+                } else if (response.code() == 304) {
+                    Timber.i("P-04: doctors not modified (304), keeping cache")
+                    true
+                } else {
+                    Timber.w("P-04: syncDoctors failed with code ${response.code()}")
+                    false
                 }
-                Timber.i("P-04: synced ${doctors.size} doctors from backend")
-                true
-            } else if (response.code() == 304) {
-                Timber.i("P-04: doctors not modified (304), keeping cache")
-                true
-            } else {
-                Timber.w("P-04: syncDoctors failed with code ${response.code()}")
+            } catch (e: Exception) {
+                Timber.e(e, "P-04: syncDoctors network error")
                 false
             }
-        } catch (e: Exception) {
-            Timber.e(e, "P-04: syncDoctors network error")
-            false
+
+        /**
+         * Should we refresh from network? True if cache is empty or older than 24h.
+         */
+        suspend fun shouldRefresh(): Boolean {
+            val count = doctorDao.getDoctorCount()
+            if (count == 0) return true
+
+            val lastUpdated = doctorDao.getLastUpdated() ?: return true
+            val dayMs = 24 * 60 * 60 * 1000L
+            return (System.currentTimeMillis() - lastUpdated) > dayMs
         }
-    }
 
-    /**
-     * Should we refresh from network? True if cache is empty or older than 24h.
-     */
-    suspend fun shouldRefresh(): Boolean {
-        val count = doctorDao.getDoctorCount()
-        if (count == 0) return true
-
-        val lastUpdated = doctorDao.getLastUpdated() ?: return true
-        val dayMs = 24 * 60 * 60 * 1000L
-        return (System.currentTimeMillis() - lastUpdated) > dayMs
-    }
-
-    /**
-     * Get available time slots for a doctor on a specific date.
-     *
-     * The backend has no dedicated /slots endpoint — slots are derived
-     * CLIENT-SIDE from GET /api/v1/mobile/doctors/{id}/schedule: the
-     * doctor's working window (start_time..end_time) is split into
-     * 30-minute steps and every slot already booked by an appointment is
-     * marked unavailable.
-     *
-     * @param doctorServerId backend-assigned doctor ID
-     * @param date "2026-06-29" format
-     * @return list of available "HH:MM" time strings, or empty list on error
-     */
-    suspend fun getAvailableTimeSlots(doctorServerId: Int, date: String): List<String> {
-        return try {
-            val response = apiService.getDoctorSchedule(
-                doctorId = doctorServerId,
-                dateFrom = date,
-                dateTo = date,
-            )
-            if (response.isSuccessful) {
-                val slots = response.body()
-                    ?.let { deriveTimeSlots(it, date) }
-                    ?.filter { it.available }
-                    ?.map { it.time }
-                    ?: emptyList()
-                if (slots.isEmpty()) {
-                    Timber.i("P-04: no free slots for doctor $doctorServerId on $date")
+        /**
+         * Get available time slots for a doctor on a specific date.
+         *
+         * The backend has no dedicated /slots endpoint — slots are derived
+         * CLIENT-SIDE from GET /api/v1/mobile/doctors/{id}/schedule: the
+         * doctor's working window (start_time..end_time) is split into
+         * 30-minute steps and every slot already booked by an appointment is
+         * marked unavailable.
+         *
+         * @param doctorServerId backend-assigned doctor ID
+         * @param date "2026-06-29" format
+         * @return list of available "HH:MM" time strings, or empty list on error
+         */
+        suspend fun getAvailableTimeSlots(
+            doctorServerId: Int,
+            date: String,
+        ): List<String> =
+            try {
+                val response =
+                    apiService.getDoctorSchedule(
+                        doctorId = doctorServerId,
+                        dateFrom = date,
+                        dateTo = date,
+                    )
+                if (response.isSuccessful) {
+                    val slots =
+                        response
+                            .body()
+                            ?.let { deriveTimeSlots(it, date) }
+                            ?.filter { it.available }
+                            ?.map { it.time }
+                            ?: emptyList()
+                    if (slots.isEmpty()) {
+                        Timber.i("P-04: no free slots for doctor $doctorServerId on $date")
+                    }
+                    slots
+                } else {
+                    Timber.w("P-04: getAvailableTimeSlots failed with code ${response.code()}")
+                    emptyList()
                 }
-                slots
-            } else {
-                Timber.w("P-04: getAvailableTimeSlots failed with code ${response.code()}")
+            } catch (e: Exception) {
+                Timber.e(e, "P-04: getAvailableTimeSlots network error")
                 emptyList()
             }
-        } catch (e: Exception) {
-            Timber.e(e, "P-04: getAvailableTimeSlots network error")
-            emptyList()
-        }
-    }
 
-    /**
-     * Derives 30-minute [TimeSlotDto]s for [date] from the doctor's
-     * schedule grid. Returns an empty list when the doctor has no working
-     * window that day (start_time/end_time are null on days off).
-     */
-    private fun deriveTimeSlots(
-        schedule: com.aistudio.clinicsystem.data.api.DoctorScheduleResponse,
-        date: String,
-    ): List<com.aistudio.clinicsystem.data.api.TimeSlotDto> {
-        val day = schedule.schedule.firstOrNull { it.date == date }
-            ?: return emptyList()
-        val startMinutes = parseHhMm(day.startTime) ?: return emptyList()
-        val endMinutes = parseHhMm(day.endTime) ?: return emptyList()
-        if (endMinutes <= startMinutes) return emptyList()
+        /**
+         * Derives 30-minute [TimeSlotDto]s for [date] from the doctor's
+         * schedule grid. Returns an empty list when the doctor has no working
+         * window that day (start_time/end_time are null on days off).
+         */
+        private fun deriveTimeSlots(
+            schedule: com.aistudio.clinicsystem.data.api.DoctorScheduleResponse,
+            date: String,
+        ): List<com.aistudio.clinicsystem.data.api.TimeSlotDto> {
+            val day =
+                schedule.schedule.firstOrNull { it.date == date }
+                    ?: return emptyList()
+            val startMinutes = parseHhMm(day.startTime) ?: return emptyList()
+            val endMinutes = parseHhMm(day.endTime) ?: return emptyList()
+            if (endMinutes <= startMinutes) return emptyList()
 
-        val bookedByTime = day.appointments
-            .mapNotNull { appt -> parseHhMm(appt.appointmentTime) }
-            .toSet()
+            val bookedByTime =
+                day.appointments
+                    .mapNotNull { appt -> parseHhMm(appt.appointmentTime) }
+                    .toSet()
 
-        val slots = mutableListOf<com.aistudio.clinicsystem.data.api.TimeSlotDto>()
-        var cursor = startMinutes
-        while (cursor < endMinutes) {
-            val isBooked = cursor in bookedByTime
-            slots.add(
-                com.aistudio.clinicsystem.data.api.TimeSlotDto(
-                    time = formatHhMm(cursor),
-                    available = !isBooked,
-                    appointmentId = if (isBooked) {
-                        day.appointments
-                            .firstOrNull { parseHhMm(it.appointmentTime) == cursor }?.id
-                    } else null,
+            val slots = mutableListOf<com.aistudio.clinicsystem.data.api.TimeSlotDto>()
+            var cursor = startMinutes
+            while (cursor < endMinutes) {
+                val isBooked = cursor in bookedByTime
+                slots.add(
+                    com.aistudio.clinicsystem.data.api.TimeSlotDto(
+                        time = formatHhMm(cursor),
+                        available = !isBooked,
+                        appointmentId =
+                            if (isBooked) {
+                                day.appointments
+                                    .firstOrNull { parseHhMm(it.appointmentTime) == cursor }
+                                    ?.id
+                            } else {
+                                null
+                            },
+                    ),
                 )
-            )
-            cursor += SLOT_STEP_MINUTES
+                cursor += SLOT_STEP_MINUTES
+            }
+            return slots
         }
-        return slots
+
+        /** Parses "HH:MM" / "HH:MM:SS" into minutes since midnight, or null. */
+        private fun parseHhMm(value: String?): Int? {
+            if (value.isNullOrBlank()) return null
+            val parts = value.split(":")
+            if (parts.size < 2) return null
+            val hours = parts[0].trim().toIntOrNull() ?: return null
+            val minutes = parts[1].trim().toIntOrNull() ?: return null
+            if (hours !in 0..23 || minutes !in 0..59) return null
+            return hours * 60 + minutes
+        }
+
+        private fun formatHhMm(minutes: Int): String = "%02d:%02d".format(minutes / 60, minutes % 60)
+
+        private companion object {
+            /** Fixed slot granularity used by the clinic for booking. */
+            const val SLOT_STEP_MINUTES = 30
+        }
+
+        /**
+         * Seed fallback doctors when backend is unavailable and cache is empty.
+         *
+         * This provides a graceful degradation path — the app remains usable
+         * even if backend is down on first launch. These doctors get replaced
+         * by real data on next successful sync.
+         */
+        suspend fun seedFallbackDoctorsIfEmpty() {
+            val count = doctorDao.getDoctorCount()
+            if (count > 0) return
+
+            val fallback =
+                listOf(
+                    DoctorEntity(
+                        fullName = "Dr. Rustam Sapaev",
+                        specialty = "Стоматолог-Хирург",
+                        phone = "+7 999 123-45-67",
+                    ),
+                    DoctorEntity(
+                        fullName = "Dr. Elena Petrova",
+                        specialty = "Кардиолог",
+                        phone = "+7 999 234-56-78",
+                    ),
+                    DoctorEntity(
+                        fullName = "Dr. Alexander Smirnov",
+                        specialty = "Невролог",
+                        phone = "+7 999 345-67-89",
+                    ),
+                )
+            doctorDao.insertDoctors(fallback)
+            Timber.i("P-04: seeded ${fallback.size} fallback doctors (backend unavailable)")
+        }
     }
-
-    /** Parses "HH:MM" / "HH:MM:SS" into minutes since midnight, or null. */
-    private fun parseHhMm(value: String?): Int? {
-        if (value.isNullOrBlank()) return null
-        val parts = value.split(":")
-        if (parts.size < 2) return null
-        val hours = parts[0].trim().toIntOrNull() ?: return null
-        val minutes = parts[1].trim().toIntOrNull() ?: return null
-        if (hours !in 0..23 || minutes !in 0..59) return null
-        return hours * 60 + minutes
-    }
-
-    private fun formatHhMm(minutes: Int): String =
-        "%02d:%02d".format(minutes / 60, minutes % 60)
-
-    private companion object {
-        /** Fixed slot granularity used by the clinic for booking. */
-        const val SLOT_STEP_MINUTES = 30
-    }
-
-    /**
-     * Seed fallback doctors when backend is unavailable and cache is empty.
-     *
-     * This provides a graceful degradation path — the app remains usable
-     * even if backend is down on first launch. These doctors get replaced
-     * by real data on next successful sync.
-     */
-    suspend fun seedFallbackDoctorsIfEmpty() {
-        val count = doctorDao.getDoctorCount()
-        if (count > 0) return
-
-        val fallback = listOf(
-            DoctorEntity(
-                fullName = "Dr. Rustam Sapaev",
-                specialty = "Стоматолог-Хирург",
-                phone = "+7 999 123-45-67"
-            ),
-            DoctorEntity(
-                fullName = "Dr. Elena Petrova",
-                specialty = "Кардиолог",
-                phone = "+7 999 234-56-78"
-            ),
-            DoctorEntity(
-                fullName = "Dr. Alexander Smirnov",
-                specialty = "Невролог",
-                phone = "+7 999 345-67-89"
-            )
-        )
-        doctorDao.insertDoctors(fallback)
-        Timber.i("P-04: seeded ${fallback.size} fallback doctors (backend unavailable)")
-    }
-}

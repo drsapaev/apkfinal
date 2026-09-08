@@ -15,7 +15,6 @@ import org.junit.Test
  * the legacy /appointments endpoint.
  */
 class DoctorServerIdExtractionTest {
-
     // We test the regex directly since extractDoctorServerId is private.
     // The regex is: #(\d+)
     private val regex = Regex("""#(\d+)""")

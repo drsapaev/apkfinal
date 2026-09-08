@@ -2,27 +2,25 @@
 
 package com.aistudio.clinicsystem.ui.screens.staff
 
-import androidx.compose.ui.res.stringResource
-import com.aistudio.clinicsystem.R
-import com.aistudio.clinicsystem.ui.theme.Spacing
-import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.aistudio.clinicsystem.R
+import com.aistudio.clinicsystem.ui.theme.Radius
+import com.aistudio.clinicsystem.ui.theme.Spacing
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -74,26 +72,30 @@ fun StaffCreateAppointmentDialog(
 
     var showDatePicker by remember { mutableStateOf(false) }
     var expandedDoctor by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
-    )
+    val datePickerState =
+        rememberDatePickerState(
+            initialSelectedDateMillis = System.currentTimeMillis(),
+        )
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = modifier
-                .fillMaxWidth()
-                .imePadding()
-                .padding(vertical = 16.dp),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .padding(vertical = 16.dp),
             shape = RoundedCornerShape(Radius.large),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(Spacing.xl)
-                    .verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(Spacing.xl)
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Spacing.m),
             ) {
                 Text(
@@ -125,7 +127,7 @@ fun StaffCreateAppointmentDialog(
                 if (doctorsList.isNotEmpty()) {
                     ExposedDropdownMenuBox(
                         expanded = expandedDoctor,
-                        onExpandedChange = { expandedDoctor = it }
+                        onExpandedChange = { expandedDoctor = it },
                     ) {
                         OutlinedTextField(
                             value = doctorSelected,
@@ -136,13 +138,14 @@ fun StaffCreateAppointmentDialog(
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDoctor)
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
                         )
                         ExposedDropdownMenu(
                             expanded = expandedDoctor,
-                            onDismissRequest = { expandedDoctor = false }
+                            onDismissRequest = { expandedDoctor = false },
                         ) {
                             doctorsList.forEach { (docName, spec) ->
                                 DropdownMenuItem(
@@ -152,7 +155,7 @@ fun StaffCreateAppointmentDialog(
                                             Text(
                                                 text = spec,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     },
@@ -160,7 +163,7 @@ fun StaffCreateAppointmentDialog(
                                         onDoctorSelectedChange(docName)
                                         onSpecialtySelectedChange(spec)
                                         expandedDoctor = false
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -189,10 +192,11 @@ fun StaffCreateAppointmentDialog(
                 ) {
                     // P-10 fix: Material 3 DatePicker for date field
                     OutlinedTextField(
-                        value = date.ifBlank {
-                            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                                .format(Date())
-                        },
+                        value =
+                            date.ifBlank {
+                                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    .format(Date())
+                            },
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.ui_date)) },
@@ -201,7 +205,7 @@ fun StaffCreateAppointmentDialog(
                             IconButton(onClick = { showDatePicker = true }) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = stringResource(R.string.ui_select_date)
+                                    contentDescription = stringResource(R.string.ui_select_date),
                                 )
                             }
                         },
@@ -217,7 +221,7 @@ fun StaffCreateAppointmentDialog(
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         },
                         modifier = Modifier.weight(1f),
@@ -260,17 +264,18 @@ fun StaffCreateAppointmentDialog(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            val formatted = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                                .format(Date(millis))
+                            val formatted =
+                                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    .format(Date(millis))
                             onDateChange(formatted)
                         }
                         showDatePicker = false
-                    }
+                    },
                 ) { Text("OK") }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.ui_cancel)) }
-            }
+            },
         ) {
             DatePicker(state = datePickerState)
         }

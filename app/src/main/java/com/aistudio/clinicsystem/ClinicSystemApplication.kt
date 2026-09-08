@@ -42,12 +42,17 @@ import javax.inject.Inject
  *      workers to be constructed via AssistedInject (Stage 3.12).
  */
 @HiltAndroidApp
-class ClinicSystemApplication : Application(), Configuration.Provider {
-
+class ClinicSystemApplication :
+    Application(),
+    Configuration.Provider {
     @Inject lateinit var sessionRepository: SessionRepository
+
     @Inject lateinit var authRepository: AuthRepository
+
     @Inject lateinit var realtimeManager: RealtimeManager
+
     @Inject lateinit var networkMonitor: NetworkMonitor
+
     // Stage 3.12: HiltWorkerFactory — injected so that @HiltWorker classes
     // (SyncWorker) can be constructed by WorkManager.
     @Inject lateinit var workerFactory: HiltWorkerFactory
@@ -57,10 +62,12 @@ class ClinicSystemApplication : Application(), Configuration.Provider {
     // @HiltWorker-annotated workers, getting all injected dependencies
     // from the singleton graph.
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build()
+        get() =
+            Configuration
+                .Builder()
+                .setWorkerFactory(workerFactory)
+                .setMinimumLoggingLevel(android.util.Log.INFO)
+                .build()
 
     override fun onCreate() {
         super.onCreate()
@@ -68,7 +75,8 @@ class ClinicSystemApplication : Application(), Configuration.Provider {
         // Stage 4.1 (C-4 final): plant Timber trees BEFORE anything else
         // logs. Debug → DebugTree (full logging); Release → ReleaseTree
         // (WARN/ERROR only, PHI redacted).
-        com.aistudio.clinicsystem.utils.initTimber()
+        com.aistudio.clinicsystem.utils
+            .initTimber()
 
         // 1. Restore session — async verify cached tokens against backend.
         sessionRepository.restoreSession(authRepository)

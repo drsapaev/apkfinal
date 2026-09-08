@@ -76,21 +76,24 @@ import retrofit2.http.Query
  * concrete parsing will be tightened in M2 when we add proper DTOs.
  */
 interface MobileApiService {
-
     // ═══════════════════════════════════════════════════════════════════
     // Authentication (canonical)
     // ═══════════════════════════════════════════════════════════════════
 
     @POST("api/v1/authentication/login")
-    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+    suspend fun login(
+        @Body request: LoginRequest,
+    ): Response<LoginResponse>
 
     @POST("api/v1/authentication/refresh")
     suspend fun refreshToken(
-        @Body request: RefreshTokenRequest
+        @Body request: RefreshTokenRequest,
     ): Response<RefreshTokenResponse>
 
     @POST("api/v1/authentication/logout")
-    suspend fun logout(@Body request: LogoutRequest): Response<Unit>
+    suspend fun logout(
+        @Body request: LogoutRequest,
+    ): Response<Unit>
 
     @GET("api/v1/authentication/profile")
     suspend fun getProfile(): Response<UserProfileResponse>
@@ -117,7 +120,7 @@ interface MobileApiService {
      */
     @POST("api/v1/2fa/verify")
     suspend fun verify2FA(
-        @Body request: TwoFAVerifyRequest
+        @Body request: TwoFAVerifyRequest,
     ): Response<TwoFactorVerifyResponse>
 
     /**
@@ -134,7 +137,7 @@ interface MobileApiService {
     @Suppress("unused")
     @POST("api/v1/2fa/recovery/request")
     suspend fun request2FARecovery(
-        @Body request: TwoFARecoveryRequest
+        @Body request: TwoFARecoveryRequest,
     ): Response<TwoFARecoveryResponse>
 
     /**
@@ -147,7 +150,7 @@ interface MobileApiService {
     @Suppress("unused")
     @POST("api/v1/2fa/recovery/verify")
     suspend fun verify2FARecovery(
-        @Body request: TwoFARecoveryVerifyRequest
+        @Body request: TwoFARecoveryVerifyRequest,
     ): Response<TwoFactorVerifyResponse>
 
     // High-3 audit fix: removed `send2FACode` — never called. The 2FA
@@ -174,12 +177,16 @@ interface MobileApiService {
     /** Reserved for future: Profile edit — PUT /mobile/profile. */
     @Suppress("unused")
     @PUT("api/v1/mobile/profile")
-    suspend fun updateProfile(@Body request: ProfileUpdateRequest): Response<Unit>
+    suspend fun updateProfile(
+        @Body request: ProfileUpdateRequest,
+    ): Response<Unit>
 
     /** Reserved for future: Avatar upload — POST /mobile/profile/avatar. */
     @Suppress("unused")
     @POST("api/v1/mobile/profile/avatar")
-    suspend fun uploadAvatar(@Body body: AvatarUploadRequest): Response<Unit>
+    suspend fun uploadAvatar(
+        @Body body: AvatarUploadRequest,
+    ): Response<Unit>
 
     // ═══════════════════════════════════════════════════════════════════
     // Mobile: appointments
@@ -195,19 +202,19 @@ interface MobileApiService {
 
     @POST("api/v1/mobile/appointments/book")
     suspend fun bookAppointment(
-        @Body request: AppointmentBookRequest
+        @Body request: AppointmentBookRequest,
     ): Response<MobileAppointmentOut>
 
     @POST("api/v1/mobile/appointments/cancel")
     suspend fun cancelAppointment(
-        @Body request: AppointmentCancelRequest
+        @Body request: AppointmentCancelRequest,
     ): Response<Unit>
 
     /** Reserved for future: Reschedule dialog — POST /mobile/appointments/reschedule. */
     @Suppress("unused")
     @POST("api/v1/mobile/appointments/reschedule")
     suspend fun rescheduleAppointment(
-        @Body request: AppointmentRescheduleRequest
+        @Body request: AppointmentRescheduleRequest,
     ): Response<MobileAppointmentOut>
 
     // ═══════════════════════════════════════════════════════════════════
@@ -265,7 +272,7 @@ interface MobileApiService {
     @Suppress("unused")
     @POST("api/v1/mobile/notifications/{notification_id}/read")
     suspend fun markNotificationRead(
-        @Path("notification_id") notificationId: String
+        @Path("notification_id") notificationId: String,
     ): Response<Unit>
 
     /** Reserved for future: Notification settings screen — GET /mobile/settings/notifications. */
@@ -277,7 +284,7 @@ interface MobileApiService {
     @Suppress("unused")
     @PUT("api/v1/mobile/settings/notifications")
     suspend fun updateNotificationSettings(
-        @Body request: NotificationSettingsRequest
+        @Body request: NotificationSettingsRequest,
     ): Response<Unit>
 
     // ═══════════════════════════════════════════════════════════════════
@@ -309,7 +316,7 @@ interface MobileApiService {
     //   [{id, name, specialty, cabinet, active}]
     @GET("api/v1/mobile/doctors")
     suspend fun getDoctors(
-        @Header("If-None-Match") etag: String? = null
+        @Header("If-None-Match") etag: String? = null,
     ): Response<List<DoctorDto>>
 
     /**
@@ -331,7 +338,7 @@ interface MobileApiService {
     suspend fun getDoctorSchedule(
         @Path("id") doctorId: Int,
         @Query("date_from") dateFrom: String,
-        @Query("date_to") dateTo: String
+        @Query("date_to") dateTo: String,
     ): Response<DoctorScheduleResponse>
 }
 
@@ -344,7 +351,7 @@ data class LoginRequest(
     @Json(name = "username") val username: String,
     @Json(name = "password") val password: String,
     @Json(name = "device_fingerprint") val deviceFingerprint: String? = null,
-    @Json(name = "remember_me") val rememberMe: Boolean? = null
+    @Json(name = "remember_me") val rememberMe: Boolean? = null,
 )
 
 /**
@@ -364,7 +371,7 @@ data class LoginResponse(
     @Json(name = "expires_in") val expiresIn: Int? = null,
     @Json(name = "user") val user: Map<String, Any?>? = null,
     @Json(name = "requires_2fa") val requires2fa: Boolean? = null,
-    @Json(name = "pending_2fa_token") val pending2faToken: String? = null
+    @Json(name = "pending_2fa_token") val pending2faToken: String? = null,
 ) {
     /** Convenience: is this a "you must complete 2FA" response? */
     val isTwoFactorChallenge: Boolean
@@ -373,7 +380,7 @@ data class LoginResponse(
 
 @JsonClass(generateAdapter = true)
 data class RefreshTokenRequest(
-    @Json(name = "refresh_token") val refreshToken: String
+    @Json(name = "refresh_token") val refreshToken: String,
 )
 
 @JsonClass(generateAdapter = true)
@@ -381,12 +388,12 @@ data class RefreshTokenResponse(
     @Json(name = "access_token") val accessToken: String,
     @Json(name = "refresh_token") val refreshToken: String,
     @Json(name = "token_type") val tokenType: String? = null,
-    @Json(name = "expires_in") val expiresIn: Int? = null
+    @Json(name = "expires_in") val expiresIn: Int? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class LogoutRequest(
-    @Json(name = "refresh_token") val refreshToken: String
+    @Json(name = "refresh_token") val refreshToken: String,
 )
 
 // High-3 audit fix: removed unused DTO `AuthStatusResponse` —
@@ -409,7 +416,7 @@ data class UserProfileResponse(
     @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
     @Json(name = "clinic_id") val clinicId: String? = null,
     @Json(name = "is_active") val isActive: Boolean? = null,
-    @Json(name = "is_superuser") val isSuperuser: Boolean? = null
+    @Json(name = "is_superuser") val isSuperuser: Boolean? = null,
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -429,7 +436,7 @@ data class TwoFAVerifyRequest(
     @Json(name = "backup_code") val backupCode: String? = null,
     @Json(name = "recovery_token") val recoveryToken: String? = null,
     @Json(name = "remember_device") val rememberDevice: Boolean = false,
-    @Json(name = "device_fingerprint") val deviceFingerprint: String? = null
+    @Json(name = "device_fingerprint") val deviceFingerprint: String? = null,
 )
 
 /**
@@ -449,7 +456,7 @@ data class TwoFactorVerifyResponse(
     @Json(name = "access_token") val accessToken: String? = null,
     @Json(name = "refresh_token") val refreshToken: String? = null,
     @Json(name = "token_type") val tokenType: String? = null,
-    @Json(name = "expires_in") val expiresIn: Int? = null
+    @Json(name = "expires_in") val expiresIn: Int? = null,
 )
 
 /**
@@ -461,9 +468,9 @@ data class TwoFactorVerifyResponse(
  */
 @JsonClass(generateAdapter = true)
 data class TwoFARecoveryRequest(
-    @Json(name = "recovery_type") val recoveryType: String,  // "email" | "phone" | "backup_code"
+    @Json(name = "recovery_type") val recoveryType: String, // "email" | "phone" | "backup_code"
     @Json(name = "recovery_value") val recoveryValue: String,
-    @Json(name = "device_fingerprint") val deviceFingerprint: String? = null
+    @Json(name = "device_fingerprint") val deviceFingerprint: String? = null,
 )
 
 /**
@@ -477,7 +484,7 @@ data class TwoFARecoveryResponse(
     @Json(name = "recovery_token") val recoveryToken: String? = null,
     /** ISO 8601 datetime string. */
     @Json(name = "expires_at") val expiresAt: String? = null,
-    @Json(name = "message") val message: String = ""
+    @Json(name = "message") val message: String = "",
 )
 
 /**
@@ -487,7 +494,7 @@ data class TwoFARecoveryResponse(
  */
 @JsonClass(generateAdapter = true)
 data class TwoFARecoveryVerifyRequest(
-    @Json(name = "recovery_token") val recoveryToken: String
+    @Json(name = "recovery_token") val recoveryToken: String,
 )
 
 // High-3 audit fix: removed unused DTO `Send2FACodeRequest` —
@@ -555,7 +562,7 @@ data class ProfileUpdateRequest(
 @JsonClass(generateAdapter = true)
 data class AvatarUploadRequest(
     @Json(name = "base64_data") val base64Data: String,
-    @Json(name = "content_type") val contentType: String = "image/jpeg"
+    @Json(name = "content_type") val contentType: String = "image/jpeg",
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -599,12 +606,13 @@ data class AppointmentUpcomingOut(
      * (YYYY-MM-DD) for display. Returns the raw string if parsing fails.
      */
     val date: String
-        get() = try {
-            // Take the date portion before the 'T' separator.
-            appointmentDate.substringBefore('T').ifBlank { appointmentDate }
-        } catch (e: Exception) {
-            appointmentDate
-        }
+        get() =
+            try {
+                // Take the date portion before the 'T' separator.
+                appointmentDate.substringBefore('T').ifBlank { appointmentDate }
+            } catch (e: Exception) {
+                appointmentDate
+            }
 
     /**
      * Splits [appointmentDate] (ISO 8601) into the time portion
@@ -616,15 +624,18 @@ data class AppointmentUpcomingOut(
      * ("2026-07-15T14:30:00" → "").
      */
     val time: String
-        get() = try {
-            val timePart = appointmentDate.substringAfter('T')
-                .substringBefore('Z')
-                .substringBefore('+')
-                .substringBefore('-')
-            if (timePart.length >= 5) timePart.substring(0, 5) else timePart
-        } catch (e: Exception) {
-            ""
-        }
+        get() =
+            try {
+                val timePart =
+                    appointmentDate
+                        .substringAfter('T')
+                        .substringBefore('Z')
+                        .substringBefore('+')
+                        .substringBefore('-')
+                if (timePart.length >= 5) timePart.substring(0, 5) else timePart
+            } catch (e: Exception) {
+                ""
+            }
 }
 
 /**
@@ -651,20 +662,20 @@ data class AppointmentBookRequest(
     @Json(name = "preferred_time") val preferredTime: String? = null,
     @Json(name = "complaint") val complaint: String? = null,
     @Json(name = "services") val services: List<Int> = emptyList(),
-    @Json(name = "notes") val notes: String? = null
+    @Json(name = "notes") val notes: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class AppointmentCancelRequest(
     @Json(name = "appointment_id") val appointmentId: Int,
-    @Json(name = "reason") val reason: String? = null
+    @Json(name = "reason") val reason: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
 data class AppointmentRescheduleRequest(
     @Json(name = "appointment_id") val appointmentId: Int,
     @Json(name = "new_date") val newDate: String,
-    @Json(name = "new_time") val newTime: String
+    @Json(name = "new_time") val newTime: String,
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -694,7 +705,7 @@ data class AppointmentRescheduleRequest(
  */
 @JsonClass(generateAdapter = true)
 data class QueuePositionsResponse(
-    @Json(name = "positions") val positions: List<QueuePositionOut> = emptyList()
+    @Json(name = "positions") val positions: List<QueuePositionOut> = emptyList(),
 )
 
 /**
@@ -712,7 +723,7 @@ data class QueuePositionOut(
     @Json(name = "current_number") val currentNumber: Int = 0,
     @Json(name = "patients_before_me") val patientsBeforeMe: Int = 0,
     @Json(name = "estimated_wait_minutes") val estimatedWaitMinutes: Int = 0,
-    @Json(name = "status") val status: String = "waiting"
+    @Json(name = "status") val status: String = "waiting",
 )
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -881,10 +892,10 @@ data class DoctorDto(
     @Json(name = "name") val name: String,
     @Json(name = "specialty") val specialty: String,
     @Json(name = "cabinet") val cabinet: String? = null,
-    @Json(name = "active") val isActive: Boolean = true
+    @Json(name = "active") val isActive: Boolean = true,
 ) {
-    fun toEntity(): com.aistudio.clinicsystem.data.db.DoctorEntity {
-        return com.aistudio.clinicsystem.data.db.DoctorEntity(
+    fun toEntity(): com.aistudio.clinicsystem.data.db.DoctorEntity =
+        com.aistudio.clinicsystem.data.db.DoctorEntity(
             serverId = id,
             fullName = name,
             specialty = specialty,
@@ -892,9 +903,8 @@ data class DoctorDto(
             email = "",
             avatarUrl = null,
             isActive = isActive,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = System.currentTimeMillis(),
         )
-    }
 }
 
 /**
@@ -904,7 +914,7 @@ data class DoctorDto(
 @JsonClass(generateAdapter = true)
 data class DoctorScheduleResponse(
     @Json(name = "doctor_id") val doctorId: Int = 0,
-    @Json(name = "schedule") val schedule: List<DoctorScheduleDay> = emptyList()
+    @Json(name = "schedule") val schedule: List<DoctorScheduleDay> = emptyList(),
 )
 
 /** One day of the doctor's schedule grid. */
@@ -918,7 +928,7 @@ data class DoctorScheduleDay(
     @Json(name = "start_time") val startTime: String? = null,
     /** Working window end, "HH:MM[:SS]", or null when the doctor is off. */
     @Json(name = "end_time") val endTime: String? = null,
-    @Json(name = "appointments") val appointments: List<DoctorScheduleAppointment> = emptyList()
+    @Json(name = "appointments") val appointments: List<DoctorScheduleAppointment> = emptyList(),
 )
 
 /** One booked appointment inside the schedule grid. */
@@ -928,7 +938,7 @@ data class DoctorScheduleAppointment(
     /** "HH:MM" or null for date-only bookings. */
     @Json(name = "appointment_time") val appointmentTime: String? = null,
     @Json(name = "patient_id") val patientId: Int? = null,
-    @Json(name = "status") val status: String? = null
+    @Json(name = "status") val status: String? = null,
 )
 
 /**
@@ -938,5 +948,5 @@ data class DoctorScheduleAppointment(
 data class TimeSlotDto(
     val time: String, // "09:00"
     val available: Boolean,
-    val appointmentId: Int? = null // backend appointment occupying the slot, if booked
+    val appointmentId: Int? = null, // backend appointment occupying the slot, if booked
 )

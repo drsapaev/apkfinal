@@ -39,13 +39,15 @@ import javax.inject.Singleton
 object AppModule {
     @Provides
     @Singleton
-    fun provideSessionManager(@ApplicationContext context: Context): SessionManager =
-        SessionManagerImpl(context.applicationContext)
+    fun provideSessionManager(
+        @ApplicationContext context: Context,
+    ): SessionManager = SessionManagerImpl(context.applicationContext)
 
     @Provides
     @Singleton
-    fun provideClinicDatabase(@ApplicationContext context: Context): ClinicDatabase =
-        ClinicDatabase.getDatabase(context)
+    fun provideClinicDatabase(
+        @ApplicationContext context: Context,
+    ): ClinicDatabase = ClinicDatabase.getDatabase(context)
 
     @Provides
     fun provideSyncLogDao(db: ClinicDatabase): SyncLogDao = db.syncLogDao()
@@ -57,12 +59,13 @@ object AppModule {
         apiService: ApiService,
         mobileApiService: MobileApiService,
         moshi: com.squareup.moshi.Moshi,
-    ): ClinicRepository = ClinicRepository(
-        database = database,
-        mobileApiService = mobileApiService,
-        legacyApiService = apiService,
-        moshi = moshi,
-    )
+    ): ClinicRepository =
+        ClinicRepository(
+            database = database,
+            mobileApiService = mobileApiService,
+            legacyApiService = apiService,
+            moshi = moshi,
+        )
 
     @Provides
     @Singleton
@@ -71,22 +74,21 @@ object AppModule {
         database: ClinicDatabase,
         mobileApiService: MobileApiService,
         sessionRepository: SessionRepository,
-    ): AuthRepository = AuthRepository(
-        context = context,
-        database = database,
-        mobileApiService = mobileApiService,
-        sessionRepository = sessionRepository,
-    )
+    ): AuthRepository =
+        AuthRepository(
+            context = context,
+            database = database,
+            mobileApiService = mobileApiService,
+            sessionRepository = sessionRepository,
+        )
 
     @Provides
     @Singleton
-    fun provideApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): ApiService =
-        apiClient.service
+    fun provideApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): ApiService = apiClient.service
 
     @Provides
     @Singleton
-    fun provideMobileApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): MobileApiService =
-        apiClient.mobileService
+    fun provideMobileApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): MobileApiService = apiClient.mobileService
 }
 
 /**

@@ -5,7 +5,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Authenticator
-import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
 import retrofit2.Retrofit
@@ -50,12 +49,14 @@ class TokenAuthenticator(
     private val moshi: com.squareup.moshi.Moshi,
     private val baseUrlProvider: () -> String,
     /** Called when refresh fails — typically routes user to login. */
-    private val onSessionInvalidated: () -> Unit = {}
+    private val onSessionInvalidated: () -> Unit = {},
 ) : Authenticator {
-
     private val refreshMutex = Mutex()
 
-    override fun authenticate(route: okhttp3.Route?, response: Response): Request? {
+    override fun authenticate(
+        route: okhttp3.Route?,
+        response: Response,
+    ): Request? {
         // Guard against infinite retry loops: if we already retried 2 times,
         // give up. OkHttp also has its own guard, but this is belt-and-braces.
         if (responseCount(response) >= 2) {
@@ -65,9 +66,11 @@ class TokenAuthenticator(
 
         // Extract the token that was used on the failing request (if any),
         // so we can detect the "another thread already refreshed" case.
-        val failingRequestToken = response.request.header("Authorization")
-            ?.removePrefix("Bearer ")
-            ?.removePrefix("bearer ")
+        val failingRequestToken =
+            response.request
+                .header("Authorization")
+                ?.removePrefix("Bearer ")
+                ?.removePrefix("bearer ")
 
         return runBlocking {
             refreshMutex.withLock {
@@ -78,7 +81,8 @@ class TokenAuthenticator(
                 // with the new token.
                 if (currentAccessToken != null && currentAccessToken != failingRequestToken) {
                     Timber.d("authenticate: token already refreshed by another request, retrying")
-                    return@withLock response.request.newBuilder()
+                    return@withLock response.request
+                        .newBuilder()
                         .header("Authorization", "Bearer $currentAccessToken")
                         .build()
                 }
@@ -92,23 +96,25 @@ class TokenAuthenticator(
                     return@withLock null
                 }
 
-                val newTokens = try {
-                    performRefresh(refreshToken)  // suspend call — OK inside runBlocking
-                } catch (e: Exception) {
-                    Timber.e("authenticate: refresh failed: ${e.message}", e)
-                    sessionManager.clearSession()
-                    onSessionInvalidated()
-                    return@withLock null
-                }
+                val newTokens =
+                    try {
+                        performRefresh(refreshToken) // suspend call — OK inside runBlocking
+                    } catch (e: Exception) {
+                        Timber.e("authenticate: refresh failed: ${e.message}", e)
+                        sessionManager.clearSession()
+                        onSessionInvalidated()
+                        return@withLock null
+                    }
 
                 // Persist the new tokens
                 sessionManager.setTokens(
                     accessToken = newTokens.accessToken,
-                    refreshToken = newTokens.refreshToken
+                    refreshToken = newTokens.refreshToken,
                 )
                 Timber.d("authenticate: refresh succeeded, retrying original request")
 
-                response.request.newBuilder()
+                response.request
+                    .newBuilder()
                     .header("Authorization", "Bearer ${newTokens.accessToken}")
                     .build()
             }
@@ -125,16 +131,20 @@ class TokenAuthenticator(
      */
     @Throws(IOException::class)
     private suspend fun performRefresh(refreshToken: String): RefreshTokenResponse {
-        val refreshClient = okhttp3.OkHttpClient.Builder()
-            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-            .build()
+        val refreshClient =
+            okhttp3.OkHttpClient
+                .Builder()
+                .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
 
-        val refreshRetrofit = Retrofit.Builder()
-            .baseUrl(baseUrlProvider())
-            .client(refreshClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
+        val refreshRetrofit =
+            Retrofit
+                .Builder()
+                .baseUrl(baseUrlProvider())
+                .client(refreshClient)
+                .addConverterFactory(MoshiConverterFactory.create(moshi))
+                .build()
 
         val refreshApi = refreshRetrofit.create(MobileApiService::class.java)
 

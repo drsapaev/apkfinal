@@ -46,18 +46,18 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class StaffViewModelTest {
-
     private lateinit var viewModel: StaffViewModel
     private lateinit var repository: ClinicRepository
     private lateinit var authRepository: AuthRepository
     private lateinit var sessionRepository: SessionRepository
 
-    private val testStaffUser = UserEntity(
-        id = 2,
-        phone = "+77071234567",
-        fullName = "Dr. Staff",
-        role = "STAFF",
-    )
+    private val testStaffUser =
+        UserEntity(
+            id = 2,
+            phone = "+77071234567",
+            fullName = "Dr. Staff",
+            role = "STAFF",
+        )
 
     @Before
     fun setUp() {
@@ -67,23 +67,25 @@ class StaffViewModelTest {
         authRepository = mockk(relaxed = true)
         sessionRepository = mockk(relaxed = true)
 
-        every { sessionRepository.sessionState } returns MutableStateFlow(
-            SessionState.Authenticated(
-                user = testStaffUser,
-                accessToken = "staff-token",
-                refreshToken = "staff-refresh",
-            ),
-        )
+        every { sessionRepository.sessionState } returns
+            MutableStateFlow(
+                SessionState.Authenticated(
+                    user = testStaffUser,
+                    accessToken = "staff-token",
+                    refreshToken = "staff-refresh",
+                ),
+            )
         every { sessionRepository.accessToken } returns "staff-token"
 
-        viewModel = StaffViewModel(
-            appContext = mockk(relaxed = true),
-            database = mockk(relaxed = true),
-            repository = repository,
-            authRepository = authRepository,
-            sessionRepository = sessionRepository,
-            apiService = mockk(relaxed = true),
-        )
+        viewModel =
+            StaffViewModel(
+                appContext = mockk(relaxed = true),
+                database = mockk(relaxed = true),
+                repository = repository,
+                authRepository = authRepository,
+                sessionRepository = sessionRepository,
+                apiService = mockk(relaxed = true),
+            )
     }
 
     @After
@@ -92,61 +94,65 @@ class StaffViewModelTest {
     }
 
     @Test
-    fun `approveAppointment calls repository with APPROVED status`() = runTest {
-        val appointment = AppointmentEntity(
-            id = "apt-001",
-            patientPhone = "+77771112233",
-            patientName = "Patient",
-            doctorName = "Dr. Staff",
-            specialty = "Cardiology",
-            date = "2026-07-10",
-            time = "14:00",
-            status = "PENDING",
-            reason = "Checkup",
-        )
-        coEvery { repository.getAppointmentById("apt-001") } returns appointment
-        coEvery {
-            repository.updateAppointmentStatusOnServerAndLocal(any(), any(), any(), any())
-        } returns appointment.copy(status = "APPROVED")
+    fun `approveAppointment calls repository with APPROVED status`() =
+        runTest {
+            val appointment =
+                AppointmentEntity(
+                    id = "apt-001",
+                    patientPhone = "+77771112233",
+                    patientName = "Patient",
+                    doctorName = "Dr. Staff",
+                    specialty = "Cardiology",
+                    date = "2026-07-10",
+                    time = "14:00",
+                    status = "PENDING",
+                    reason = "Checkup",
+                )
+            coEvery { repository.getAppointmentById("apt-001") } returns appointment
+            coEvery {
+                repository.updateAppointmentStatusOnServerAndLocal(any(), any(), any(), any())
+            } returns appointment.copy(status = "APPROVED")
 
-        viewModel.approveAppointment("apt-001")
-        advanceUntilIdle()
+            viewModel.approveAppointment("apt-001")
+            advanceUntilIdle()
 
-        coVerify {
-            repository.updateAppointmentStatusOnServerAndLocal(
-                token = "staff-token",
-                id = "apt-001",
-                status = "APPROVED",
-                cancelReason = "",
-            )
+            coVerify {
+                repository.updateAppointmentStatusOnServerAndLocal(
+                    token = "staff-token",
+                    id = "apt-001",
+                    status = "APPROVED",
+                    cancelReason = "",
+                )
+            }
         }
-    }
 
     @Test
-    fun `cancelAppointment calls repository with CANCELLED status`() = runTest {
-        viewModel.cancelAppointment("apt-002", "Patient requested")
-        advanceUntilIdle()
+    fun `cancelAppointment calls repository with CANCELLED status`() =
+        runTest {
+            viewModel.cancelAppointment("apt-002", "Patient requested")
+            advanceUntilIdle()
 
-        coVerify {
-            repository.updateAppointmentStatusOnServerAndLocal(
-                token = "staff-token",
-                id = "apt-002",
-                status = "CANCELLED",
-                cancelReason = "Patient requested",
-            )
+            coVerify {
+                repository.updateAppointmentStatusOnServerAndLocal(
+                    token = "staff-token",
+                    id = "apt-002",
+                    status = "CANCELLED",
+                    cancelReason = "Patient requested",
+                )
+            }
         }
-    }
 
     @Test
-    fun `logOut calls authRepository and clears session`() = runTest {
-        coEvery { authRepository.logout() } returns Result.success(Unit)
+    fun `logOut calls authRepository and clears session`() =
+        runTest {
+            coEvery { authRepository.logout() } returns Result.success(Unit)
 
-        viewModel.logOut()
-        advanceUntilIdle()
+            viewModel.logOut()
+            advanceUntilIdle()
 
-        coVerify { authRepository.logout() }
-        coVerify { sessionRepository.clearSession() }
-    }
+            coVerify { authRepository.logout() }
+            coVerify { sessionRepository.clearSession() }
+        }
 
     @Test
     fun `setThemeMode with valid mode updates state`() {
@@ -161,18 +167,19 @@ class StaffViewModelTest {
     }
 
     @Test
-    fun `setUndoAction stores action and triggerUndo executes it`() = runTest {
-        val action = StaffViewModel.UndoAction.DeleteAppointment("apt-003")
-        viewModel.setUndoAction(action)
+    fun `setUndoAction stores action and triggerUndo executes it`() =
+        runTest {
+            val action = StaffViewModel.UndoAction.DeleteAppointment("apt-003")
+            viewModel.setUndoAction(action)
 
-        assertNotNull("Undo action should be stored", viewModel.undoAction.value)
+            assertNotNull("Undo action should be stored", viewModel.undoAction.value)
 
-        viewModel.triggerUndo()
-        advanceUntilIdle()
+            viewModel.triggerUndo()
+            advanceUntilIdle()
 
-        // After undo, action should be cleared
-        assertNull("Undo action should be cleared after trigger", viewModel.undoAction.value)
-    }
+            // After undo, action should be cleared
+            assertNull("Undo action should be cleared after trigger", viewModel.undoAction.value)
+        }
 
     @Test
     fun `clearUndoAction nullifies the undo state`() {

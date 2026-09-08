@@ -32,7 +32,6 @@ import retrofit2.http.Query
  * too — this interface intentionally has NO auth endpoints.
  */
 interface ApiService {
-
     // --- Appointments (staff) ---
 
     @GET("api/v1/appointments/")
@@ -42,12 +41,12 @@ interface ApiService {
         @Query("patient_id") patientId: Int? = null,
         @Query("doctor_id") doctorId: Int? = null,
         @Query("date_from") dateFrom: String? = null,
-        @Query("date_to") dateTo: String? = null
+        @Query("date_to") dateTo: String? = null,
     ): Response<List<StaffAppointmentDto>>
 
     @POST("api/v1/appointments/")
     suspend fun createAppointment(
-        @Body appointment: StaffAppointmentCreateRequest
+        @Body appointment: StaffAppointmentCreateRequest,
     ): Response<StaffAppointmentDto>
 
     /**
@@ -58,7 +57,7 @@ interface ApiService {
     @PUT("api/v1/appointments/{id}")
     suspend fun updateAppointment(
         @Path("id") id: Int,
-        @Body appointment: StaffAppointmentUpdateRequest
+        @Body appointment: StaffAppointmentUpdateRequest,
     ): Response<StaffAppointmentDto>
 
     // --- Patient lookup (staff) ---
@@ -71,7 +70,7 @@ interface ApiService {
     @GET("api/v1/patients/")
     suspend fun findPatientsByPhone(
         @Query("phone") phone: String,
-        @Query("limit") limit: Int = 1
+        @Query("limit") limit: Int = 1,
     ): Response<List<StaffPatientDto>>
 
     // --- Queues (staff) ---
@@ -83,20 +82,28 @@ interface ApiService {
     /** Per-specialist live queue with patient entries (Admin/Doctor/Registrar only). */
     @GET("api/v1/queue/status/{specialist_id}")
     suspend fun getQueueStatus(
-        @Path("specialist_id") specialistId: Int
+        @Path("specialist_id") specialistId: Int,
     ): Response<QueueStatusResponse>
 
     @POST("api/v1/doctor/queue/{entry_id}/call")
-    suspend fun callQueueEntry(@Path("entry_id") entryId: Int): Response<QueueActionResponse>
+    suspend fun callQueueEntry(
+        @Path("entry_id") entryId: Int,
+    ): Response<QueueActionResponse>
 
     @POST("api/v1/doctor/queue/{entry_id}/start-visit")
-    suspend fun startQueueVisit(@Path("entry_id") entryId: Int): Response<QueueActionResponse>
+    suspend fun startQueueVisit(
+        @Path("entry_id") entryId: Int,
+    ): Response<QueueActionResponse>
 
     @POST("api/v1/doctor/queue/{entry_id}/complete")
-    suspend fun completeQueueVisit(@Path("entry_id") entryId: Int): Response<QueueActionResponse>
+    suspend fun completeQueueVisit(
+        @Path("entry_id") entryId: Int,
+    ): Response<QueueActionResponse>
 
     @POST("api/v1/online-queue/entries/{entry_id}/cancel")
-    suspend fun cancelQueueEntry(@Path("entry_id") entryId: Int): Response<QueueActionResponse>
+    suspend fun cancelQueueEntry(
+        @Path("entry_id") entryId: Int,
+    ): Response<QueueActionResponse>
 
     /**
      * Admin-only system users list (backend `require_roles("Admin")`).
@@ -105,7 +112,7 @@ interface ApiService {
     @GET("api/v1/users")
     suspend fun getSystemUsers(
         @Query("page") page: Int = 1,
-        @Query("per_page") perPage: Int = 50
+        @Query("per_page") perPage: Int = 50,
     ): Response<StaffUsersPageDto>
 }
 
@@ -120,7 +127,7 @@ data class StaffUsersPageDto(
     @Json(name = "total") val total: Int = 0,
     @Json(name = "page") val page: Int = 1,
     @Json(name = "per_page") val perPage: Int = 50,
-    @Json(name = "total_pages") val totalPages: Int = 0
+    @Json(name = "total_pages") val totalPages: Int = 0,
 )
 
 /** One system user (backend `UserResponse`, profile payloads ignored). */
@@ -132,7 +139,7 @@ data class StaffUserDto(
     /** Patient | Doctor | Registrar | Lab | Cashier | Admin | … */
     @Json(name = "role") val role: String = "",
     @Json(name = "is_active") val isActive: Boolean = true,
-    @Json(name = "is_superuser") val isSuperuser: Boolean = false
+    @Json(name = "is_superuser") val isSuperuser: Boolean = false,
 )
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -162,7 +169,7 @@ data class StaffAppointmentDto(
     @Json(name = "patient_name") val patientName: String? = null,
     @Json(name = "services") val services: List<String>? = null,
     @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "updated_at") val updatedAt: String? = null
+    @Json(name = "updated_at") val updatedAt: String? = null,
 )
 
 /**
@@ -183,7 +190,7 @@ data class StaffAppointmentCreateRequest(
     @Json(name = "status") val status: String = "scheduled",
     @Json(name = "visit_type") val visitType: String = "paid",
     @Json(name = "payment_type") val paymentType: String = "cash",
-    @Json(name = "services") val services: List<String>? = null
+    @Json(name = "services") val services: List<String>? = null,
 )
 
 /** Body for PUT /api/v1/appointments/{id} — backend `AppointmentUpdate`, all fields optional. */
@@ -193,7 +200,7 @@ data class StaffAppointmentUpdateRequest(
     @Json(name = "appointment_date") val appointmentDate: String? = null,
     @Json(name = "appointment_time") val appointmentTime: String? = null,
     @Json(name = "notes") val notes: String? = null,
-    @Json(name = "status") val status: String? = null
+    @Json(name = "status") val status: String? = null,
 )
 
 /** Minimal patient row returned by GET /api/v1/patients (backend `Patient` schema). */
@@ -203,11 +210,12 @@ data class StaffPatientDto(
     @Json(name = "full_name") val fullName: String? = null,
     @Json(name = "last_name") val lastName: String? = null,
     @Json(name = "first_name") val firstName: String? = null,
-    @Json(name = "phone") val phone: String? = null
+    @Json(name = "phone") val phone: String? = null,
 ) {
     val displayName: String
-        get() = fullName
-            ?: listOfNotNull(lastName, firstName).joinToString(" ").ifBlank { phone ?: "Пациент #$id" }
+        get() =
+            fullName
+                ?: listOfNotNull(lastName, firstName).joinToString(" ").ifBlank { phone ?: "Пациент #$id" }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -219,7 +227,7 @@ data class StaffPatientDto(
 data class AvailableSpecialistsResponse(
     @Json(name = "success") val success: Boolean = true,
     @Json(name = "specialists") val specialists: List<QueueSpecialistDto> = emptyList(),
-    @Json(name = "total") val total: Int = 0
+    @Json(name = "total") val total: Int = 0,
 )
 
 @JsonClass(generateAdapter = true)
@@ -228,7 +236,7 @@ data class QueueSpecialistDto(
     @Json(name = "specialty") val specialty: String? = null,
     @Json(name = "specialty_display") val specialtyDisplay: String? = null,
     @Json(name = "doctor_name") val doctorName: String? = null,
-    @Json(name = "cabinet") val cabinet: String? = null
+    @Json(name = "cabinet") val cabinet: String? = null,
 )
 
 /** Response of GET /api/v1/queue/status/{specialist_id} (backend `QueueStatusResponse`). */
@@ -241,7 +249,7 @@ data class QueueStatusResponse(
     @Json(name = "is_open") val isOpen: Boolean = false,
     @Json(name = "total_entries") val totalEntries: Int = 0,
     @Json(name = "waiting_entries") val waitingEntries: Int = 0,
-    @Json(name = "entries") val entries: List<QueueEntryDto> = emptyList()
+    @Json(name = "entries") val entries: List<QueueEntryDto> = emptyList(),
 )
 
 /** One patient entry in a specialist's live queue. */
@@ -254,7 +262,7 @@ data class QueueEntryDto(
     @Json(name = "status") val status: String = "waiting",
     /** ISO 8601 datetime strings. */
     @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "called_at") val calledAt: String? = null
+    @Json(name = "called_at") val calledAt: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -283,7 +291,7 @@ data class UserDto(
     @Json(name = "date_of_birth") val dateOfBirth: String?,
     @Json(name = "biometric_enabled") val biometricEnabled: Boolean,
     @Json(name = "telegram_chat_id") val telegramChatId: String?,
-    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base",
 )
 
 /**
@@ -297,7 +305,7 @@ data class QueueDto(
     @Json(name = "appointment_id") val appointmentId: Int,
     @Json(name = "position") val position: Int,
     @Json(name = "status") val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
-    @Json(name = "clinic_id") val clinicId: String? = "clinic_base"
+    @Json(name = "clinic_id") val clinicId: String? = "clinic_base",
 )
 
 /**

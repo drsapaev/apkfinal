@@ -2,9 +2,9 @@ package com.aistudio.clinicsystem.data.db
 
 import android.content.Context
 import androidx.room.*
+import com.aistudio.clinicsystem.utils.TokenManager
 import kotlinx.coroutines.flow.Flow
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
-import com.aistudio.clinicsystem.utils.TokenManager
 
 @Dao
 interface UserDao {
@@ -98,14 +98,18 @@ interface PendingSyncDao {
     suspend fun getDeadLettered(): List<PendingSyncEntity>
 
     @Query("UPDATE pending_syncs SET status = :status, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun updateStatus(id: String, status: String, updatedAt: Long = System.currentTimeMillis())
+    suspend fun updateStatus(
+        id: String,
+        status: String,
+        updatedAt: Long = System.currentTimeMillis(),
+    )
 
     @Query(
         """UPDATE pending_syncs
            SET status = :status, retryCount = :retryCount,
                lastError = :error, nextRetryAt = :nextRetryAt,
                updatedAt = :updatedAt
-           WHERE id = :id"""
+           WHERE id = :id""",
     )
     suspend fun updateRetryState(
         id: String,
@@ -113,7 +117,7 @@ interface PendingSyncDao {
         retryCount: Int,
         error: String?,
         nextRetryAt: Long?,
-        updatedAt: Long = System.currentTimeMillis()
+        updatedAt: Long = System.currentTimeMillis(),
     )
 
     /**
@@ -127,7 +131,7 @@ interface PendingSyncDao {
                lastError = :error, nextRetryAt = :nextRetryAt,
                lastHttpCode = :httpCode,
                updatedAt = :updatedAt
-           WHERE id = :id"""
+           WHERE id = :id""",
     )
     suspend fun updateRetryStateWithHttpCode(
         id: String,
@@ -294,7 +298,7 @@ interface LabResultDao {
         QueueSnapshotEntity::class,
         PendingSyncEntity::class,
         DoctorEntity::class,
-        LabResultEntity::class
+        LabResultEntity::class,
     ],
     // Stage 6: bumped 8 → 9. Migration 8→9 adds lab_results table.
     version = 9,
@@ -302,24 +306,31 @@ interface LabResultDao {
     // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/8.json
     // on every build. This file must be committed to git — it is the
     // baseline used by MigrationTestHelper in E4.4 to write migration tests.
-    exportSchema = true
+    exportSchema = true,
 )
 abstract class ClinicDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
+
     abstract fun appointmentDao(): AppointmentDao
+
     abstract fun medicalRecordDao(): MedicalRecordDao
+
     abstract fun syncLogDao(): SyncLogDao
+
     abstract fun queueSnapshotDao(): QueueSnapshotDao
+
     abstract fun pendingSyncDao(): PendingSyncDao
-    abstract fun doctorDao(): DoctorDao  // P-04: doctor directory DAO
-    abstract fun labResultDao(): LabResultDao  // Stage 6: lab results DAO
+
+    abstract fun doctorDao(): DoctorDao // P-04: doctor directory DAO
+
+    abstract fun labResultDao(): LabResultDao // Stage 6: lab results DAO
 
     companion object {
         @Volatile
         private var INSTANCE: ClinicDatabase? = null
 
-        fun getDatabase(context: Context): ClinicDatabase {
-            return INSTANCE ?: synchronized(this) {
+        fun getDatabase(context: Context): ClinicDatabase =
+            INSTANCE ?: synchronized(this) {
                 try {
                     System.loadLibrary("sqlcipher")
                 } catch (e: Throwable) {
@@ -333,46 +344,47 @@ abstract class ClinicDatabase : RoomDatabase() {
                 // E1.6: if encrypted storage is unavailable, getOrCreateDatabaseKey
                 // returns null. We MUST refuse to open the database in that case —
                 // opening with an empty passphrase would silently store PHI unencrypted.
-                val passphrase = TokenManager.getOrCreateDatabaseKey(context)
-                    ?: throw IllegalStateException(
-                        "EncryptedSharedPreferences unavailable — refusing to open " +
-                            "SQLCipher database with null passphrase. " +
-                            "User must be prompted to re-authenticate."
-                    )
+                val passphrase =
+                    TokenManager.getOrCreateDatabaseKey(context)
+                        ?: throw IllegalStateException(
+                            "EncryptedSharedPreferences unavailable — refusing to open " +
+                                "SQLCipher database with null passphrase. " +
+                                "User must be prompted to re-authenticate.",
+                        )
                 val factory = SupportOpenHelperFactory(passphrase)
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    ClinicDatabase::class.java,
-                    "clinic_database"
-                )
-                .openHelperFactory(factory)
-                // Stage 4.2 (PERF-9 fix): enable WAL (Write-Ahead Logging).
-                // Without WAL, SQLite uses rollback journaling — readers block
-                // writers and vice versa. With WAL, reads and writes can proceed
-                // concurrently on different connections, which prevents UI
-                // jank when SyncWorker writes in the background while the UI
-                // is reading appointments.
-                //
-                // SQLCipher 4.5.4 supports WAL; verify with
-                // `adb shell sqlite3 /data/data/.../databases/clinic_database
-                //   "PRAGMA journal_mode;"` after first open — should print "wal".
-                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                // M1/E4.2: fallbackToDestructiveMigration() was removed.
-                // Future schema changes MUST be accompanied by an explicit
-                // Migration object (see Migrations.kt). If a migration is
-                // missing, Room will throw IllegalStateException on upgrade
-                // rather than silently wiping user data.
-                //
-                // Stage 3.1: also removed fallbackToDestructiveMigrationOnDowngrade
-                // — for a medical app, even downgrade data loss is unacceptable.
-                // On downgrade, Room will throw IllegalStateException; the user
-                // must re-install the correct version.
-                // M1/E4.3: register known migrations.
-                .addMigrations(*Migrations.ALL)
-                .build()
+                val instance =
+                    Room
+                        .databaseBuilder(
+                            context.applicationContext,
+                            ClinicDatabase::class.java,
+                            "clinic_database",
+                        ).openHelperFactory(factory)
+                        // Stage 4.2 (PERF-9 fix): enable WAL (Write-Ahead Logging).
+                        // Without WAL, SQLite uses rollback journaling — readers block
+                        // writers and vice versa. With WAL, reads and writes can proceed
+                        // concurrently on different connections, which prevents UI
+                        // jank when SyncWorker writes in the background while the UI
+                        // is reading appointments.
+                        //
+                        // SQLCipher 4.5.4 supports WAL; verify with
+                        // `adb shell sqlite3 /data/data/.../databases/clinic_database
+                        //   "PRAGMA journal_mode;"` after first open — should print "wal".
+                        .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                        // M1/E4.2: fallbackToDestructiveMigration() was removed.
+                        // Future schema changes MUST be accompanied by an explicit
+                        // Migration object (see Migrations.kt). If a migration is
+                        // missing, Room will throw IllegalStateException on upgrade
+                        // rather than silently wiping user data.
+                        //
+                        // Stage 3.1: also removed fallbackToDestructiveMigrationOnDowngrade
+                        // — for a medical app, even downgrade data loss is unacceptable.
+                        // On downgrade, Room will throw IllegalStateException; the user
+                        // must re-install the correct version.
+                        // M1/E4.3: register known migrations.
+                        .addMigrations(*Migrations.ALL)
+                        .build()
                 INSTANCE = instance
                 instance
             }
-        }
     }
 }

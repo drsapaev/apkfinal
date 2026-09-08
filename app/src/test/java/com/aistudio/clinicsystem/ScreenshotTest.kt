@@ -29,7 +29,6 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
 class ScreenshotTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -39,7 +38,7 @@ class ScreenshotTest {
             MyApplicationTheme { Text("Robolectric") }
         }
         composeTestRule.onRoot().captureRoboImage(
-            filePath = "src/test/screenshots/greeting.png"
+            filePath = "src/test/screenshots/greeting.png",
         )
     }
 
@@ -50,13 +49,13 @@ class ScreenshotTest {
                 Surface(color = MaterialTheme.colorScheme.errorContainer) {
                     Text(
                         text = "Неверный логин или пароль",
-                        color = MaterialTheme.colorScheme.onErrorContainer
+                        color = MaterialTheme.colorScheme.onErrorContainer,
                     )
                 }
             }
         }
         composeTestRule.onRoot().captureRoboImage(
-            filePath = "src/test/screenshots/error_text.png"
+            filePath = "src/test/screenshots/error_text.png",
         )
     }
 
@@ -67,13 +66,13 @@ class ScreenshotTest {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     Text(
                         text = "Clinic System",
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }
         }
         composeTestRule.onRoot().captureRoboImage(
-            filePath = "src/test/screenshots/theme_light.png"
+            filePath = "src/test/screenshots/theme_light.png",
         )
     }
 
@@ -84,13 +83,13 @@ class ScreenshotTest {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     Text(
                         text = "Clinic System",
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }
         }
         composeTestRule.onRoot().captureRoboImage(
-            filePath = "src/test/screenshots/theme_dark.png"
+            filePath = "src/test/screenshots/theme_dark.png",
         )
     }
 }

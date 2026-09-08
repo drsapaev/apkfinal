@@ -12,18 +12,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import com.aistudio.clinicsystem.data.session.SessionState
 import com.aistudio.clinicsystem.ui.screens.SyncConsoleView
 import com.aistudio.clinicsystem.ui.theme.MyApplicationTheme
 import com.aistudio.clinicsystem.ui.viewmodel.ClinicViewModel
 import com.aistudio.clinicsystem.utils.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * Stage 2.8: MainActivity is now @AndroidEntryPoint (required for Hilt
@@ -42,7 +39,6 @@ import kotlinx.coroutines.launch
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     private val viewModel: ClinicViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +51,8 @@ class MainActivity : ComponentActivity() {
         // Stage 2.5: NetworkMonitor is started from Application.onCreate
         // (singleton). SyncWorkScheduler still needs a Context — kept here
         // for now, will move to Application in Stage 2.9.
-        com.aistudio.clinicsystem.utils.SyncWorkScheduler.schedulePeriodicSync(this)
+        com.aistudio.clinicsystem.utils.SyncWorkScheduler
+            .schedulePeriodicSync(this)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permissionStatus = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -72,11 +69,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
             val systemTheme = androidx.compose.foundation.isSystemInDarkTheme()
-            val useDarkTheme = when (themeMode) {
-                "LIGHT" -> false
-                "DARK" -> true
-                else -> systemTheme
-            }
+            val useDarkTheme =
+                when (themeMode) {
+                    "LIGHT" -> false
+                    "DARK" -> true
+                    else -> systemTheme
+                }
 
             MyApplicationTheme(darkTheme = useDarkTheme) {
                 // Stage 2.8: single source of truth for navigation.
@@ -84,9 +82,10 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding),
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             Box(modifier = Modifier.weight(1f)) {
@@ -136,8 +135,9 @@ class MainActivity : ComponentActivity() {
                                         //
                                         // UserRole.fromBackend() handles null/blank safely (defaults
                                         // to PATIENT) and treats any non-PATIENT role as staff.
-                                        val role = com.aistudio.clinicsystem.domain.model.UserRole
-                                            .fromBackend(state.user?.role)
+                                        val role =
+                                            com.aistudio.clinicsystem.domain.model.UserRole
+                                                .fromBackend(state.user?.role)
                                         val startDest = if (role.isStaff) "staff" else "patient"
                                         com.aistudio.clinicsystem.ui.navigation.ClinicNavGraph(
                                             navController = androidx.navigation.compose.rememberNavController(),
