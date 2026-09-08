@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
+import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -182,7 +183,7 @@ private fun AuthScreenContent(
                             },
                             placeholder = { Text(stringResource(R.string.ui_login)) },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = tealPrimary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -438,23 +439,23 @@ private fun AuthScreenContent(
 
                         override fun onAuthenticationFailed() {
                             super.onAuthenticationFailed()
-                            Toast.makeText(context, stringResource(R.string.auth_fingerprint_not_recognized), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.auth_fingerprint_not_recognized), Toast.LENGTH_SHORT).show()
                         }
                     })
 
                 val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(stringResource(R.string.auth_biometric_login))
-                    .setSubtitle(stringResource(R.string.auth_biometric_prompt))
+                    .setTitle(context.getString(R.string.auth_biometric_login))
+                    .setSubtitle(context.getString(R.string.auth_biometric_prompt))
                     // Stage 4.4: BIOMETRIC_STRONG only — Class 3 biometrics
                     // required to unlock the keystore key.
                     .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                    .setNegativeButtonText(stringResource(R.string.ui_otmena))
+                    .setNegativeButtonText(context.getString(R.string.ui_otmena))
                     .build()
 
                 // Stage 4.4: two-arg authenticate with CryptoObject.
                 biometricPrompt.authenticate(promptInfo, cryptoObject)
             } else {
-                Toast.makeText(context, stringResource(R.string.auth_error_fragment_activity), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.auth_error_fragment_activity), Toast.LENGTH_SHORT).show()
                 showVerificationDialog = false
             }
         }

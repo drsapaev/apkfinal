@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.domain.usecase.auth
 
+import com.aistudio.clinicsystem.data.api.UserDto
+import com.aistudio.clinicsystem.data.repository.LoginOutcome
 import com.aistudio.clinicsystem.domain.model.LoginResult
 import com.aistudio.clinicsystem.domain.model.User
 import com.aistudio.clinicsystem.domain.repository.AuthRepositoryInterface
@@ -21,6 +23,16 @@ class Verify2FAUseCaseTest {
 
     private lateinit var repository: AuthRepositoryInterface
     private lateinit var useCase: Verify2FAUseCase
+
+    private val userDto = UserDto(
+        id = 1,
+        phone = "+77771112233",
+        fullName = "Test User",
+        role = "PATIENT",
+        dateOfBirth = null,
+        biometricEnabled = false,
+        telegramChatId = null,
+    )
 
     private val testUser = User(
         id = "1", phone = "+77771112233", fullName = "Test User", role = UserRole.PATIENT
@@ -67,12 +79,12 @@ class Verify2FAUseCaseTest {
     @Test
     fun `valid 6-digit code delegates to repository`() = runBlocking {
         coEvery { repository.verify2FA("challenge", "123456", true) } returns
-            Result.success(LoginResult.Success(testUser))
+            Result.success(LoginOutcome.Success(user = userDto))
 
         val result = useCase.invoke("challenge", "123456", true)
 
         assertTrue("Should succeed", result.isSuccess)
-        assertTrue("Should be Success", result.getOrThrow() is LoginResult.Success)
+        assertTrue("Should be Success", result.getOrThrow() is LoginOutcome.Success)
     }
 
     @Test

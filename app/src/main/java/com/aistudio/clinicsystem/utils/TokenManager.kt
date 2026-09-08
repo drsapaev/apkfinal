@@ -64,7 +64,7 @@ object TokenManager {
             // decryption is a separate key (Stage 4.4).
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 try {
-                    masterKeyBuilder.setIsStrongBoxBacked(true)
+                    masterKeyBuilder.setRequestStrongBoxBacked(true)
                 } catch (e: Exception) {
                     // StrongBox not available on this device — fall back to TEE.
                     Timber.w("StrongBox unavailable, falling back to TEE-backed keystore: ${e.message}")

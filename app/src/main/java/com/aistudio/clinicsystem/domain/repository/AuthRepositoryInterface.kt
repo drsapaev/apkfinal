@@ -25,20 +25,19 @@ interface AuthRepositoryInterface {
 
     suspend fun login(username: String, password: String): Result<com.aistudio.clinicsystem.data.repository.LoginOutcome>
 
+    /**
+     * Completes the 2FA challenge. [totpCode] accepts BOTH a 6-digit TOTP
+     * code and an 8-10 char backup code — the repository routes it to the
+     * matching backend field (`totp_code` / `backup_code`).
+     * M-CONTRACT-FIX: the /2fa/recovery/... repository methods were removed —
+     * both endpoints require a Bearer JWT and never return the recovery
+     * token, so backup codes via /2fa/verify are the only mid-challenge
+     * recovery the backend supports.
+     */
     suspend fun verify2FA(
         challengeToken: String,
         totpCode: String,
         rememberDevice: Boolean,
-    ): Result<com.aistudio.clinicsystem.data.repository.LoginOutcome>
-
-    suspend fun request2FARecovery(
-        challengeToken: String,
-        method: String,
-    ): Result<String>
-
-    suspend fun verify2FARecovery(
-        recoveryToken: String,
-        code: String,
     ): Result<com.aistudio.clinicsystem.data.repository.LoginOutcome>
 
     suspend fun verifyCurrentSession(): Result<com.aistudio.clinicsystem.data.api.UserDto>

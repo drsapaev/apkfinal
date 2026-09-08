@@ -85,17 +85,19 @@ class ApiClient @javax.inject.Inject constructor(
                 // In release builds, no HTTP logging interceptor is attached
                 // at all — PHI in request/response bodies never reaches Logcat.
                 if (com.aistudio.clinicsystem.BuildConfig.DEBUG) {
-                    val loggingInterceptor = HttpLoggingInterceptor().apply {
+                    // BUILD-FIX: pass the Timber logger via the constructor —
+                    // the `logger` property is not writable in the okhttp
+                    // version resolved on the classpath.
+                    val loggingInterceptor = HttpLoggingInterceptor(
+                        HttpLoggingInterceptor.Logger { msg ->
+                            timber.log.Timber.d("HTTP: $msg")
+                        }
+                    ).apply {
                         level = HttpLoggingInterceptor.Level.BODY
                         redactHeader("Authorization")
                         redactHeader("Cookie")
                         redactHeader("Set-Cookie")
                         redactHeader("Idempotency-Key")
-                    }
-                    // Route OkHttp logs through Timber so the ReleaseTree
-                    // redaction also applies (defense in depth).
-                    loggingInterceptor.logger = HttpLoggingInterceptor.Logger { msg ->
-                        timber.log.Timber.d("HTTP: $msg")
                     }
                     addInterceptor(loggingInterceptor)
                 }

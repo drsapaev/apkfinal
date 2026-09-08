@@ -26,10 +26,66 @@ import javax.inject.Inject
 @HiltViewModel
 class StaffViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
+    // BUILD-FIX: the class body uses `database.queueSnapshotDao()` throughout
+    // (undo/queue management) but the dependency was never declared.
+    private val database: ClinicDatabase,
     private val repository: ClinicRepository,
     private val authRepository: AuthRepository,
     private val sessionRepository: SessionRepository,
+    // ROLE-FIX: role-aware staff console — Admin gets a system-users section
+    // served by GET /api/v1/users (Admin-only backend route).
+    private val apiService: com.aistudio.clinicsystem.data.api.ApiService,
 ) : ViewModel() {
+
+    /** Resolved role of the signed-in staff user (drives role-aware UI). */
+    val staffRole: StateFlow<com.aistudio.clinicsystem.domain.model.UserRole> =
+        sessionRepository.sessionState
+            .map { state ->
+                val role = (state as? SessionState.Authenticated)?.user?.role
+                com.aistudio.clinicsystem.domain.model.UserRole.fromBackend(role)
+            }
+            .stateIn(
+                viewModelScope,
+                kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+                com.aistudio.clinicsystem.domain.model.UserRole.PATIENT,
+            )
+
+    private val _adminUsers =
+        MutableStateFlow<List<com.aistudio.clinicsystem.data.api.StaffUserDto>>(emptyList())
+    val adminUsers: StateFlow<List<com.aistudio.clinicsystem.data.api.StaffUserDto>> =
+        _adminUsers.asStateFlow()
+
+    private val _adminUsersLoading = MutableStateFlow(false)
+    val adminUsersLoading: StateFlow<Boolean> = _adminUsersLoading.asStateFlow()
+
+    private val _adminUsersError = MutableStateFlow<String?>(null)
+    val adminUsersError: StateFlow<String?> = _adminUsersError.asStateFlow()
+
+    /**
+     * Loads the system-users list for the Administration section. No-op for
+     * non-Admin roles (the backend route is Admin-only and would answer 403).
+     */
+    fun loadUsersIfAdmin() {
+        if (staffRole.value != com.aistudio.clinicsystem.domain.model.UserRole.ADMIN) return
+        if (_adminUsersLoading.value) return
+        viewModelScope.launch {
+            _adminUsersLoading.value = true
+            _adminUsersError.value = null
+            try {
+                val response = apiService.getSystemUsers(page = 1, perPage = 50)
+                if (response.isSuccessful) {
+                    _adminUsers.value = response.body()?.users ?: emptyList()
+                } else {
+                    _adminUsersError.value = "HTTP ${response.code()}"
+                }
+            } catch (e: Exception) {
+                _adminUsersError.value = e.message
+            } finally {
+                _adminUsersLoading.value = false
+            }
+        }
+    }
+
 
     val currentUser: StateFlow<UserEntity?> = sessionRepository.sessionState
         .map { (it as? SessionState.Authenticated)?.user }
@@ -190,6 +246,15 @@ class StaffViewModel @Inject constructor(
     val allPendingSyncs: StateFlow<List<PendingSyncEntity>> = repository.allPendingSyncs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allDoctors: StateFlow<List<DoctorEntity>> = repository.allDoctors
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        viewModelScope.launch {
+            repository.syncDoctorsFromServer()
+        }
+    }
+
     var onLogoutSuccess: (() -> Unit)? = null
 
     /**
@@ -297,8 +362,15 @@ class StaffViewModel @Inject constructor(
         viewModelScope.launch {
             val appointment = repository.getAppointmentById(id)
             if (appointment != null) {
-                val updated = appointment.copy(notes = notes)
-                repository.updateAppointment(updated)
+                repository.updateAppointmentOnServerAndLocal(
+                    id = id,
+                    doctorName = appointment.doctorName,
+                    date = appointment.date,
+                    time = appointment.time,
+                    reason = appointment.reason,
+                    status = appointment.status,
+                    notes = notes,
+                )
             }
         }
     }
@@ -397,9 +469,18 @@ class StaffViewModel @Inject constructor(
                     status = status,
                     updatedAt = System.currentTimeMillis()
                 )
-                repository.updateAppointment(updated)
-                repository.addSyncLog("✏️ Запись #${id} отредактирована сотрудником.", "SYSTEM_SYNC")
-                _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
+                val saved = repository.updateAppointmentOnServerAndLocal(
+                    id = id,
+                    doctorName = doctorName,
+                    date = date,
+                    time = time,
+                    reason = reason,
+                    status = status,
+                )
+                if (saved != null) {
+                    repository.addSyncLog("✏️ Запись #${id} отредактирована сотрудником.", "SYSTEM_SYNC")
+                    _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
+                }
             }
         }
     }
@@ -409,28 +490,14 @@ class StaffViewModel @Inject constructor(
             val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
             _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
 
-            val token = sessionRepository.accessToken
+            // M-CONTRACT-FIX: the backend removed POST /api/v1/queue/register —
+            // joining a queue now works only through the QR-token flow, which
+            // the app does not implement. repository.registerInQueue throws
+            // UnsupportedOperationException; keep the local-snapshot fallback
+            // so the registrar console stays usable.
             try {
-                // M2: use repository.registerInQueue instead of direct ApiClient.service access
-                val response = repository.registerInQueue(appointmentId = appointmentId)
-                if (response.isSuccessful && response.body() != null) {
-                    repository.addSyncLog("🎟️ Пациент успешно добавлен в живую очередь ожидания.", "SYSTEM_SYNC")
-                } else {
-                    val appt = repository.getAppointmentById(appointmentId)
-                    if (appt != null) {
-                        val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                        val nextPosition = (snapshots.maxOfOrNull { it.position } ?: 0) + 1
-                        val localSnapshot = QueueSnapshotEntity(
-                            id = (appt.serverId ?: 0),
-                            patientName = appt.patientName,
-                            appointmentId = (appt.serverId ?: 0),
-                            position = nextPosition,
-                            status = "WAITING"
-                        )
-                        database.queueSnapshotDao().insertQueueSnapshots(listOf(localSnapshot))
-                        repository.addSyncLog("🎟️ Очередь (offline-fallback): Пациент зарегистрирован локально.", "SYSTEM_SYNC")
-                    }
-                }
+                repository.registerInQueue(appointmentId = appointmentId)
+                repository.addSyncLog("🎟️ Пациент успешно добавлен в живую очередь ожидания.", "SYSTEM_SYNC")
             } catch (e: Exception) {
                 val appt = repository.getAppointmentById(appointmentId)
                 if (appt != null) {
@@ -444,7 +511,10 @@ class StaffViewModel @Inject constructor(
                         status = "WAITING"
                     )
                     database.queueSnapshotDao().insertQueueSnapshots(listOf(localSnapshot))
-                    repository.addSyncLog("🎟️ Очередь (offline-fallback): Пациент зарегистрирован локально.", "SYSTEM_SYNC")
+                    repository.addSyncLog(
+                        "🎟️ Очередь (local-fallback): ${e.message ?: "серверная регистрация недоступна"} Пациент зарегистрирован локально.",
+                        "SYSTEM_SYNC",
+                    )
                 }
             }
         }
@@ -458,9 +528,7 @@ class StaffViewModel @Inject constructor(
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
             val target = snapshots.find { it.id == snapshotId }
             if (target != null) {
-                val updated = listOf(target.copy(status = newStatus))
-                database.queueSnapshotDao().insertQueueSnapshots(updated)
-                repository.addSyncLog("📢 Статус пациента в очереди изменен на $newStatus", "SYSTEM_SYNC")
+                repository.updateQueueStatusOnServerAndLocal(snapshotId, newStatus)
             }
         }
     }
@@ -504,10 +572,7 @@ class StaffViewModel @Inject constructor(
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
             val target = snapshots.find { it.id == snapshotId }
             if (target != null) {
-                database.queueSnapshotDao().clearQueueSnapshots()
-                val remaining = snapshots.filter { it.id != snapshotId }
-                database.queueSnapshotDao().insertQueueSnapshots(remaining)
-                repository.addSyncLog("🗑️ Пациент исключен из живой очереди.", "SYSTEM_SYNC")
+                repository.removeQueueEntryOnServerAndLocal(snapshotId)
             }
         }
     }

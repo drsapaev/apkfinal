@@ -79,6 +79,8 @@ class PatientViewModelTest {
         every { sessionRepository.accessToken } returns "test-token"
 
         viewModel = PatientViewModel(
+            appContext = mockk(relaxed = true),
+            doctorRepository = mockk(relaxed = true),
             repository = repository,
             authRepository = authRepository,
             sessionRepository = sessionRepository,

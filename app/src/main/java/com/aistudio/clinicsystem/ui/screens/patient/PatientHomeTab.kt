@@ -1,6 +1,7 @@
 package com.aistudio.clinicsystem.ui.screens.patient
 
 import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

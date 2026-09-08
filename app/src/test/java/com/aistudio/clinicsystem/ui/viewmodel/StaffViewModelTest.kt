@@ -78,9 +78,11 @@ class StaffViewModelTest {
 
         viewModel = StaffViewModel(
             appContext = mockk(relaxed = true),
+            database = mockk(relaxed = true),
             repository = repository,
             authRepository = authRepository,
             sessionRepository = sessionRepository,
+            apiService = mockk(relaxed = true),
         )
     }
 

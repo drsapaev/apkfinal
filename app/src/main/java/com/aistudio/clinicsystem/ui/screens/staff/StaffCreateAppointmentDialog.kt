@@ -1,6 +1,9 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.aistudio.clinicsystem.ui.screens.staff
 
 import androidx.compose.ui.res.stringResource
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.ui.theme.Spacing
 import com.aistudio.clinicsystem.ui.theme.Radius
 import androidx.compose.foundation.layout.*

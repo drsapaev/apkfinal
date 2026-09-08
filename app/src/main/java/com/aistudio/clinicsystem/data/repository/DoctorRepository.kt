@@ -23,14 +23,14 @@ import javax.inject.Singleton
  *
  * Зависимости:
  * - MobileApiService.getDoctors() — GET /api/v1/mobile/doctors
- * - MobileApiService.getDoctorTimeSlots() — GET /api/v1/mobile/doctors/{id}/slots?date=...
+ * - MobileApiService.getDoctorSchedule() — GET /api/v1/mobile/doctors/{id}/schedule?date_from&date_to
  * - ClinicDatabase.doctorDao() — Room DAO
  *
- * TODO (backend):
- * - Реализовать GET /api/v1/mobile/doctors на FastAPI backend
- * - Реализовать GET /api/v1/mobile/doctors/{id}/slots?date=YYYY-MM-DD
- * - Добавить ETag support для If-None-Match
- * - Возвращать только активных врачей (is_active=true) по умолчанию
+ * Контракт backend (`final/backend`):
+ * - GET /api/v1/mobile/doctors → [{id, name, specialty, cabinet, active}]
+ * - GET /api/v1/mobile/doctors/{id}/schedule → {doctor_id, schedule: [
+ *     {date, weekday, start_time, end_time, appointments: [...]}]} —
+ *   свободные слоты вычисляются на клиенте (окно работы минус занятые приёмы).
  */
 @Singleton
 class DoctorRepository @Inject constructor(
@@ -90,18 +90,33 @@ class DoctorRepository @Inject constructor(
     /**
      * Get available time slots for a doctor on a specific date.
      *
+     * The backend has no dedicated /slots endpoint — slots are derived
+     * CLIENT-SIDE from GET /api/v1/mobile/doctors/{id}/schedule: the
+     * doctor's working window (start_time..end_time) is split into
+     * 30-minute steps and every slot already booked by an appointment is
+     * marked unavailable.
+     *
      * @param doctorServerId backend-assigned doctor ID
      * @param date "2026-06-29" format
-     * @return list of available time slots, or empty list on error
+     * @return list of available "HH:MM" time strings, or empty list on error
      */
     suspend fun getAvailableTimeSlots(doctorServerId: Int, date: String): List<String> {
         return try {
-            val response = apiService.getDoctorTimeSlots(doctorServerId, date)
+            val response = apiService.getDoctorSchedule(
+                doctorId = doctorServerId,
+                dateFrom = date,
+                dateTo = date,
+            )
             if (response.isSuccessful) {
-                response.body()
+                val slots = response.body()
+                    ?.let { deriveTimeSlots(it, date) }
                     ?.filter { it.available }
                     ?.map { it.time }
                     ?: emptyList()
+                if (slots.isEmpty()) {
+                    Timber.i("P-04: no free slots for doctor $doctorServerId on $date")
+                }
+                slots
             } else {
                 Timber.w("P-04: getAvailableTimeSlots failed with code ${response.code()}")
                 emptyList()
@@ -110,6 +125,63 @@ class DoctorRepository @Inject constructor(
             Timber.e(e, "P-04: getAvailableTimeSlots network error")
             emptyList()
         }
+    }
+
+    /**
+     * Derives 30-minute [TimeSlotDto]s for [date] from the doctor's
+     * schedule grid. Returns an empty list when the doctor has no working
+     * window that day (start_time/end_time are null on days off).
+     */
+    private fun deriveTimeSlots(
+        schedule: com.aistudio.clinicsystem.data.api.DoctorScheduleResponse,
+        date: String,
+    ): List<com.aistudio.clinicsystem.data.api.TimeSlotDto> {
+        val day = schedule.schedule.firstOrNull { it.date == date }
+            ?: return emptyList()
+        val startMinutes = parseHhMm(day.startTime) ?: return emptyList()
+        val endMinutes = parseHhMm(day.endTime) ?: return emptyList()
+        if (endMinutes <= startMinutes) return emptyList()
+
+        val bookedByTime = day.appointments
+            .mapNotNull { appt -> parseHhMm(appt.appointmentTime) }
+            .toSet()
+
+        val slots = mutableListOf<com.aistudio.clinicsystem.data.api.TimeSlotDto>()
+        var cursor = startMinutes
+        while (cursor < endMinutes) {
+            val isBooked = cursor in bookedByTime
+            slots.add(
+                com.aistudio.clinicsystem.data.api.TimeSlotDto(
+                    time = formatHhMm(cursor),
+                    available = !isBooked,
+                    appointmentId = if (isBooked) {
+                        day.appointments
+                            .firstOrNull { parseHhMm(it.appointmentTime) == cursor }?.id
+                    } else null,
+                )
+            )
+            cursor += SLOT_STEP_MINUTES
+        }
+        return slots
+    }
+
+    /** Parses "HH:MM" / "HH:MM:SS" into minutes since midnight, or null. */
+    private fun parseHhMm(value: String?): Int? {
+        if (value.isNullOrBlank()) return null
+        val parts = value.split(":")
+        if (parts.size < 2) return null
+        val hours = parts[0].trim().toIntOrNull() ?: return null
+        val minutes = parts[1].trim().toIntOrNull() ?: return null
+        if (hours !in 0..23 || minutes !in 0..59) return null
+        return hours * 60 + minutes
+    }
+
+    private fun formatHhMm(minutes: Int): String =
+        "%02d:%02d".format(minutes / 60, minutes % 60)
+
+    private companion object {
+        /** Fixed slot granularity used by the clinic for booking. */
+        const val SLOT_STEP_MINUTES = 30
     }
 
     /**

@@ -14,7 +14,7 @@
     <string name="auth_2fa_title">Двухфакторная аутентификация</string>
     <string name="auth_2fa_code_hint">6-значный код</string>
     <string name="auth_2fa_verify">Подтвердить</string>
-    <string name="auth_2fa_use_recovery">Использовать recovery-код</string>
+    <string name="auth_2fa_use_recovery">Не можете войти? Использовать резервный код</string>
     <string name="auth_2fa_trust_device">Доверять этому устройству</string>
     <string name="auth_2fa_error_expired">Сессия 2FA истекла, войдите заново</string>
     <string name="auth_2fa_error_code">Код должен состоять из 6 цифр</string>
@@ -305,11 +305,11 @@
     <string name="ui_2fa_use_recovery">Использовать recovery-код</string>
     <string name="ui_2fa_cancel">Отмена</string>
     <string name="ui_2fa_recovery_title">Восстановление доступа</string>
-    <string name="ui_2fa_recovery_hint">Укажите email или телефон — мы отправим recovery-код</string>
+    <string name="ui_2fa_recovery_hint">Введите резервный код (8-10 символов), выданный при настройке двухфакторной аутентификации. Восстановление по email из приложения недоступно — ограничение сервера.</string>
     <string name="ui_2fa_recovery_method">Email или телефон</string>
     <string name="ui_2fa_send_recovery">Отправить recovery-код</string>
     <string name="ui_2fa_recovery_enter_code">После получения кода введите его ниже:</string>
-    <string name="ui_2fa_recovery_code">Recovery-код</string>
+    <string name="ui_2fa_recovery_code">Резервный код</string>
     <string name="ui_2fa_verify_recovery">Подтвердить recovery-код</string>
     <string name="ui_2fa_back_to_totp">← Назад к TOTP</string>
     <string name="ui_intellect_clinic">Интеллект-Клиника</string>
@@ -499,6 +499,7 @@
     <string name="st_rejected">Отклонено</string>
     <string name="st_confirmed">Подтвержден</string>
     <string name="st_waiting">Ожидает</string>
+    <string name="st_called">Вызван</string>
     <string name="st_in_progress">На приёме</string>
     <string name="st_seen">Осмотрен</string>
     <string name="st_syncing">Ожидает...</string>
@@ -513,9 +514,9 @@
     <string name="auth_error_fragment_activity">Ошибка: требуется FragmentActivity</string>
     <string name="auth_biometric_key_unavailable">Биометрический ключ недоступен. Войдите по паролю.</string>
     <string name="auth_2fa_enter_code">Введите код подтверждения</string>
-    <string name="auth_2fa_recovery_title">Восстановление доступа</string>
+    <string name="auth_2fa_recovery_title">Резервный код</string>
     <string name="auth_2fa_send_recovery">Отправить recovery-код</string>
-    <string name="auth_2fa_verify_recovery">Подтвердить recovery-код</string>
+    <string name="auth_2fa_verify_recovery">Войти с резервным кодом</string>
     <string name="auth_2fa_recovery_request_first">Сначала запросите код восстановления</string>
     <string name="auth_2fa_must_relogin">Необходимо войти заново</string>
     <string name="auth_2fa_error_generic">Ошибка 2FA</string>
@@ -610,6 +611,7 @@
     <string name="queue_to_queue">В очередь</string>
     <string name="queue_call_doctor">Вызвать к врачу</string>
     <string name="queue_complete">Завершить прием</string>
+    <string name="queue_start_visit">Начать приём</string>
     <string name="queue_remove">Убрать</string>
     <string name="queue_up">Вверх</string>
     <string name="queue_down">Вниз</string>
@@ -840,4 +842,12 @@
     <string name="vm_tg_unlink_error">🔴 Ошибка отвязки Telegram</string>
     <string name="vm_tg_test_error">🔴 TELEGRAM TEST: Ошибка отправки</string>
     <string name="vm_people">человек/человека/человек</string>
+    <string name="dialog_add_notes">Добавить заметки</string>
+    <string name="staff_role_label">Роль</string>
+    <string name="staff_admin_section">Администрирование — пользователи системы</string>
+    <string name="staff_admin_loading">Загрузка пользователей…</string>
+    <string name="staff_admin_error">Ошибка загрузки</string>
+    <string name="staff_admin_empty">Пользователи не найдены</string>
+    <string name="staff_admin_active">активен</string>
+    <string name="staff_admin_inactive">неактивен</string>
 </resources>

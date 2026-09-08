@@ -46,7 +46,7 @@ enum class UserRole(val backendValue: String, val displayLabel: String) {
                 "cardio" -> CARDIO
                 "derma" -> DERMA
                 "dentist" -> DENTIST
-                "Admin" -> ADMIN
+                "Admin", "SuperAdmin" -> ADMIN
                 // Legacy mobile client used "PATIENT"/"STAFF" — map them.
                 "PATIENT" -> PATIENT
                 "STAFF" -> DOCTOR // legacy "STAFF" → default to DOCTOR

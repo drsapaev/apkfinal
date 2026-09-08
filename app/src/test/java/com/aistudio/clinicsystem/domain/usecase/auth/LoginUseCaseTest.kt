@@ -1,5 +1,7 @@
 package com.aistudio.clinicsystem.domain.usecase.auth
 
+import com.aistudio.clinicsystem.data.api.UserDto
+import com.aistudio.clinicsystem.data.repository.LoginOutcome
 import com.aistudio.clinicsystem.domain.model.LoginResult
 import com.aistudio.clinicsystem.domain.model.User
 import com.aistudio.clinicsystem.domain.repository.AuthRepositoryInterface
@@ -22,6 +24,16 @@ class LoginUseCaseTest {
 
     private lateinit var repository: AuthRepositoryInterface
     private lateinit var useCase: LoginUseCase
+
+    private val userDto = UserDto(
+        id = 1,
+        phone = "+77771112233",
+        fullName = "Test User",
+        role = "PATIENT",
+        dateOfBirth = null,
+        biometricEnabled = false,
+        telegramChatId = null,
+    )
 
     private val testUser = User(
         id = "1",
@@ -55,25 +67,25 @@ class LoginUseCaseTest {
     @Test
     fun `valid credentials delegate to repository`() = runBlocking {
         coEvery { repository.login("user", "pass") } returns
-            Result.success(LoginResult.Success(testUser))
+            Result.success(LoginOutcome.Success(user = userDto))
 
         val result = useCase.invoke("user", "pass")
 
         assertTrue("Should succeed", result.isSuccess)
-        assertTrue("Result should be Success", result.getOrThrow() is LoginResult.Success)
+        assertTrue("Result should be Success", result.getOrThrow() is LoginOutcome.Success)
     }
 
     @Test
     fun `2FA challenge is propagated`() = runBlocking {
         coEvery { repository.login(any(), any()) } returns
-            Result.success(LoginResult.TwoFactorRequired("challenge-token"))
+            Result.success(LoginOutcome.TwoFactorRequired("challenge-token"))
 
         val result = useCase.invoke("user", "pass")
 
         assertTrue("Should succeed at UseCase level", result.isSuccess)
         val outcome = result.getOrThrow()
-        assertTrue("Should be TwoFactorRequired", outcome is LoginResult.TwoFactorRequired)
-        assertEquals("challenge-token", (outcome as LoginResult.TwoFactorRequired).challengeToken)
+        assertTrue("Should be TwoFactorRequired", outcome is LoginOutcome.TwoFactorRequired)
+        assertEquals("challenge-token", (outcome as LoginOutcome.TwoFactorRequired).challengeToken)
     }
 
     @Test

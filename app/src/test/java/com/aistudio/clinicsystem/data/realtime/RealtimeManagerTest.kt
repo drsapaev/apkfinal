@@ -7,6 +7,7 @@ import com.aistudio.clinicsystem.data.session.SessionState
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -49,6 +50,7 @@ class RealtimeManagerTest {
             context = mockContext,
             database = mockDatabase,
             sessionRepository = mockSessionRepo,
+            wsClient = mockk(relaxed = true),
         )
     }
 

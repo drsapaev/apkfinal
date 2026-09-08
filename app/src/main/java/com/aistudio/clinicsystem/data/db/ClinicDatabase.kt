@@ -235,6 +235,9 @@ interface DoctorDao {
     @Query("SELECT * FROM doctors WHERE serverId = :serverId")
     suspend fun getDoctorByServerId(serverId: Int): DoctorEntity?
 
+    @Query("SELECT * FROM doctors WHERE fullName = :fullName LIMIT 1")
+    suspend fun getDoctorByFullName(fullName: String): DoctorEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDoctors(doctors: List<DoctorEntity>)
 
@@ -319,7 +322,11 @@ abstract class ClinicDatabase : RoomDatabase() {
             return INSTANCE ?: synchronized(this) {
                 try {
                     System.loadLibrary("sqlcipher")
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
+                    // BUILD-FIX: UnsatisfiedLinkError is an Error, not an
+                    // Exception — the old catch let the app crash on devices
+                    // where the native library is missing instead of
+                    // failing closed via the E1.6 passphrase guard below.
                     timber.log.Timber.e(e, "Failed to load sqlcipher library")
                 }
 

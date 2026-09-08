@@ -350,147 +350,175 @@ class ClinicWebSocketClient @javax.inject.Inject constructor(
     }
 
     private fun handleAppointmentStatusEvent(moshi: com.squareup.moshi.Moshi, json: String) {
-        val adapter = moshi.adapter(AppointmentStatusEvent::class.java)
-        val event = adapter.fromJson(json)
-        val data = event?.data ?: return
+        // BUILD-FIX: the DAO layer is suspend — run the handler on the
+        // client IO scope. Malformed payloads are caught so a bad event
+        // can never kill the coroutine scope.
+        scope.launch {
+            try {
 
-        val serverId = data.id ?: -1
-        if (serverId == -1) return
+            val adapter = moshi.adapter(AppointmentStatusEvent::class.java)
+            val event = adapter.fromJson(json)
+            val data = event?.data ?: return@launch
 
-        val status = data.status ?: "PENDING"
-        val doctorName = data.doctorName ?: "Доктор"
-        val date = data.date ?: ""
-        val time = data.time ?: ""
-        val patientName = data.patientName ?: "Пациент"
-        val patientPhone = data.patientPhone ?: ""
+            val serverId = data.id ?: -1
+            if (serverId == -1) return@launch
 
-        // M3B.4: look up by serverId (WS events use backend Int IDs)
-        val appDao = database.appointmentDao()
-        val existing = appDao.getAppointmentByServerId(serverId)
+            val status = data.status ?: "PENDING"
+            val doctorName = data.doctorName ?: "Доктор"
+            val date = data.date ?: ""
+            val time = data.time ?: ""
+            val patientName = data.patientName ?: "Пациент"
+            val patientPhone = data.patientPhone ?: ""
 
-        val pendingSyncDao = database.pendingSyncDao()
-        val isPending = pendingSyncDao.getAllPendingSyncs().any {
-            it.type == "UPDATE_STATUS" && it.payload.startsWith("$serverId|")
-        }
+            // M3B.4: look up by serverId (WS events use backend Int IDs)
+            val appDao = database.appointmentDao()
+            val existing = appDao.getAppointmentByServerId(serverId)
 
-        if (isPending) {
-            database.syncLogDao().insertLog(
-                com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                    logMessage = "🛡️ Реконсиляция: Отклонено WS-обновление для приема #$serverId — есть локальные отложенные изменения.",
-                    direction = "SYSTEM_SYNC"
-                )
-            )
-        } else {
-            if (existing != null) {
-                if (existing.status != status) {
-                    appDao.updateAppointment(existing.copy(status = status, updatedAt = System.currentTimeMillis()))
-                }
-            } else {
-                appDao.insertAppointment(
-                    AppointmentEntity(
-                        id = java.util.UUID.randomUUID().toString(),
-                        serverId = serverId,
-                        patientPhone = patientPhone,
-                        patientName = patientName,
-                        doctorName = doctorName,
-                        specialty = data.specialty ?: "Терапевт",
-                        date = date,
-                        time = time,
-                        status = status,
-                        reason = data.reason ?: "",
-                        updatedAt = System.currentTimeMillis()
-                    )
-                )
+            val pendingSyncDao = database.pendingSyncDao()
+            val isPending = pendingSyncDao.getAllPendingSyncs().any {
+                it.type == "UPDATE_STATUS" && it.payload.startsWith("$serverId|")
             }
 
+            if (isPending) {
+                database.syncLogDao().insertLog(
+                    com.aistudio.clinicsystem.data.db.SyncLogEntity(
+                        logMessage = "🛡️ Реконсиляция: Отклонено WS-обновление для приема #$serverId — есть локальные отложенные изменения.",
+                        direction = "SYSTEM_SYNC"
+                    )
+                )
+            } else {
+                if (existing != null) {
+                    if (existing.status != status) {
+                        appDao.updateAppointment(existing.copy(status = status, updatedAt = System.currentTimeMillis()))
+                    }
+                } else {
+                    appDao.insertAppointment(
+                        AppointmentEntity(
+                            id = java.util.UUID.randomUUID().toString(),
+                            serverId = serverId,
+                            patientPhone = patientPhone,
+                            patientName = patientName,
+                            doctorName = doctorName,
+                            specialty = data.specialty ?: "Терапевт",
+                            date = date,
+                            time = time,
+                            status = status,
+                            reason = data.reason ?: "",
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    )
+                }
+
+                database.syncLogDao().insertLog(
+                    com.aistudio.clinicsystem.data.db.SyncLogEntity(
+                        logMessage = "⚡ Реалтайм-обновление: Прием #$serverId теперь имеет статус [ $status ]",
+                        direction = "SYSTEM_SYNC"
+                    )
+                )
+
+                NotificationHelper.sendAppointmentStatusNotification(
+                    context = context,
+                    appointmentId = serverId,
+                    doctorName = doctorName,
+                    dateTimeString = "$date в $time",
+                    newStatus = status,
+                    patientName = patientName
+                )
+            }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed processing appointment status event: " + e.message)
+            }
+        }
+    }
+    private fun handleNewMedicalRecordEvent(moshi: com.squareup.moshi.Moshi, json: String) {
+        // BUILD-FIX: the DAO layer is suspend — run the handler on the
+        // client IO scope. Malformed payloads are caught so a bad event
+        // can never kill the coroutine scope.
+        scope.launch {
+            try {
+
+            val adapter = moshi.adapter(NewMedicalRecordEvent::class.java)
+            val event = adapter.fromJson(json)
+            val data = event?.data ?: return@launch
+
+            val recordServerId = data.id ?: 0
+            val patientPhone = data.patientPhone ?: ""
+            val doctorName = data.doctorName ?: "Врач"
+            val diagnosis = data.diagnosis ?: ""
+            val prescription = data.prescription ?: ""
+            val visitDate = data.visitDate ?: ""
+            val recommendations = data.recommendations ?: ""
+
+            val recordDao = database.medicalRecordDao()
+            val recordEntity = MedicalRecordEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                serverId = recordServerId,
+                patientPhone = patientPhone,
+                doctorName = doctorName,
+                diagnosis = diagnosis,
+                prescription = prescription,
+                visitDate = visitDate,
+                recommendations = recommendations
+            )
+            recordDao.insertRecord(recordEntity)
+
             database.syncLogDao().insertLog(
                 com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                    logMessage = "⚡ Реалтайм-обновление: Прием #$serverId теперь имеет статус [ $status ]",
+                    logMessage = "⚡ Реалтайм-обновление: Добавлена новая медкарта пациента ($patientPhone)",
                     direction = "SYSTEM_SYNC"
                 )
             )
 
-            NotificationHelper.sendAppointmentStatusNotification(
+            val patientUser = database.userDao().getUserByPhone(patientPhone)
+            val patientName = patientUser?.fullName ?: "Пациент"
+
+            NotificationHelper.sendMedicalRecordNotification(
                 context = context,
-                appointmentId = serverId,
+                recordId = recordServerId,
                 doctorName = doctorName,
-                dateTimeString = "$date в $time",
-                newStatus = status,
+                diagnosis = diagnosis,
                 patientName = patientName
             )
+            } catch (e: Exception) {
+                Timber.e(e, "Failed processing new medical record event: " + e.message)
+            }
         }
     }
-
-    private fun handleNewMedicalRecordEvent(moshi: com.squareup.moshi.Moshi, json: String) {
-        val adapter = moshi.adapter(NewMedicalRecordEvent::class.java)
-        val event = adapter.fromJson(json)
-        val data = event?.data ?: return
-
-        val recordServerId = data.id ?: 0
-        val patientPhone = data.patientPhone ?: ""
-        val doctorName = data.doctorName ?: "Врач"
-        val diagnosis = data.diagnosis ?: ""
-        val prescription = data.prescription ?: ""
-        val visitDate = data.visitDate ?: ""
-        val recommendations = data.recommendations ?: ""
-
-        val recordDao = database.medicalRecordDao()
-        val recordEntity = MedicalRecordEntity(
-            id = java.util.UUID.randomUUID().toString(),
-            serverId = recordServerId,
-            patientPhone = patientPhone,
-            doctorName = doctorName,
-            diagnosis = diagnosis,
-            prescription = prescription,
-            visitDate = visitDate,
-            recommendations = recommendations
-        )
-        recordDao.insertRecord(recordEntity)
-
-        database.syncLogDao().insertLog(
-            com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                logMessage = "⚡ Реалтайм-обновление: Добавлена новая медкарта пациента ($patientPhone)",
-                direction = "SYSTEM_SYNC"
-            )
-        )
-
-        val patientUser = database.userDao().getUserByPhone(patientPhone)
-        val patientName = patientUser?.fullName ?: "Пациент"
-
-        NotificationHelper.sendMedicalRecordNotification(
-            context = context,
-            recordId = recordServerId,
-            doctorName = doctorName,
-            diagnosis = diagnosis,
-            patientName = patientName
-        )
-    }
-
     private fun handleQueueUpdateEvent(moshi: com.squareup.moshi.Moshi, json: String) {
-        val adapter = moshi.adapter(QueueUpdateEvent::class.java)
-        val event = adapter.fromJson(json)
-        val activeQueueList = event?.data?.queue ?: emptyList()
-        Timber.i("Queue length: ${activeQueueList.size}")
+        // BUILD-FIX: the DAO layer is suspend — run the handler on the
+        // client IO scope. Malformed payloads are caught so a bad event
+        // can never kill the coroutine scope.
+        scope.launch {
+            try {
 
-        // Clear and store real-time queue snapshots inside the Room cache
-        database.queueSnapshotDao().clearQueueSnapshots()
-        val snapshotsList = activeQueueList.map { dto ->
-            com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
-                id = dto.id,
-                patientName = dto.patientName,
-                appointmentId = dto.appointmentId,
-                position = dto.position,
-                status = dto.status,
-                timestamp = System.currentTimeMillis()
+            val adapter = moshi.adapter(QueueUpdateEvent::class.java)
+            val event = adapter.fromJson(json)
+            val activeQueueList = event?.data?.queue ?: emptyList()
+            Timber.i("Queue length: ${activeQueueList.size}")
+
+            // Clear and store real-time queue snapshots inside the Room cache
+            database.queueSnapshotDao().clearQueueSnapshots()
+            val snapshotsList = activeQueueList.map { dto ->
+                com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
+                    id = dto.id,
+                    patientName = dto.patientName,
+                    appointmentId = dto.appointmentId,
+                    position = dto.position,
+                    status = dto.status,
+                    timestamp = System.currentTimeMillis()
+                )
+            }
+            database.queueSnapshotDao().insertQueueSnapshots(snapshotsList)
+
+            database.syncLogDao().insertLog(
+                com.aistudio.clinicsystem.data.db.SyncLogEntity(
+                    logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) сейчас ожидает (сохранено в кэш)",
+                    direction = "SYSTEM_SYNC"
+                )
             )
+            } catch (e: Exception) {
+                Timber.e(e, "Failed processing queue update event: " + e.message)
+            }
         }
-        database.queueSnapshotDao().insertQueueSnapshots(snapshotsList)
-
-        database.syncLogDao().insertLog(
-            com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                logMessage = "⚡ Реалтайм-обновление очереди: ${activeQueueList.size} пациент(ов) сейчас ожидает (сохранено в кэш)",
-                direction = "SYSTEM_SYNC"
-            )
-        )
     }
 }

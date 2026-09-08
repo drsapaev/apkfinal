@@ -8,8 +8,6 @@ import com.aistudio.clinicsystem.data.session.SessionState
 import com.aistudio.clinicsystem.data.api.UserDto
 import com.aistudio.clinicsystem.domain.usecase.auth.LoginUseCase
 import com.aistudio.clinicsystem.domain.usecase.auth.LoginWithBiometricsUseCase
-import com.aistudio.clinicsystem.domain.usecase.auth.Request2FARecoveryUseCase
-import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FARecoveryUseCase
 import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FAUseCase
 import io.mockk.coEvery
 import io.mockk.every
@@ -53,8 +51,6 @@ class AuthViewModelTest {
     private lateinit var sessionRepository: SessionRepository
     private lateinit var loginUseCase: LoginUseCase
     private lateinit var verify2FAUseCase: Verify2FAUseCase
-    private lateinit var request2FARecoveryUseCase: Request2FARecoveryUseCase
-    private lateinit var verify2FARecoveryUseCase: Verify2FARecoveryUseCase
     private lateinit var loginWithBiometricsUseCase: LoginWithBiometricsUseCase
 
     private val testUser = UserDto(
@@ -72,8 +68,6 @@ class AuthViewModelTest {
         sessionRepository = mockk(relaxed = true)
         loginUseCase = mockk(relaxed = true)
         verify2FAUseCase = mockk(relaxed = true)
-        request2FARecoveryUseCase = mockk(relaxed = true)
-        verify2FARecoveryUseCase = mockk(relaxed = true)
         loginWithBiometricsUseCase = mockk(relaxed = true)
 
         // Default session state — Unauthenticated (the AuthScreen is showing).
@@ -81,12 +75,11 @@ class AuthViewModelTest {
         every { sessionRepository.accessToken } returns null
 
         viewModel = AuthViewModel(
+            appContext = mockk(relaxed = true),
             repository = repository,
             sessionRepository = sessionRepository,
             loginUseCase = loginUseCase,
             verify2FAUseCase = verify2FAUseCase,
-            request2FARecoveryUseCase = request2FARecoveryUseCase,
-            verify2FARecoveryUseCase = verify2FARecoveryUseCase,
             loginWithBiometricsUseCase = loginWithBiometricsUseCase,
         )
     }
@@ -94,6 +87,15 @@ class AuthViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    /** Sets the private 2FA challenge state (login flow entry is mocked separately). */
+    private fun set2FAChallenge(token: String) {
+        val field = AuthViewModel::class.java.getDeclaredField("_pending2FAChallenge")
+        field.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val flow = field.get(viewModel) as MutableStateFlow<String?>
+        flow.value = token
     }
 
     @Test
@@ -159,7 +161,7 @@ class AuthViewModelTest {
     fun `verify2FA with wrong code length sets error`() = runTest {
         set2FAChallenge("challenge-token")
         viewModel.verify2FA("12345", false); advanceUntilIdle()
-        assertEquals("Код должен состоять из 6 цифр", viewModel.authError.value)
+        assertEquals("Код должен состоять из 6 цифр (TOTP) или быть резервным кодом (8-10 символов)", viewModel.authError.value)
     }
 
     @Test
@@ -177,7 +179,7 @@ class AuthViewModelTest {
         viewModel.updatePasswordInput("somecode")
         viewModel.cancel2FAChallenge()
         assertNull(viewModel.pending2FAChallenge.value)
-        assertEquals("", viewModel.otpInput.value)
+        assertEquals("", viewModel.passwordInput.value)
     }
 
     @Test
@@ -214,13 +216,13 @@ class AuthViewModelTest {
     @Test
     fun `updateUsernameInput updates phoneInput state`() {
         viewModel.updateUsernameInput("testuser")
-        assertEquals("testuser", viewModel.phoneInput.value)
+        assertEquals("testuser", viewModel.usernameInput.value)
     }
 
     @Test
     fun `updatePasswordInput updates otpInput state`() {
         viewModel.updatePasswordInput("testpass")
-        assertEquals("testpass", viewModel.otpInput.value)
+        assertEquals("testpass", viewModel.passwordInput.value)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -246,12 +248,12 @@ class AuthViewModelTest {
         viewModel.onLoginSuccess = { called = true }
 
         // User cached in Room with biometricEnabled = true — passes the local guard.
-        every { repository.getUserByPhone(testUser.phone) } returns com.aistudio.clinicsystem.data.db.UserEntity(
+        coEvery { repository.getUserByPhone(testUser.phone) } returns com.aistudio.clinicsystem.data.db.UserEntity(
             id = 1,
             phone = testUser.phone,
             fullName = testUser.fullName,
             role = testUser.role,
-            dateOfBirth = testUser.dateOfBirth,
+            dateOfBirth = testUser.dateOfBirth ?: "",
             biometricEnabled = true,
             telegramChatId = null,
         )
@@ -273,12 +275,12 @@ class AuthViewModelTest {
 
         // User has biometricEnabled = false locally — even if backend accepted the
         // refresh-token exchange, the local guard must reject the login.
-        every { repository.getUserByPhone(testUser.phone) } returns com.aistudio.clinicsystem.data.db.UserEntity(
+        coEvery { repository.getUserByPhone(testUser.phone) } returns com.aistudio.clinicsystem.data.db.UserEntity(
             id = 1,
             phone = testUser.phone,
             fullName = testUser.fullName,
             role = testUser.role,
-            dateOfBirth = testUser.dateOfBirth,
+            dateOfBirth = testUser.dateOfBirth ?: "",
             biometricEnabled = false,
             telegramChatId = null,
         )
@@ -319,7 +321,7 @@ class AuthViewModelTest {
         var called = false
         viewModel.onLoginSuccess = { called = true }
 
-        every { repository.getUserByPhone(any()) } returns null
+        coEvery { repository.getUserByPhone(any()) } returns null
 
         val cipher = mockk<javax.crypto.Cipher>(relaxed = true)
         coEvery { loginWithBiometricsUseCase(any(), any()) } returns

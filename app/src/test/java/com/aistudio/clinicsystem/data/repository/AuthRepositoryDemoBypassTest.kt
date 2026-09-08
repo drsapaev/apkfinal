@@ -1,7 +1,6 @@
 package com.aistudio.clinicsystem.data.repository
 
 import androidx.test.core.app.ApplicationProvider
-import com.aistudio.clinicsystem.data.api.ApiService
 import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
@@ -96,7 +95,6 @@ class AuthRepositoryDemoBypassTest {
             context = context,
             database = db,
             mobileApiService = mockApiService,
-            apiService = io.mockk.mockk(relaxed = true),
             sessionRepository = sessionRepo,
         )
     }

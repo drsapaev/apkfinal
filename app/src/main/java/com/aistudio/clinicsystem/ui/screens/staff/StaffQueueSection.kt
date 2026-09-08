@@ -59,8 +59,8 @@ import com.aistudio.clinicsystem.data.db.QueueSnapshotEntity
 fun StaffQueueSection(
     cachedQueueSnapshots: List<QueueSnapshotEntity>,
     adminColor: Color,
-    onShiftQueuePosition: (String, Boolean) -> Unit,
-    onUpdateQueueStatus: (String, String) -> Unit,
+    onShiftQueuePosition: (Int, Boolean) -> Unit,
+    onUpdateQueueStatus: (Int, String) -> Unit,
     onRemoveQueuePatient: (QueueSnapshotEntity) -> Unit
 ) {
     Column(
@@ -167,12 +167,14 @@ fun StaffQueueSection(
 
                                 val qStatusColor = when (q.status) {
                                     "WAITING" -> MaterialTheme.colorScheme.tertiary
+                                    "CALLED" -> MaterialTheme.colorScheme.secondary
                                     "IN_PROGRESS" -> MaterialTheme.colorScheme.primary
                                     "COMPLETED" -> MaterialTheme.colorScheme.primary
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                 }
                                 val qStatusText = when (q.status) {
                                     "WAITING" -> stringResource(R.string.st_waiting)
+                                    "CALLED" -> stringResource(R.string.st_called)
                                     "IN_PROGRESS" -> stringResource(R.string.st_in_progress)
                                     "COMPLETED" -> stringResource(R.string.st_seen)
                                     else -> q.status
@@ -218,12 +220,21 @@ fun StaffQueueSection(
 
                                 if (q.status == "WAITING") {
                                     Button(
-                                        onClick = { onUpdateQueueStatus(q.id, "IN_PROGRESS") },
+                                        onClick = { onUpdateQueueStatus(q.id, "CALLED") },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         modifier = Modifier.heightIn(min = 44.dp)
                                     ) {
                                         Text(stringResource(R.string.ui_call_to_doctor), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
+                                    }
+                                } else if (q.status == "CALLED") {
+                                    Button(
+                                        onClick = { onUpdateQueueStatus(q.id, "IN_PROGRESS") },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        contentPadding = PaddingValues(horizontal = 8.dp),
+                                        modifier = Modifier.heightIn(min = 44.dp)
+                                    ) {
+                                        Text(stringResource(R.string.queue_start_visit), fontSize = AppFontSize.caption, color = MaterialTheme.colorScheme.surface)
                                     }
                                 } else if (q.status == "IN_PROGRESS") {
                                     Button(

@@ -12,6 +12,7 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.SessionManager
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
 import com.aistudio.clinicsystem.utils.TokenManager
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -68,14 +69,12 @@ object AppModule {
     fun provideAuthRepository(
         @ApplicationContext context: Context,
         database: ClinicDatabase,
-        apiService: ApiService,
         mobileApiService: MobileApiService,
         sessionRepository: SessionRepository,
     ): AuthRepository = AuthRepository(
         context = context,
         database = database,
         mobileApiService = mobileApiService,
-        apiService = apiService,
         sessionRepository = sessionRepository,
     )
 
@@ -88,4 +87,18 @@ object AppModule {
     @Singleton
     fun provideMobileApiService(apiClient: com.aistudio.clinicsystem.data.api.ApiClient): MobileApiService =
         apiClient.mobileService
+}
+
+/**
+ * BUILD-FIX: the auth use cases (LoginUseCase, Verify2FAUseCase, …) inject
+ * the domain [AuthRepositoryInterface], while some ViewModels inject the
+ * concrete [AuthRepository]. Dagger needs the interface bound to the
+ * implementation or the SingletonComponent fails to compile.
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryBindingsModule {
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepository): com.aistudio.clinicsystem.domain.repository.AuthRepositoryInterface
 }

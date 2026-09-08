@@ -86,19 +86,20 @@ class ClinicRepositorySyncTest {
         )
         database.pendingSyncDao().insertPendingSync(pendingSync)
 
-        // Mock server response — 200 with a created appointment
-        val createdDto = com.aistudio.clinicsystem.data.api.AppointmentDto(
-            id = 42,
-            patientPhone = "+77771112233",
-            patientName = "Test",
-            doctorName = "Dr.",
-            specialty = "S",
-            date = "2026-07-10",
-            time = "14:00",
-            status = "PENDING",
-            reason = "R",
+        // M-CONTRACT-FIX: the outbox flush resolves the backend patient_id
+        // first (GET /patients?phone=…), then POSTs /appointments.
+        coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns retrofit2.Response.success(
+            listOf(com.aistudio.clinicsystem.data.api.StaffPatientDto(id = 7, phone = "+77771112233"))
         )
-        coEvery { mockLegacyApi.createAppointment(any()) } returns retrofit2.Response.success(createdDto)
+        coEvery { mockLegacyApi.createAppointment(any()) } returns retrofit2.Response.success(
+            com.aistudio.clinicsystem.data.api.StaffAppointmentDto(
+                id = 42,
+                patientId = 7,
+                appointmentDate = "2026-07-10",
+                appointmentTime = "14:00",
+                status = "scheduled",
+            )
+        )
 
         val result = repository.retryUnsyncedWrites("test-token")
 
@@ -118,6 +119,9 @@ class ClinicRepositorySyncTest {
         )
         database.pendingSyncDao().insertPendingSync(pendingSync)
 
+        coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns retrofit2.Response.success(
+            listOf(com.aistudio.clinicsystem.data.api.StaffPatientDto(id = 7))
+        )
         // Mock server returns 500
         coEvery { mockLegacyApi.createAppointment(any()) } returns retrofit2.Response.error(
             500,
@@ -144,6 +148,9 @@ class ClinicRepositorySyncTest {
         )
         database.pendingSyncDao().insertPendingSync(pendingSync)
 
+        coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns retrofit2.Response.success(
+            listOf(com.aistudio.clinicsystem.data.api.StaffPatientDto(id = 7))
+        )
         // Mock server returns 400 Bad Request (non-retriable)
         coEvery { mockLegacyApi.createAppointment(any()) } returns retrofit2.Response.error(
             400,
@@ -157,6 +164,27 @@ class ClinicRepositorySyncTest {
         assertTrue("Row should still exist", deadRow != null)
         assertEquals("DEAD_LETTER", deadRow?.status)
         assertEquals(400, deadRow?.lastHttpCode)
+    }
+
+    @Test
+    fun `retryUnsyncedWrites with unknown patient dead-letters CREATE_APPOINTMENT`() = runBlocking {
+        val pendingSync = PendingSyncEntity(
+            type = OutboxOperation.CREATE_APPOINTMENT.code,
+            payload = """{"id":null,"patient_phone":"+79990000000","patient_name":"Ghost","doctor_name":"Dr.","specialty":"S","date":"2026-07-10","time":"14:00","status":"PENDING","reason":"R"}""",
+            clientRequestId = "req-nopatient",
+        )
+        database.pendingSyncDao().insertPendingSync(pendingSync)
+
+        // Patient lookup returns nothing — POST /appointments requires an
+        // int patient_id, so the row can never succeed.
+        coEvery { mockLegacyApi.findPatientsByPhone(any(), any()) } returns retrofit2.Response.success(emptyList())
+
+        repository.retryUnsyncedWrites("test-token")
+
+        val rows = database.pendingSyncDao().getAllPendingSyncs()
+        val deadRow = rows.find { it.clientRequestId == "req-nopatient" }
+        assertTrue("Row should still exist", deadRow != null)
+        assertEquals("Row should be DEAD_LETTER (unresolvable patient)", "DEAD_LETTER", deadRow?.status)
     }
 
     @Test

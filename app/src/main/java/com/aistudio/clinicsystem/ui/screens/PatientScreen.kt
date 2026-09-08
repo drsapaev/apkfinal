@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,7 +96,12 @@ private fun PatientScreenContent(
 
     var showBookDialog by remember { mutableStateOf(false) }
     var selectedDoctor by remember { mutableStateOf("Dr. Rustam Sapaev") }
-    var selectedSpecialty by remember { mutableStateOf(stringResource(R.string.spec_dental_surgery)) }
+    // BUILD-FIX: stringResource() is a composable call — it cannot run inside
+    // remember {} (DisallowComposableCalls). Hoist the defaults into composition.
+    val defaultSpecialty = stringResource(R.string.spec_dental_surgery)
+    val cancelReasonDefault = stringResource(R.string.pat_cancel_reason_default)
+    val defaultBookingReason = stringResource(R.string.ui_default_reason)
+    var selectedSpecialty by remember { mutableStateOf(defaultSpecialty) }
     var selectedDateIdx by remember { mutableStateOf(0) }
     var selectedTimeSlot by remember { mutableStateOf("11:00") }
     var bookingReasonInput by remember { mutableStateOf("") }
@@ -262,11 +268,13 @@ private fun PatientScreenContent(
                 }
             }
             // P-18 fix: listen for undoAction (cancel appointment) — show Snackbar with Undo button
+            val cancelledMsg = stringResource(R.string.pat_appointment_cancelled)
+            val undoLabel = stringResource(R.string.staff_undo)
             LaunchedEffect(undoAction) {
                 if (undoAction != null) {
                     val result = snackbarHostState.showSnackbar(
-                        message = stringResource(R.string.pat_appointment_cancelled),
-                        actionLabel = stringResource(R.string.staff_undo),
+                        message = cancelledMsg,
+                        actionLabel = undoLabel,
                         duration = SnackbarDuration.Short,
                         withDismissAction = true
                     )
@@ -332,7 +340,7 @@ private fun PatientScreenContent(
                         pendingSyncs = allPendingSyncs,
                         selectedFilter = selectedAppFilter,
                         onFilterSelect = { selectedAppFilter = it },
-                        onCancelClick = { id -> viewModel.cancelAppointment(id, stringResource(R.string.pat_cancel_reason_default)) },
+                        onCancelClick = { id -> viewModel.cancelAppointment(id, cancelReasonDefault) },
                         scrollState = appointmentsScrollState
                     )
                     2 -> PatientMedicalTab(
@@ -410,7 +418,7 @@ private fun PatientScreenContent(
                         specialty = selectedSpecialty,
                         date = bookingDatesList[selectedDateIdx],
                         time = selectedTimeSlot,
-                        reason = bookingReasonInput.ifBlank { stringResource(R.string.ui_default_reason) }
+                        reason = bookingReasonInput.ifBlank { defaultBookingReason }
                     )
                     showBookDialog = false
                     bookingReasonInput = ""

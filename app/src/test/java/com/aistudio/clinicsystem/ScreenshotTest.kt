@@ -36,7 +36,7 @@ class ScreenshotTest {
     @Test
     fun `greeting screenshot`() {
         composeTestRule.setContent {
-            MyApplicationTheme { Greeting("Robolectric") }
+            MyApplicationTheme { Text("Robolectric") }
         }
         composeTestRule.onRoot().captureRoboImage(
             filePath = "src/test/screenshots/greeting.png"

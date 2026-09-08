@@ -62,12 +62,15 @@ import com.aistudio.clinicsystem.ui.viewmodel.AuthViewModel
  * 3. Taps stringResource(R.string.ui_verify) → viewModel.verify2FA(totpCode, rememberDevice)
  *    - Success → onLoginSuccess callback (navigates to main screen)
  *    - Failure → authError StateFlow shows stringResource(R.string.auth_2fa_error_invalid)
- * 4. Alternative: stringResource(R.string.auth_2fa_use_recovery) → opens recovery flow dialog
+ * 4. Alternative: stringResource(R.string.auth_2fa_use_recovery) → opens the BACKUP-CODE
+ *    entry card → viewModel.verify2FA(backupCode) (routes to the backend `backup_code`
+ *    field — the only mid-challenge recovery the server supports)
  * 5. stringResource(R.string.ui_cancel) → viewModel.cancel2FAChallenge() (returns to login form)
  *
- * The AuthViewModel already implements the full 2FA API (verify2FA,
- * request2FARecovery, verify2FARecovery, cancel2FAChallenge) since M1/E3.4.
- * This Composable wires it up to the UI — previously dead code.
+ * M-CONTRACT-FIX: the old SMS/email recovery card (request2FARecovery/
+ * verify2FARecovery) was removed — both /2fa/recovery/... endpoints require
+ * a Bearer JWT and never return the recovery token, so they cannot work
+ * in the blocking login challenge.
  */
 @Composable
 fun TwoFactorAuthContent(
@@ -80,7 +83,6 @@ fun TwoFactorAuthContent(
     var totpCode by remember { mutableStateOf("") }
     var rememberDevice by remember { mutableStateOf(false) }
     var showRecoveryFlow by remember { mutableStateOf(false) }
-    var recoveryMethod by remember { mutableStateOf("") }
     var recoveryCode by remember { mutableStateOf("") }
 
     val tealPrimary = MaterialTheme.colorScheme.primary
@@ -159,19 +161,20 @@ fun TwoFactorAuthContent(
                     onCancel = { viewModel.cancel2FAChallenge() }
                 )
             } else {
-                // === Recovery code flow ===
+                // === Backup-code recovery ===
+                // M-CONTRACT-FIX: the backend does not support SMS/email
+                // recovery from the login challenge (/2fa/recovery/... both
+                // require a Bearer JWT). Backup codes are verified directly
+                // via /2fa/verify — so the recovery card collects a backup
+                // code and routes it through verify2FA.
                 TwoFactorRecoveryCard(
-                    recoveryMethod = recoveryMethod,
-                    onRecoveryMethodChange = { recoveryMethod = it },
                     recoveryCode = recoveryCode,
                     onRecoveryCodeChange = { recoveryCode = it },
                     isSyncing = isSyncing,
                     authError = authError,
-                    onRequestRecovery = { viewModel.request2FARecovery(recoveryMethod) },
-                    onVerifyRecovery = { viewModel.verify2FARecovery(recoveryCode) },
+                    onVerifyRecovery = { viewModel.verify2FA(recoveryCode, rememberDevice = false) },
                     onBackToTotp = {
                         showRecoveryFlow = false
-                        recoveryMethod = ""
                         recoveryCode = ""
                     }
                 )
@@ -309,13 +312,10 @@ private fun TwoFactorTotpCard(
 
 @Composable
 private fun TwoFactorRecoveryCard(
-    recoveryMethod: String,
-    onRecoveryMethodChange: (String) -> Unit,
     recoveryCode: String,
     onRecoveryCodeChange: (String) -> Unit,
     isSyncing: Boolean,
     authError: String?,
-    onRequestRecovery: () -> Unit,
     onVerifyRecovery: () -> Unit,
     onBackToTotp: () -> Unit
 ) {
@@ -348,47 +348,6 @@ private fun TwoFactorRecoveryCard(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-
-            OutlinedTextField(
-                value = recoveryMethod,
-                onValueChange = onRecoveryMethodChange,
-                label = { Text(stringResource(R.string.ui_2fa_recovery_method)) },
-                placeholder = { Text(stringResource(R.string.ui_2fa_recovery_method_placeholder)) },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = tealPrimary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedLabelColor = tealPrimary
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.m))
-
-            Button(
-                onClick = onRequestRecovery,
-                enabled = recoveryMethod.isNotBlank() && !isSyncing,
-                colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
-                shape = RoundedCornerShape(Radius.medium),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    stringResource(R.string.auth_2fa_send_recovery),
-                    color = MaterialTheme.colorScheme.surface,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.l))
-
-            Text(
-                text = stringResource(R.string.misc_after_code_received),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.s))
 
             OutlinedTextField(
                 value = recoveryCode,
@@ -424,12 +383,14 @@ private fun TwoFactorRecoveryCard(
                     enabled = recoveryCode.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(containerColor = tealPrimary),
                     shape = RoundedCornerShape(Radius.medium),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
                 ) {
                     Text(
-                        stringResource(R.string.auth_2fa_verify_recovery),
-                        color = MaterialTheme.colorScheme.surface,
-                        fontWeight = FontWeight.Bold
+                        text = stringResource(R.string.auth_2fa_verify_recovery),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.surface
                     )
                 }
             }

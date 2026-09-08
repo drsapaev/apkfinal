@@ -10,8 +10,6 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.data.session.SessionState
 import com.aistudio.clinicsystem.domain.usecase.auth.LoginUseCase
 import com.aistudio.clinicsystem.domain.usecase.auth.LoginWithBiometricsUseCase
-import com.aistudio.clinicsystem.domain.usecase.auth.Request2FARecoveryUseCase
-import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FARecoveryUseCase
 import com.aistudio.clinicsystem.domain.usecase.auth.Verify2FAUseCase
 import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,15 +51,16 @@ class AuthViewModel @Inject constructor(
     // High-5 audit fix: use cases replace direct authRepository calls.
     private val loginUseCase: LoginUseCase,
     private val verify2FAUseCase: Verify2FAUseCase,
-    private val request2FARecoveryUseCase: Request2FARecoveryUseCase,
-    private val verify2FARecoveryUseCase: Verify2FARecoveryUseCase,
     private val loginWithBiometricsUseCase: LoginWithBiometricsUseCase,
 ) : ViewModel() {
 
     // R-2: helper for localized error messages
     private fun getString(resId: Int) = appContext.getString(resId)
 
-    private val _usernameInput = MutableStateFlow("+7 ")
+    // LOGIN-FIX: the field was pre-filled with "+7 " and used the phone IME,
+// which blocked entering a plain username. The backend login takes any
+// username (min 3 chars) — start empty and use a text keyboard.
+private val _usernameInput = MutableStateFlow("")
     val usernameInput: StateFlow<String> = _usernameInput.asStateFlow()
 
     private val _passwordInput = MutableStateFlow("")
@@ -220,60 +219,20 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    /**
-     * M1/E3.4: requests a recovery code via SMS or email when the user cannot
-     * produce a TOTP code. On success, the recovery token is stored internally
-     * and the UI must prompt for the received code, then call [verify2FARecovery].
+    /*
+     * M-CONTRACT-FIX (2FA recovery): the old SMS/email recovery methods
+     * (request2FARecovery / verify2FARecovery) were removed. Backend
+     * reality:
+     *   - /2fa/recovery/request and /2fa/recovery/verify BOTH require a
+     *     Bearer JWT — unusable in the blocking login challenge, where
+     *     the client has no tokens yet;
+     *   - the recovery token is delivered to the recovery email channel
+     *     and is never returned by the API;
+     *   - the API answers "Backup codes are verified directly via
+     *     /2fa/verify".
+     * The recovery screen therefore collects a BACKUP CODE and routes it
+     * through [verify2FA], which maps it to the `backup_code` field.
      */
-    private var pendingRecoveryToken: String? = null
-
-    fun request2FARecovery(method: String) {
-        val challenge = _pending2FAChallenge.value
-        if (challenge.isNullOrBlank()) {
-            _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_expired)
-            return
-        }
-        viewModelScope.launch {
-            _authError.value = null
-            _isSyncing.value = true
-            // High-5 audit fix: delegate to use case (validates method ∈ {email, sms}).
-            val result = request2FARecoveryUseCase(challenge, method)
-            _isSyncing.value = false
-            result.onSuccess { token ->
-                pendingRecoveryToken = token
-                _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_sent) + " " + method
-            }.onFailure { error ->
-                _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_error) + ": " + (error.localizedMessage ?: "")
-            }
-        }
-    }
-
-    fun verify2FARecovery(code: String) {
-        val token = pendingRecoveryToken
-        if (token.isNullOrBlank()) {
-            _authError.value = getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_first)
-            return
-        }
-        viewModelScope.launch {
-            _authError.value = null
-            _isSyncing.value = true
-            // High-5 audit fix: delegate to use case.
-            val result = verify2FARecoveryUseCase(token, code)
-            _isSyncing.value = false
-            result.onSuccess { outcome ->
-                if (outcome is LoginOutcome.Success) {
-                    _pending2FAChallenge.value = null
-                    pendingRecoveryToken = null
-                    onLoginSuccess?.invoke()
-                }
-            }.onFailure { error ->
-                _authError.value = when (error) {
-                    is AuthError.InvalidTwoFACode -> getString(com.aistudio.clinicsystem.R.string.vm_2fa_recovery_invalid)
-                    else -> getString(com.aistudio.clinicsystem.R.string.vm_error_generic) + ": " + (error.localizedMessage ?: "")
-                }
-            }
-        }
-    }
 
     /**
      * Stage 4.4 (P0-1 audit fix): completes biometric login by decrypting

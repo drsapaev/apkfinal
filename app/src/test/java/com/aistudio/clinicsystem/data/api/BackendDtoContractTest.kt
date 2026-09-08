@@ -256,7 +256,8 @@ class BackendDtoContractTest {
         assertEquals("Ваша запись к врачу на 15 июля подтверждена", notif.message)
         assertEquals("appointment_status", notif.type)
         assertNotNull(notif.data)
-        assertEquals(100, notif.data!!["appointment_id"])
+        // Moshi's Object adapter deserializes JSON numbers as Double.
+        assertEquals(100.0, notif.data!!["appointment_id"])
         assertEquals("2026-07-10T12:00:00Z", notif.sentAt)
         assertFalse(notif.read)
     }
@@ -361,5 +362,197 @@ class BackendDtoContractTest {
         assertTrue(settings.pushEnabled)
         assertFalse(settings.emailEnabled)
         assertFalse(settings.smsEnabled)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // M-CONTRACT-FIX regression tests — DTOs realigned with the backend
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun `AppointmentBookRequest serialises preferred_date and complaint for POST mobile appointments book`() {
+        // Backend MobileBookAppointmentRequest (app/schemas/mobile.py:110):
+        // {doctor_id, preferred_date, preferred_time?, complaint?, services, notes?}
+        val request = AppointmentBookRequest(
+            doctorId = 12,
+            preferredDate = "2026-09-15",
+            preferredTime = "14:30",
+            complaint = "Болит зуб",
+            services = listOf(3, 8),
+            notes = null,
+        )
+        val json = moshi.adapter(AppointmentBookRequest::class.java).toJson(request)
+
+        assertTrue("must send preferred_date", json.contains("\"preferred_date\":\"2026-09-15\""))
+        assertTrue("must send preferred_time", json.contains("\"preferred_time\":\"14:30\""))
+        assertTrue("must send complaint", json.contains("\"complaint\":\"Болит зуб\""))
+        assertTrue("must send services array", json.contains("\"services\":[3,8]"))
+        assertTrue("must send doctor_id", json.contains("\"doctor_id\":12"))
+        assertFalse("must NOT send the removed date field", json.contains("\"date\":"))
+        assertFalse("must NOT send the removed time field", json.contains("\"time\":"))
+        assertFalse("must NOT send the removed reason field", json.contains("\"reason\":"))
+        assertFalse("must NOT send the removed clinic_id field", json.contains("\"clinic_id\":"))
+    }
+
+    @Test
+    fun `QueuePositionsResponse parses positions wrapper from mobile queues my-position`() {
+        // Backend mobile_api_extended.py:get_my_queue_position returns
+        // { "positions": [ {queue_id, doctor_name, specialty, my_number,
+        //   current_number, patients_before_me, estimated_wait_minutes, status} ] }
+        val json = """
+            {
+              "positions": [
+                {
+                  "queue_id": 5,
+                  "doctor_name": "Д-р Сапаев",
+                  "specialty": "Стоматолог-хирург",
+                  "my_number": 7,
+                  "current_number": 4,
+                  "patients_before_me": 3,
+                  "estimated_wait_minutes": 45,
+                  "status": "waiting"
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val response = moshi.adapter(QueuePositionsResponse::class.java).fromJson(json)!!
+        assertEquals(1, response.positions.size)
+        val pos = response.positions[0]
+        assertEquals(5, pos.queueId)
+        assertEquals("Д-р Сапаев", pos.doctorName)
+        assertEquals(7, pos.myNumber)
+        assertEquals(4, pos.currentNumber)
+        assertEquals(3, pos.patientsBeforeMe)
+        assertEquals(45, pos.estimatedWaitMinutes)
+        assertEquals("waiting", pos.status)
+    }
+
+    @Test
+    fun `QueuePositionsResponse handles empty positions`() {
+        val response = moshi.adapter(QueuePositionsResponse::class.java).fromJson("""{"positions":[]}""")!!
+        assertTrue(response.positions.isEmpty())
+    }
+
+    @Test
+    fun `DoctorDto parses mobile doctors list rows`() {
+        // Backend mobile_api.py:list_mobile_doctors returns
+        // [{id, name, specialty, cabinet, active}] — the previous client
+        // DTO expected full_name/is_active and crashed on sync.
+        val json = """
+            [
+              {"id": 1, "name": "Иванов Иван", "specialty": "Кардиолог", "cabinet": "204", "active": true},
+              {"id": 2, "name": "Петров Пётр", "specialty": "Стоматолог", "cabinet": null, "active": false}
+            ]
+        """.trimIndent()
+        val type = Types.newParameterizedType(List::class.java, DoctorDto::class.java)
+        val list = moshi.adapter<List<DoctorDto>>(type).fromJson(json)!!
+
+        assertEquals(2, list.size)
+        assertEquals("Иванов Иван", list[0].name)
+        assertEquals("Кардиолог", list[0].specialty)
+        assertEquals("204", list[0].cabinet)
+        assertTrue(list[0].isActive)
+
+        val entity = list[1].toEntity()
+        assertEquals(2, entity.serverId)
+        assertEquals("Петров Пётр", entity.fullName)
+        assertFalse(entity.isActive)
+    }
+
+    @Test
+    fun `DoctorScheduleResponse parses mobile doctors schedule grid`() {
+        // Backend mobile_api_extended.py:get_doctor_schedule returns
+        // {doctor_id, schedule: [{date, weekday, start_time, end_time, appointments}]}
+        val json = """
+            {
+              "doctor_id": 12,
+              "schedule": [
+                {
+                  "date": "2026-09-15",
+                  "weekday": 1,
+                  "start_time": "09:00:00",
+                  "end_time": "12:00:00",
+                  "appointments": [
+                    {"id": 90, "appointment_time": "09:30", "patient_id": 3, "status": "scheduled"}
+                  ]
+                },
+                {
+                  "date": "2026-09-16",
+                  "weekday": 2,
+                  "start_time": null,
+                  "end_time": null,
+                  "appointments": []
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val schedule = moshi.adapter(DoctorScheduleResponse::class.java).fromJson(json)!!
+        assertEquals(12, schedule.doctorId)
+        assertEquals(2, schedule.schedule.size)
+        assertEquals("2026-09-15", schedule.schedule[0].date)
+        assertEquals("09:00:00", schedule.schedule[0].startTime)
+        assertEquals(1, schedule.schedule[0].appointments.size)
+        assertEquals("09:30", schedule.schedule[0].appointments[0].appointmentTime)
+        assertNull(schedule.schedule[1].startTime)
+    }
+
+    @Test
+    fun `TwoFAVerifyRequest serialises backup_code path`() {
+        // The mid-challenge recovery goes through /2fa/verify with backup_code.
+        val request = TwoFAVerifyRequest(
+            pending2faToken = "pending-token",
+            backupCode = "AB12CD34",
+            rememberDevice = false,
+        )
+        val json = moshi.adapter(TwoFAVerifyRequest::class.java).toJson(request)
+        assertTrue("must send pending_2fa_token", json.contains("\"pending_2fa_token\":\"pending-token\""))
+        assertTrue("must send backup_code", json.contains("\"backup_code\":\"AB12CD34\""))
+        assertFalse("totp_code must be omitted when null", json.contains("totp_code"))
+    }
+
+    @Test
+    fun `TwoFactorVerifyResponse parses success with tokens`() {
+        // Backend returns HTTP 200 with success=false for a wrong code —
+        // callers must check `success`, not just the HTTP status.
+        val ok = moshi.adapter(TwoFactorVerifyResponse::class.java).fromJson(
+            """
+            {
+              "success": true,
+              "message": "Код принят",
+              "session_token": "sess-1",
+              "device_trusted": true,
+              "access_token": "at",
+              "refresh_token": "rt",
+              "token_type": "bearer",
+              "expires_in": 1800
+            }
+            """.trimIndent()
+        )!!
+        assertTrue(ok.success)
+        assertEquals("at", ok.accessToken)
+        assertEquals("rt", ok.refreshToken)
+        assertEquals(1800, ok.expiresIn)
+
+        val rejected = moshi.adapter(TwoFactorVerifyResponse::class.java).fromJson(
+            """{"success": false, "message": "Неверный код"}"""
+        )!!
+        assertFalse(rejected.success)
+        assertNull(rejected.accessToken)
+    }
+
+    @Test
+    fun `TwoFARecoveryRequest serialises recovery_type and recovery_value`() {
+        // Backend TwoFactorRecoveryRequest (schemas/two_factor_auth.py:257) —
+        // the old pending_2fa_token/method body was rejected with 422.
+        val request = TwoFARecoveryRequest(
+            recoveryType = "email",
+            recoveryValue = "user@example.com",
+        )
+        val json = moshi.adapter(TwoFARecoveryRequest::class.java).toJson(request)
+        assertTrue("must send recovery_type", json.contains("\"recovery_type\":\"email\""))
+        assertTrue("must send recovery_value", json.contains("\"recovery_value\":\"user@example.com\""))
+        assertFalse("must NOT send the removed method field", json.contains("\"method\":"))
+        assertFalse("must NOT send the removed pending_2fa_token field", json.contains("pending_2fa_token"))
     }
 }

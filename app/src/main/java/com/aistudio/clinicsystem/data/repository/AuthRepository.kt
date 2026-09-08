@@ -3,7 +3,6 @@ package com.aistudio.clinicsystem.data.repository
 import android.content.Context
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.UserEntity
-import com.aistudio.clinicsystem.data.api.ApiService
 import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.api.LoginRequest
 import com.aistudio.clinicsystem.data.api.LogoutRequest
@@ -12,6 +11,7 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import timber.log.Timber
 
 /**
@@ -21,12 +21,19 @@ import timber.log.Timber
  * M3B.1: now uses [SessionRepository] as SSOT for session state.
  * Token storage and session state updates go through SessionRepository
  * instead of directly calling SessionManagerImpl.
+ *
+ * M-CONTRACT-FIX (2FA): POST /api/v1/2fa/verify now maps to the backend
+ * `TwoFactorVerifyRequest`/`TwoFactorVerifyResponse`. A 6-digit code is
+ * sent as `totp_code`, any other alphanumeric code (8-10 chars) as
+ * `backup_code` — that is the only mid-login-challenge recovery the
+ * backend supports ("Backup codes are verified directly via /2fa/verify").
+ * The old /2fa/recovery/... client flow was removed: both endpoints require
+ * a Bearer JWT and the recovery token is never returned in the response.
  */
 class AuthRepository(
     private val context: Context,
     private val database: ClinicDatabase,
     private val mobileApiService: MobileApiService,
-    private val apiService: ApiService,
     private val sessionRepository: SessionRepository,
 ) : com.aistudio.clinicsystem.domain.repository.AuthRepositoryInterface {
     private val userDao = database.userDao()
@@ -90,12 +97,8 @@ class AuthRepository(
             }
 
             val userProfile = profileResponse.body()!!
-            sessionRepository.onProfileLoaded(
-                phone = userProfile.phone ?: "",
-                role = userProfile.role ?: "PATIENT"
-            )
-
-            // Cache user in Room
+            // BUILD-FIX: onProfileLoaded takes the cached UserEntity (the old
+            // phone/role argument list never matched the SessionRepository API).
             val cachedUser = UserEntity(
                 phone = userProfile.phone ?: "",
                 fullName = userProfile.fullName ?: "",
@@ -104,6 +107,8 @@ class AuthRepository(
                 biometricEnabled = userProfile.biometricEnabled ?: false,
                 telegramChatId = userProfile.telegramChatId
             )
+            sessionRepository.onProfileLoaded(cachedUser)
+
             val existing = userDao.getUserByPhone(cachedUser.phone)
             if (existing == null) {
                 userDao.insertUser(cachedUser)
@@ -135,6 +140,12 @@ class AuthRepository(
      * M1/E3.4: completes a 2FA challenge after [login] returned
      * [LoginOutcome.TwoFactorRequired]. On success, the backend returns
      * the real access + refresh tokens and the user is logged in.
+     *
+     * M-CONTRACT-FIX: [code] accepts BOTH a 6-digit TOTP code and an
+     * 8-10 char backup code — the backend's TwoFactorVerifyRequest has
+     * separate `totp_code` / `backup_code` fields and rejects requests
+     * with neither. The response is `TwoFactorVerifyResponse` (HTTP 200
+     * with success=false on a wrong code), not a LoginResponse.
      */
     override suspend fun verify2FA(
         challengeToken: String,
@@ -142,10 +153,20 @@ class AuthRepository(
         rememberDevice: Boolean
     ): Result<LoginOutcome> = withContext(Dispatchers.IO) {
         try {
+            val trimmed = totpCode.trim()
+            val isTotp = trimmed.length == 6 && trimmed.all { it.isDigit() }
+            val isBackup = trimmed.length in 8..10 && trimmed.all { it.isLetterOrDigit() }
+            if (!isTotp && !isBackup) {
+                return@withContext Result.failure(
+                    IllegalArgumentException("Код должен состоять из 6 цифр (TOTP) или быть резервным кодом (8-10 символов)")
+                )
+            }
+
             val response = mobileApiService.verify2FA(
                 com.aistudio.clinicsystem.data.api.TwoFAVerifyRequest(
                     pending2faToken = challengeToken,
-                    totpCode = totpCode.trim(),
+                    totpCode = if (isTotp) trimmed else null,
+                    backupCode = if (isBackup) trimmed else null,
                     rememberDevice = rememberDevice,
                     deviceFingerprint = getDeviceFingerprint()
                 )
@@ -158,12 +179,17 @@ class AuthRepository(
                 )
             }
 
-            val loginResp = response.body()
+            val verifyResp = response.body()
                 ?: return@withContext Result.failure(IllegalStateException("Empty 2FA response body"))
 
-            val accessToken = loginResp.accessToken
+            // The backend returns HTTP 200 with success=false for a wrong code.
+            if (!verifyResp.success) {
+                return@withContext Result.failure(AuthError.InvalidTwoFACode)
+            }
+
+            val accessToken = verifyResp.accessToken
                 ?: return@withContext Result.failure(IllegalStateException("2FA response missing access_token"))
-            val refreshToken = loginResp.refreshToken
+            val refreshToken = verifyResp.refreshToken
                 ?: return@withContext Result.failure(IllegalStateException("2FA response missing refresh_token"))
 
             sessionRepository.onTokensRefreshed(accessToken, refreshToken)
@@ -174,11 +200,8 @@ class AuthRepository(
                 return@withContext Result.failure(retrofit2.HttpException(profileResponse))
             }
             val userProfile = profileResponse.body()!!
-            sessionRepository.onProfileLoaded(
-                phone = userProfile.phone ?: "",
-                role = userProfile.role ?: "PATIENT"
-            )
-
+            // BUILD-FIX: onProfileLoaded takes the cached UserEntity (the old
+            // phone/role argument list never matched the SessionRepository API).
             val cachedUser = UserEntity(
                 phone = userProfile.phone ?: "",
                 fullName = userProfile.fullName ?: "",
@@ -187,6 +210,8 @@ class AuthRepository(
                 biometricEnabled = userProfile.biometricEnabled ?: false,
                 telegramChatId = userProfile.telegramChatId
             )
+            sessionRepository.onProfileLoaded(cachedUser)
+
             val existing = userDao.getUserByPhone(cachedUser.phone)
             if (existing == null) {
                 userDao.insertUser(cachedUser)
@@ -215,92 +240,17 @@ class AuthRepository(
     }
 
     /**
-     * M1/E3.4: requests a recovery code (via email or SMS) when the user
-     * cannot produce a TOTP code. The returned recovery-token must be used
-     * with [verify2FARecovery] together with the code from the SMS/email.
+     * M-CONTRACT-FIX: the /2fa/recovery/... client flow was REMOVED.
+     * Backend reality (`two_factor_auth.py`):
+     *   - both recovery endpoints require a Bearer JWT, so they are
+     *     unusable in the blocking login challenge (no tokens yet);
+     *   - the recovery token is delivered to the recovery email channel
+     *     and is NEVER returned by the API;
+     *   - the API explicitly answers "Backup codes are verified directly
+     *     via /2fa/verify".
+     * The mid-challenge recovery path is therefore a backup code entered
+     * into [verify2FA] — see TwoFactorAuthContent.
      */
-    override suspend fun request2FARecovery(
-        challengeToken: String,
-        method: String  // "email" | "sms"
-    ): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val response = mobileApiService.request2FARecovery(
-                com.aistudio.clinicsystem.data.api.TwoFARecoveryRequest(
-                    pending2faToken = challengeToken,
-                    method = method
-                )
-            )
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(retrofit2.HttpException(response))
-            }
-            val body = response.body()
-                ?: return@withContext Result.failure(IllegalStateException("Empty recovery response body"))
-            Result.success(body.recoveryToken)
-        } catch (e: Exception) {
-            Timber.e("request2FARecovery error: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * M1/E3.4: verifies a recovery code (from SMS/email) and completes login.
-     */
-    override suspend fun verify2FARecovery(
-        recoveryToken: String,
-        code: String
-    ): Result<LoginOutcome> = withContext(Dispatchers.IO) {
-        try {
-            val response = mobileApiService.verify2FARecovery(
-                com.aistudio.clinicsystem.data.api.TwoFARecoveryVerifyRequest(
-                    recoveryToken = recoveryToken,
-                    code = code.trim()
-                )
-            )
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(
-                    if (response.code() == 401) AuthError.InvalidTwoFACode
-                    else retrofit2.HttpException(response)
-                )
-            }
-            val loginResp = response.body()
-                ?: return@withContext Result.failure(IllegalStateException("Empty recovery verify response"))
-
-            val accessToken = loginResp.accessToken
-                ?: return@withContext Result.failure(IllegalStateException("Recovery verify missing access_token"))
-            val refreshToken = loginResp.refreshToken
-                ?: return@withContext Result.failure(IllegalStateException("Recovery verify missing refresh_token"))
-
-            sessionRepository.onTokensRefreshed(accessToken, refreshToken)
-
-            val profileResponse = mobileApiService.getProfile()
-            if (!profileResponse.isSuccessful) {
-                return@withContext Result.failure(retrofit2.HttpException(profileResponse))
-            }
-            val userProfile = profileResponse.body()!!
-            sessionRepository.onProfileLoaded(
-                phone = userProfile.phone ?: "",
-                role = userProfile.role ?: "PATIENT"
-            )
-
-            Result.success(
-                LoginOutcome.Success(
-                    user = UserDto(
-                        id = userProfile.id,
-                        phone = userProfile.phone ?: "",
-                        fullName = userProfile.fullName ?: "",
-                        role = userProfile.role ?: "PATIENT",
-                        dateOfBirth = userProfile.dateOfBirth,
-                        biometricEnabled = userProfile.biometricEnabled ?: false,
-                        telegramChatId = userProfile.telegramChatId,
-                        clinicId = userProfile.clinicId
-                    )
-                )
-            )
-        } catch (e: Exception) {
-            Timber.e("verify2FARecovery error: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
 
     /**
      * Perform physical or bio authorization verification.
@@ -452,11 +402,8 @@ class AuthRepository(
                 return@withContext Result.failure(retrofit2.HttpException(profileResponse))
             }
             val userProfile = profileResponse.body()!!
-            sessionRepository.onProfileLoaded(
-                phone = userProfile.phone ?: "",
-                role = userProfile.role ?: "PATIENT"
-            )
-
+            // BUILD-FIX: onProfileLoaded takes the cached UserEntity (the old
+            // phone/role argument list never matched the SessionRepository API).
             val cachedUser = UserEntity(
                 phone = userProfile.phone ?: "",
                 fullName = userProfile.fullName ?: "",
@@ -465,6 +412,8 @@ class AuthRepository(
                 biometricEnabled = userProfile.biometricEnabled ?: false,
                 telegramChatId = userProfile.telegramChatId
             )
+            sessionRepository.onProfileLoaded(cachedUser)
+
             val existing = userDao.getUserByPhone(cachedUser.phone)
             if (existing == null) {
                 userDao.insertUser(cachedUser)
@@ -493,55 +442,31 @@ class AuthRepository(
     /**
      * Links telegram notifications to this user profile.
      *
-     * High-4 audit fix: now actually called from PatientViewModel.linkTelegramChatId
-     * (previously the ViewModel used `delay(800)` to simulate the API call).
+     * M-CONTRACT-FIX: the backend removed the
+     * POST /api/v1/users/telegram/link and /unlink routes together with
+     * the legacy API (they returned HTTP 404). Telegram linking now
+     * happens exclusively through the Telegram bot deep-link (/start), so
+     * this fails fast with an explanatory message instead of making a
+     * doomed network call.
      */
     suspend fun linkTelegram(telegramId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val token = sessionRepository.accessToken ?: return@withContext Result.failure(Exception("Не авторизован"))
-            val response = apiService.linkTelegram(telegramId)
-            if (response.isSuccessful) {
-                // Update local DB cache as well
-                sessionRepository.phone?.let { phone ->
-                    userDao.getUserByPhone(phone)?.let { user ->
-                        userDao.updateUser(user.copy(telegramChatId = telegramId))
-                    }
-                }
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Ошибка привязки Telegram: Код ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        Result.failure(
+            UnsupportedOperationException(
+                "Привязка Telegram выполняется через бота (команда /start). API-эндпоинт удалён на сервере."
+            )
+        )
     }
 
     /**
-     * High-4 audit fix: unlinks telegram notifications from this user profile.
-     *
-     * Calls POST /api/v1/users/telegram/unlink on the backend, then clears
-     * the local DB cache. Previously the ViewModel used `delay(600)` to
-     * simulate this — the backend was never notified, so the user kept
-     * receiving Telegram notifications even after "unlinking".
+     * M-CONTRACT-FIX: see [linkTelegram] — the unlink API endpoint no
+     * longer exists on the backend.
      */
     suspend fun unlinkTelegram(): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val token = sessionRepository.accessToken ?: return@withContext Result.failure(Exception("Не авторизован"))
-            val response = apiService.unlinkTelegram()
-            if (response.isSuccessful) {
-                // Clear local DB cache
-                sessionRepository.phone?.let { phone ->
-                    userDao.getUserByPhone(phone)?.let { user ->
-                        userDao.updateUser(user.copy(telegramChatId = null))
-                    }
-                }
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Ошибка отвязки Telegram: Код ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        Result.failure(
+            UnsupportedOperationException(
+                "Отвязка Telegram выполняется через бота. API-эндпоинт удалён на сервере."
+            )
+        )
     }
 
     /**
@@ -591,7 +516,7 @@ class AuthRepository(
             val request = okhttp3.Request.Builder()
                 .url(com.aistudio.clinicsystem.BuildConfig.BASE_URL.trimEnd('/') + "/api/v1/telegram-integration/send-notification")
                 .post(okhttp3.RequestBody.create(
-                    okhttp3.MediaType.get("application/json; charset=utf-8"),
+                    "application/json; charset=utf-8".toMediaType(),
                     body,
                 ))
                 .addHeader("Authorization", "Bearer $token")
@@ -601,7 +526,7 @@ class AuthRepository(
                 if (response.isSuccessful) {
                     Result.success(Unit)
                 } else {
-                    Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+                    Result.failure(Exception("HTTP ${response.code}: ${response.message}"))
                 }
             }
         } catch (e: Exception) {

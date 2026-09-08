@@ -117,6 +117,10 @@ fun MedicalHistoryCardItem(
         }
     }
 
+    // BUILD-FIX: stringResource() is composable — resolve it in composition
+    // and let the plain helper function capture the value.
+    val shareReportLabel = stringResource(R.string.med_share_report)
+
     fun shareFileContent(text: String) {
         try {
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -124,7 +128,7 @@ fun MedicalHistoryCardItem(
                 putExtra(android.content.Intent.EXTRA_TITLE, context.getString(R.string.med_share_intent_title, record.visitDate))
                 putExtra(android.content.Intent.EXTRA_TEXT, text)
             }
-            context.startActivity(android.content.Intent.createChooser(intent, stringResource(R.string.med_share_report)))
+            context.startActivity(android.content.Intent.createChooser(intent, shareReportLabel))
         } catch (e: Exception) {
             // share fails safely
         }

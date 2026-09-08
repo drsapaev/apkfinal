@@ -23,7 +23,7 @@ kotlin = "2.1.0"
 composeBom = "2025.04.00"
 googleDevtoolsKsp = "2.1.0-1.0.29"
 # Stage 2.1: Hilt DI — replaces manual singleton wiring
-hilt = "2.51.1"
+hilt = "2.56.2"
 hiltNavigationCompose = "1.2.0"
 hiltWork = "1.2.0"
 hiltCompiler = "1.2.0"
@@ -154,6 +154,10 @@ profileinstaller = { group = "androidx.profileinstaller", name = "profileinstall
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+# BUILD-FIX: the Kotlin Android plugin itself was never declared/applied —
+# only the Compose compiler plugin (which requires Kotlin to be applied
+# first). Without it the app module has no compileDebugKotlin task at all.
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDevtoolsKsp" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

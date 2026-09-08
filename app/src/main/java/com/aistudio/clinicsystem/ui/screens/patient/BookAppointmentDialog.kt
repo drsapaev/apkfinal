@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -251,7 +253,8 @@ fun BookAppointmentDialog(
                             TimeSlotButton(
                                 slot = slot,
                                 isSelected = selectedTimeSlot == slot,
-                                onSelect = onSelectTimeSlot
+                                onSelect = onSelectTimeSlot,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
@@ -264,7 +267,8 @@ fun BookAppointmentDialog(
                             TimeSlotButton(
                                 slot = slot,
                                 isSelected = selectedTimeSlot == slot,
-                                onSelect = onSelectTimeSlot
+                                onSelect = onSelectTimeSlot,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
@@ -303,7 +307,7 @@ fun BookAppointmentDialog(
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier.minimumInteractiveComponentSize()
+                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                     ) {
                         Text(stringResource(R.string.ui_otmena), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -315,7 +319,7 @@ fun BookAppointmentDialog(
                         shape = RoundedCornerShape(Radius.medium),
                         modifier = Modifier
                             .testTag("confirm_booking_button")
-                            .minimumInteractiveComponentSize()
+                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                     ) {
                         if (isBookingInProgress) {
                             CircularProgressIndicator(
@@ -338,12 +342,12 @@ private fun TimeSlotButton(
     slot: String,
     isSelected: Boolean,
     onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
     tealPrimary: Color = MaterialTheme.colorScheme.primary
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .clip(RoundedCornerShape(Radius.small))
             .background(if (isSelected) tealPrimary else MaterialTheme.colorScheme.surfaceVariant)
             .clickable { onSelect(slot) }

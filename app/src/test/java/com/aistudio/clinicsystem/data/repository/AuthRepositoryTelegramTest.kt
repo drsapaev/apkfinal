@@ -1,12 +1,11 @@
 package com.aistudio.clinicsystem.data.repository
 
 import androidx.test.core.app.ApplicationProvider
-import com.aistudio.clinicsystem.data.api.ApiService
 import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.data.session.SessionRepository
-import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -23,17 +22,17 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
 /**
- * High-4 audit fix: unit tests for AuthRepository Telegram integration methods.
+ * Unit tests for AuthRepository Telegram integration methods.
  *
- * Verifies that linkTelegram / unlinkTelegram / sendTestTelegramNotification
- * actually call the backend (no `delay()` simulation) and propagate errors
- * correctly.
+ * M-CONTRACT-FIX: the backend removed POST /api/v1/users/telegram/link and
+ * /unlink together with the legacy API (they would return HTTP 404). The
+ * repository now FAILS FAST for linkTelegram / unlinkTelegram with an
+ * explanatory error instead of making a doomed network call. These tests
+ * pin that contract.
  *
- * Strategy:
- *  - MockWebServer for the sendTestTelegramNotification OkHttp call.
- *  - mockk ApiService for linkTelegram / unlinkTelegram (Retrofit interface).
- *  - Real in-memory Room DB for user cache verification.
- *  - mockk SessionRepository for token + phone access.
+ * sendTestTelegramNotification still hits the live
+ * /api/v1/telegram-integration/send-notification route via OkHttp
+ * (MockWebServer here).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
@@ -43,7 +42,6 @@ class AuthRepositoryTelegramTest {
     private lateinit var repository: AuthRepository
     private lateinit var context: android.content.Context
     private lateinit var database: ClinicDatabase
-    private lateinit var apiService: ApiService
     private lateinit var sessionRepository: SessionRepository
 
     @Before
@@ -56,12 +54,11 @@ class AuthRepositoryTelegramTest {
             ClinicDatabase::class.java,
         ).allowMainThreadQueries().build()
 
-        apiService = mockk(relaxed = true)
         sessionRepository = mockk(relaxed = true)
 
         // Default: session has a token + phone
-        io.mockk.every { sessionRepository.accessToken } returns "fake-test-token"
-        io.mockk.every { sessionRepository.phone } returns "+77771112233"
+        every { sessionRepository.accessToken } returns "fake-test-token"
+        every { sessionRepository.phone } returns "+77771112233"
 
         // Seed a user with Telegram linked
         runBlocking {
@@ -87,7 +84,6 @@ class AuthRepositoryTelegramTest {
             context = context,
             database = database,
             mobileApiService = mobileApiService,
-            apiService = apiService,
             sessionRepository = sessionRepository,
         )
     }
@@ -101,65 +97,23 @@ class AuthRepositoryTelegramTest {
     // ─── linkTelegram ────────────────────────────────────────────────
 
     @Test
-    fun `linkTelegram success returns Result success`() = runBlocking {
-        coEvery { apiService.linkTelegram(any()) } returns retrofit2.Response.success(Unit)
-
+    fun `linkTelegram fails fast — endpoint removed from backend`() = runBlocking {
         val result = repository.linkTelegram("999999")
 
-        assertTrue("linkTelegram should succeed on HTTP 200", result.isSuccess)
-    }
-
-    @Test
-    fun `linkTelegram failure when not authenticated`() = runBlocking {
-        io.mockk.every { sessionRepository.accessToken } returns null
-
-        val result = repository.linkTelegram("999999")
-
-        assertTrue("linkTelegram should fail when not authenticated", result.isFailure)
-    }
-
-    @Test
-    fun `linkTelegram failure on HTTP error`() = runBlocking {
-        coEvery { apiService.linkTelegram(any()) } returns retrofit2.Response.error(
-            400,
-            okhttp3.ResponseBody.create(null, "Bad Request"),
+        assertTrue("linkTelegram must fail (endpoint removed on backend)", result.isFailure)
+        assertTrue(
+            "Failure must explain that Telegram linking happens via the bot",
+            result.exceptionOrNull()?.message?.contains("бот", ignoreCase = true) == true,
         )
-
-        val result = repository.linkTelegram("999999")
-
-        assertTrue("linkTelegram should fail on HTTP 400", result.isFailure)
     }
 
     // ─── unlinkTelegram ──────────────────────────────────────────────
 
     @Test
-    fun `unlinkTelegram success returns Result success`() = runBlocking {
-        coEvery { apiService.unlinkTelegram() } returns retrofit2.Response.success(Unit)
-
+    fun `unlinkTelegram fails fast — endpoint removed from backend`() = runBlocking {
         val result = repository.unlinkTelegram()
 
-        assertTrue("unlinkTelegram should succeed on HTTP 200", result.isSuccess)
-    }
-
-    @Test
-    fun `unlinkTelegram failure when not authenticated`() = runBlocking {
-        io.mockk.every { sessionRepository.accessToken } returns null
-
-        val result = repository.unlinkTelegram()
-
-        assertTrue("unlinkTelegram should fail when not authenticated", result.isFailure)
-    }
-
-    @Test
-    fun `unlinkTelegram failure on HTTP error`() = runBlocking {
-        coEvery { apiService.unlinkTelegram() } returns retrofit2.Response.error(
-            500,
-            okhttp3.ResponseBody.create(null, "Internal Server Error"),
-        )
-
-        val result = repository.unlinkTelegram()
-
-        assertTrue("unlinkTelegram should fail on HTTP 500", result.isFailure)
+        assertTrue("unlinkTelegram must fail (endpoint removed on backend)", result.isFailure)
     }
 
     // ─── sendTestTelegramNotification ────────────────────────────────
@@ -202,7 +156,7 @@ class AuthRepositoryTelegramTest {
 
     @Test
     fun `sendTestTelegramNotification failure when not authenticated`() = runBlocking {
-        io.mockk.every { sessionRepository.accessToken } returns null
+        every { sessionRepository.accessToken } returns null
 
         val result = repository.sendTestTelegramNotification()
 

@@ -66,7 +66,6 @@ interface ClinicRepositoryInterface {
         doctorName: String,
         diagnosis: String,
         prescription: String,
-        visitDate: String,
         recommendations: String,
     ): com.aistudio.clinicsystem.data.db.MedicalRecordEntity
     suspend fun fetchMedicalRecordsFromServer(
@@ -76,7 +75,10 @@ interface ClinicRepositoryInterface {
     ): List<com.aistudio.clinicsystem.data.db.MedicalRecordEntity>
 
     // ── Queue Operations ──
-    suspend fun registerInQueue(appointmentId: String): retrofit2.Response<com.aistudio.clinicsystem.data.api.QueueDto>
+    // M-CONTRACT-FIX: the backend removed POST /api/v1/queue/register —
+    // implementations throw UnsupportedOperationException and callers fall
+    // back to the local queue snapshot.
+    suspend fun registerInQueue(appointmentId: String)
 
     // ── Outbox Operations ──
     suspend fun dismissPendingSync(sync: com.aistudio.clinicsystem.data.db.PendingSyncEntity)

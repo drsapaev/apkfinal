@@ -6,7 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import okhttp3.mockwebserver.MockWebServerExtensions
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
