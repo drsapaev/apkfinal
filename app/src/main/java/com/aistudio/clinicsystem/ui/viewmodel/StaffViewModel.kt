@@ -51,6 +51,66 @@ class StaffViewModel
                     com.aistudio.clinicsystem.domain.model.UserRole.PATIENT,
                 )
 
+        // TASK-9: clinical patient registry (GET /api/v1/patients) — separate
+        // from the local auth-user table and from the Admin system-users list.
+        private val _patientRegistry =
+            MutableStateFlow<List<com.aistudio.clinicsystem.data.api.StaffPatientDto>>(emptyList())
+        val patientRegistry: StateFlow<List<com.aistudio.clinicsystem.data.api.StaffPatientDto>> =
+            _patientRegistry.asStateFlow()
+
+        private val _registryQuery = MutableStateFlow("")
+        val registryQuery: StateFlow<String> = _registryQuery.asStateFlow()
+
+        private val _registryLoading = MutableStateFlow(false)
+        val registryLoading: StateFlow<Boolean> = _registryLoading.asStateFlow()
+
+        private val _registryError = MutableStateFlow<String?>(null)
+        val registryError: StateFlow<String?> = _registryError.asStateFlow()
+
+        /** True when the loaded page is the last available one. */
+        private var registryExhausted = false
+
+        fun setRegistryQuery(query: String) {
+            _registryQuery.value = query
+            searchRegistry(query, loadMore = false)
+        }
+
+        fun loadMoreRegistryPatients() {
+            if (_registryLoading.value || registryExhausted) return
+            searchRegistry(_registryQuery.value, loadMore = true)
+        }
+
+        private fun searchRegistry(
+            query: String,
+            loadMore: Boolean,
+        ) {
+            viewModelScope.launch {
+                _registryLoading.value = true
+                _registryError.value = null
+                try {
+                    val skip = if (loadMore) _patientRegistry.value.size else 0
+                    val response =
+                        apiService.searchPatients(
+                            q = query.ifBlank { null },
+                            skip = skip,
+                            limit = 50,
+                        )
+                    if (response.isSuccessful) {
+                        val page = response.body() ?: emptyList()
+                        registryExhausted = page.size < 50
+                        _patientRegistry.value =
+                            if (loadMore) _patientRegistry.value + page else page
+                    } else {
+                        _registryError.value = "HTTP ${response.code()}"
+                    }
+                } catch (e: Exception) {
+                    _registryError.value = e.message ?: "Ошибка сети"
+                } finally {
+                    _registryLoading.value = false
+                }
+            }
+        }
+
         // TASK-2: one-shot staff console messages for Snackbar surfacing of
         // the real write outcomes (confirmed / queued / rejected).
         private val _staffMessageEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)

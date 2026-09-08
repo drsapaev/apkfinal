@@ -73,6 +73,20 @@ interface ApiService {
         @Query("limit") limit: Int = 1,
     ): Response<List<StaffPatientDto>>
 
+    /**
+     * TASK-9: clinical patient REGISTRY search (GET /api/v1/patients?q=…).
+     * Separate from auth accounts — this is the clinical directory the
+     * registrar/doctor actually works with. Supports partial search by
+     * name/phone and pagination via skip/limit.
+     */
+    @GET("api/v1/patients/")
+    suspend fun searchPatients(
+        @Query("q") q: String? = null,
+        @Query("phone") phone: String? = null,
+        @Query("skip") skip: Int = 0,
+        @Query("limit") limit: Int = 50,
+    ): Response<List<StaffPatientDto>>
+
     // --- Queues (staff) ---
 
     /** Public specialists list for the QR queue console. */
