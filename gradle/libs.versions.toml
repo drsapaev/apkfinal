@@ -67,7 +67,7 @@ roborazzi = "1.59.0"
 secretsGradlePlugin = "2.0.1"
 workRuntime = "2.9.1"
 ktlint = "12.1.1"
-detekt = "1.23.7"
+detekt = "1.23.8"
 jacoco = "0.8.12"
 
 # Stage 0.3: Jacoco coverage gate
