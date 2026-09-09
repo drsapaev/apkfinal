@@ -172,7 +172,8 @@ class ClinicWebSocketClient
             // minSdk is 24 — use the always-available java.text formatter.
             val today =
                 if (targetDate.isBlank()) {
-                    java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    java.text
+                        .SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
                         .format(java.util.Date())
                 } else {
                     targetDate
