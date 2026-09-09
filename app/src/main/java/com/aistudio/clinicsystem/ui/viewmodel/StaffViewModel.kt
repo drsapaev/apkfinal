@@ -744,14 +744,26 @@ class StaffViewModel
                 // TASK-7: reorder through the SERVER. The local cache is
                 // replaced from the server response only — a failed move
                 // never changes the confirmed order locally.
-                val snapshots = database.queueSnapshotDao().getAllQueueSnapshots().sortedBy { it.position }
-                val index = snapshots.indexOfFirst { it.id == snapshotId }
+                val all = database.queueSnapshotDao().getAllQueueSnapshots()
+                val target = all.find { it.id == snapshotId } ?: return@launch
+                // Codex P1 (#150): adjacency is computed ONLY within the
+                // entry's own queue (same specialist / queue / day) — the
+                // table mixes several specialists, and a global sort would
+                // submit an unrelated new_position to the server.
+                val ownQueue =
+                    all
+                        .filter {
+                            it.specialistId == target.specialistId &&
+                                it.queueId == target.queueId &&
+                                it.day == target.day
+                        }.sortedBy { it.position }
+                val index = ownQueue.indexOfFirst { it.id == snapshotId }
                 if (index == -1) return@launch
 
                 val targetPosition =
                     when {
-                        up && index > 0 -> snapshots[index - 1].position
-                        !up && index < snapshots.size - 1 -> snapshots[index + 1].position
+                        up && index > 0 -> ownQueue[index - 1].position
+                        !up && index < ownQueue.size - 1 -> ownQueue[index + 1].position
                         else -> return@launch
                     }
                 val ok = repository.moveQueueEntryOnServer(snapshotId, targetPosition)

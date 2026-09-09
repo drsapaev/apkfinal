@@ -632,11 +632,43 @@ class ClinicWebSocketClient
                     }
 
                     val activeQueueList = event.data!!.queue
-                    Timber.i("Queue snapshot length: ${activeQueueList.size}")
+                    Timber.i("Queue snapshot length: ${activeQueueList.size} (room=$room)")
 
-                    // FULL SNAPSHOT — clear and store real-time queue snapshots
-                    // inside the Room cache
-                    database.queueSnapshotDao().clearQueueSnapshots()
+                    // Codex P1 (#150): a full snapshot belongs to the ROOM it
+                    // was broadcast to — `specialist_{id}::{date}`. It must
+                    // replace ONLY that specialist's cached rows; clearing the
+                    // whole table would erase every other doctor's actionable
+                    // queue entries.
+                    val specialistMatch = Regex("^specialist_(\\d+)::(.+)$").find(room)
+                    if (specialistMatch == null) {
+                        // Unknown room (e.g. the legacy "general") — the
+                        // snapshot cannot be attributed to a queue. Keep the
+                        // cache intact and re-read the affected queue via REST.
+                        Timber.w("Queue snapshot for non-specialist room %s — REST re-read scheduled", room)
+                        database.syncLogDao().insertLog(
+                            com.aistudio.clinicsystem.data.db.SyncLogEntity(
+                                logMessage = "⚡ Снимок очереди для комнаты $room не привязан к специалисту — перечитываем через REST.",
+                                direction = "SYSTEM_SYNC",
+                            ),
+                        )
+                        _partialQueueEvents.tryEmit(room)
+                        return@launch
+                    }
+                    val specialistId = specialistMatch.groupValues[1].toInt()
+                    val snapshotDay = specialistMatch.groupValues[2]
+                    // Carry the REST-established queue identity (queue_id) so
+                    // WS and REST refreshes stay the same logical queue.
+                    val previousRows =
+                        database
+                            .queueSnapshotDao()
+                            .getAllQueueSnapshots()
+                            .filter { it.specialistId == specialistId }
+                    val carriedQueueId = previousRows.firstOrNull()?.queueId
+                    val carriedDay = previousRows.firstOrNull()?.day?.takeIf { it.isNotBlank() } ?: snapshotDay
+
+                    // FULL SNAPSHOT for THIS room — replace that specialist's
+                    // rows inside the Room cache (identity fields preserved).
+                    database.queueSnapshotDao().deleteBySpecialist(specialistId)
                     val snapshotsList =
                         activeQueueList.map { dto ->
                             com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
@@ -646,6 +678,9 @@ class ClinicWebSocketClient
                                 position = dto.position,
                                 status = dto.status,
                                 timestamp = System.currentTimeMillis(),
+                                queueId = carriedQueueId,
+                                specialistId = specialistId,
+                                day = carriedDay,
                             )
                         }
                     database.queueSnapshotDao().insertQueueSnapshots(snapshotsList)

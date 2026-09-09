@@ -776,6 +776,20 @@ class ClinicRepository
 
                 when (outcome) {
                     is CreateOutcome.Rejected -> {
+                        if (isRetriableHttp(outcome.httpCode)) {
+                            // Codex P1 (#150): a retriable server failure
+                            // (500/503/408/429/401) is NOT a rejection — the
+                            // booking must stay queued and be replayed
+                            // verbatim later. Marking it rejected would turn
+                            // a temporary failure into a permanent loss.
+                            val queued = savedApp.copy(syncState = AppointmentEntity.SYNC_STATE_QUEUED)
+                            updateAppointment(queued)
+                            addSyncLog(
+                                "⏳ Сервер временно недоступен: HTTP ${outcome.httpCode}. Запись остаётся в очереди на доставку.",
+                                "SYSTEM_SYNC",
+                            )
+                            return queued
+                        }
                         // TASK-2: the server REFUSED the create (4xx). This is
                         // not network absence — retrying on another route is
                         // forbidden and retrying this route is pointless until
@@ -1021,6 +1035,9 @@ class ClinicRepository
                             doctorName = doctorName.ifBlank { local.doctorName },
                             specialty = specialty.ifBlank { local.specialty },
                             version = local.version + 1,
+                            // Codex P2 (#150): the server accepted the replay —
+                            // the row is no longer an unsent draft.
+                            syncState = AppointmentEntity.SYNC_STATE_CLEAN,
                             updatedAt = System.currentTimeMillis(),
                         ),
                     )
@@ -1036,6 +1053,10 @@ class ClinicRepository
             appointmentDao.updateAppointment(
                 local.copy(
                     version = local.version + 1,
+                    // Codex P2 (#150): a confirmed server write clears the
+                    // queued marker — later reconciliation must not keep
+                    // labelling the row as unsent.
+                    syncState = AppointmentEntity.SYNC_STATE_CLEAN,
                     updatedAt = System.currentTimeMillis(),
                 ),
             )
@@ -2052,49 +2073,26 @@ class ClinicRepository
                                 emptyList()
                             }
 
-                        val snapshotsList = mutableListOf<QueueSnapshotEntity>()
                         var anyQueueFetchSucceeded = false
                         for (specialist in specialists) {
-                            val statusResponse =
-                                try {
-                                    legacyApiService.getQueueStatus(specialist.id)
-                                } catch (e: Exception) {
-                                    addSyncLog("⚠️ Queue status #${specialist.id}: ${e.message}", "CLOUD_SYNC_SIMULATOR")
-                                    null
-                                }
-                            if (statusResponse == null || !statusResponse.isSuccessful) {
-                                statusResponse?.let {
-                                    addSyncLog("⚠️ Queue status #${specialist.id}: HTTP ${it.code()}.", "CLOUD_SYNC_SIMULATOR")
-                                }
-                                continue
-                            }
-                            anyQueueFetchSucceeded = true
-                            val status = statusResponse.body() ?: continue
-                            for (entry in status.entries) {
-                                snapshotsList.add(
-                                    QueueSnapshotEntity(
-                                        id = entry.id,
-                                        patientName = entry.patientName ?: "",
-                                        appointmentId = entry.id, // queue-entry id (no appointment linkage in QR queue)
-                                        position = entry.number,
-                                        status = normalizeQueueStatus(entry.status),
-                                        timestamp = System.currentTimeMillis(),
-                                    ),
-                                )
+                            // Codex P1 (#150): each specialist is refreshed
+                            // INDEPENDENTLY (delete their rows, insert fresh
+                            // ones with queueId/specialistId/day identity) —
+                            // a failed request for one specialist must NOT
+                            // erase another specialist's last known queue.
+                            if (refreshQueueForSpecialist(specialist.id)) {
+                                anyQueueFetchSucceeded = true
                             }
                         }
                         // CODEX-P2-FIX (PR #147): a successful-but-EMPTY result
                         // is a valid state (last patient left). Only transport
-                        // failures keep the previous cache; whenever at least one
-                        // specialist status request succeeded we REPLACE the
-                        // whole cache — including with an empty list — so stale
+                        // failures keep the previous cache; each successful
+                        // specialist status request replaces THAT specialist's
+                        // rows — including with an empty list — so stale
                         // entries never stay actionable in the staff console.
                         if (anyQueueFetchSucceeded) {
-                            addSyncLog("✓ Активная очередь: ${snapshotsList.size} пациент(ов) у специалистов.", "CLOUD_SYNC_SIMULATOR")
-                            database.withTransaction {
-                                queueSnapshotDao.clearQueueSnapshots()
-                                queueSnapshotDao.insertQueueSnapshots(snapshotsList)
-                            }
+                            val total = queueSnapshotDao.getAllQueueSnapshots().size
+                            addSyncLog("✓ Активная очередь: $total пациент(ов) у специалистов.", "CLOUD_SYNC_SIMULATOR")
                             addSyncLog("✓ Очередь закэширована в локальную базу данных (доступно оффлайн)", "CLOUD_SYNC_SIMULATOR")
                         }
 
@@ -2122,7 +2120,11 @@ class ClinicRepository
                         while (true) {
                             val pageResponse = legacyApiService.getAppointments(limit = pageSize, skip = skip)
                             if (!pageResponse.isSuccessful || pageResponse.body() == null) {
-                                if (skip == 0) fetchFailed = true
+                                // Codex P2 (#150): ANY failed page fails the
+                                // whole fetch — reconciling a partial list
+                                // would hide later-page appointments while
+                                // reporting a successful sync.
+                                fetchFailed = true
                                 break
                             }
                             val page = pageResponse.body()!!
@@ -2145,7 +2147,10 @@ class ClinicRepository
                                 .recordSuccess(latency)
                             return true
                         } else {
-                            addSyncLog("⚠️ Сервер недоступен: не удалось загрузить первую страницу приёмов.", "CLOUD_SYNC_SIMULATOR")
+                            addSyncLog(
+                                "⚠️ Сервер недоступен: не удалось загрузить страницу приёмов (skip=$skip). Частичная синхронизация не выполняется.",
+                                "CLOUD_SYNC_SIMULATOR",
+                            )
                             com.aistudio.clinicsystem.utils.SyncMetricsManager
                                 .recordFailure()
                         }

@@ -10,6 +10,8 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.data.session.SessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -78,25 +80,43 @@ class PatientViewModel
         private val _slotsLoading = MutableStateFlow(false)
         val slotsLoading: StateFlow<Boolean> = _slotsLoading.asStateFlow()
 
+        // Codex P2 (#150): a rapidly changing doctor/date launches concurrent
+        // requests — without cancelling the previous job, whichever completes
+        // last would overwrite the slots even if it belongs to an earlier
+        // selection (slots for the WRONG doctor/day shown and submittable).
+        private var slotsJob: Job? = null
+
         fun loadTimeSlots(
             doctorServerId: Int?,
             date: String,
         ) {
             if (doctorServerId == null) {
+                slotsJob?.cancel()
                 _availableTimeSlots.value = emptyList()
                 return
             }
-            viewModelScope.launch {
-                _slotsLoading.value = true
-                try {
-                    _availableTimeSlots.value =
-                        doctorRepository.getAvailableTimeSlots(doctorServerId, date)
-                } catch (e: Exception) {
-                    _availableTimeSlots.value = emptyList()
-                } finally {
-                    _slotsLoading.value = false
+            slotsJob?.cancel()
+            slotsJob =
+                viewModelScope.launch {
+                    _slotsLoading.value = true
+                    try {
+                        _availableTimeSlots.value =
+                            doctorRepository.getAvailableTimeSlots(doctorServerId, date)
+                    } catch (e: CancellationException) {
+                        // A newer selection took over — never publish stale
+                        // results and never swallow the cancellation signal.
+                        throw e
+                    } catch (e: Exception) {
+                        _availableTimeSlots.value = emptyList()
+                    } finally {
+                        // Only the CURRENT slots job may clear the loading
+                        // flag — a cancelled job must not clobber the new
+                        // job's in-progress state.
+                        if (coroutineContext[Job] === slotsJob) {
+                            _slotsLoading.value = false
+                        }
+                    }
                 }
-            }
         }
 
         // TASK-4: doctor directory load state — loading / error / retry, so
