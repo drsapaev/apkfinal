@@ -11,7 +11,6 @@ import org.junit.Test
  * retriable through the outbox.
  */
 class OutboxHttpClassificationTest {
-
     @Test
     fun `403 is a rejection, not network absence`() {
         assertFalse(OutboxRouting.isRetriableHttp(403))

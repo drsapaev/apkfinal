@@ -14,7 +14,6 @@ import org.junit.Test
  * buttons only recognize "PENDING"/"APPROVED"/….
  */
 class ServerStatusMapperTest {
-
     // ── fromServer: what gets cached after a sync ────────────────────────
 
     @Test

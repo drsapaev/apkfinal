@@ -12,7 +12,6 @@ import org.junit.Test
  * EMR id (serverId == null) is a local draft by definition.
  */
 class EmrAccessPolicyTest {
-
     @Test
     fun `doctor may attempt EMR save`() {
         assertTrue(EmrAccessPolicy.canAttemptEmr("Doctor"))

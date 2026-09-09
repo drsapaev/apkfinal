@@ -122,7 +122,7 @@ class MedicalHistoryCardItemTest {
         }
 
         // P-25 fix: Share button visible when expanded
-        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_podelitsya)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_share)).assertIsDisplayed()
     }
 
     @Test

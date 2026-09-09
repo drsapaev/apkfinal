@@ -10,7 +10,6 @@ import org.junit.Test
  * mobile contract — even after server rejections or offline restarts.
  */
 class OutboxRoutingTest {
-
     // ── UPDATE_STATUS actor parsing ──────────────────────────────────────
 
     @Test
