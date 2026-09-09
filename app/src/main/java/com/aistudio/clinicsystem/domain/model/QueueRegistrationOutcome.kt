@@ -7,8 +7,12 @@ package com.aistudio.clinicsystem.domain.model
  */
 sealed class QueueRegistrationOutcome {
     /** Server created the ticket(s); [numbers] are the issued queue numbers. */
-    data class Registered(val numbers: List<Int>) : QueueRegistrationOutcome()
+    data class Registered(
+        val numbers: List<Int>,
+    ) : QueueRegistrationOutcome()
 
     /** Server refused / network down / missing data — nothing was created. */
-    data class Failed(val reason: String) : QueueRegistrationOutcome()
+    data class Failed(
+        val reason: String,
+    ) : QueueRegistrationOutcome()
 }

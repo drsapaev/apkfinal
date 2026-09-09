@@ -265,7 +265,9 @@ fun MedicalHistoryCardItem(
                         // TASK-3: a record without a server-side EMR behind it
                         // is a LOCAL DRAFT — never presented as a saved
                         // medical record.
-                        if (com.aistudio.clinicsystem.domain.model.EmrAccessPolicy.isLocalDraft(record)) {
+                        if (com.aistudio.clinicsystem.domain.model.EmrAccessPolicy
+                                .isLocalDraft(record)
+                        ) {
                             Text(
                                 text = "Локальный черновик (не в EMR)",
                                 fontSize = AppFontSize.caption,

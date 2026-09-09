@@ -12,7 +12,6 @@ package com.aistudio.clinicsystem.domain.model
  * Android/Robolectric.
  */
 object EmrAccessPolicy {
-
     private val DOCTOR_FAMILY_ROLES =
         setOf(
             "DOCTOR",

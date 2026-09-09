@@ -199,4 +199,5 @@ class DoctorRepository
          * A clean installation now shows the REAL directory from the backend
          * or an explicit loading/empty/error state — never fictitious
          * doctors that a patient could book.
-         */    }
+         */
+    }

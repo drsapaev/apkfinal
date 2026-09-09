@@ -151,8 +151,9 @@ private fun PatientQueuePositionRow(position: PatientQueuePosition) {
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = position.doctorName.ifBlank { "Очередь" } +
-                    if (position.specialty.isNotBlank()) " · ${position.specialty}" else "",
+                text =
+                    position.doctorName.ifBlank { "Очередь" } +
+                        if (position.specialty.isNotBlank()) " · ${position.specialty}" else "",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -199,7 +200,9 @@ private fun statusText(status: String): String =
 @Composable
 private fun statusColor(status: String): androidx.compose.ui.graphics.Color =
     when (status.lowercase()) {
-        "ready" -> androidx.compose.ui.graphics.Color(0xFF2E7D32)
+        "ready" ->
+            androidx.compose.ui.graphics
+                .Color(0xFF2E7D32)
         "waiting" -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }

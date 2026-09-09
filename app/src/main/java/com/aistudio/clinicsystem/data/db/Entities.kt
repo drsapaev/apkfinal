@@ -66,13 +66,11 @@ data class AppointmentEntity(
     val clientRequestId: String? = null,
     val version: Int = 1, // increments on every local mutation; used for conflict resolution
     val etag: String? = null, // server-assigned ETag (optional, for cache validation)
-    /**
-     * TASK-2: local sync state of the row, so the UI can tell a confirmed
-     * appointment apart from a queued draft and from a server-rejected edit:
-     *   ""        — clean: the server has acknowledged the current state
-     *   "QUEUED"  — local change not yet delivered (offline / retrying)
-     *   "REJECTED" — the server refused the last change (HTTP 4xx)
-     */
+    // TASK-2: local sync state of the row, so the UI can tell a confirmed
+    // appointment apart from a queued draft and from a server-rejected edit:
+    //   ""         — clean: the server has acknowledged the current state
+    //   "QUEUED"   — local change not yet delivered (offline / retrying)
+    //   "REJECTED" — the server refused the last change (HTTP 4xx)
     val syncState: String = "",
 ) {
     companion object {

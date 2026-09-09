@@ -37,7 +37,10 @@ class PatientViewModel
         // empty response clears old positions; a failed fetch keeps the last
         // data and flags it stale.
         private val _queueState =
-            MutableStateFlow(com.aistudio.clinicsystem.domain.model.PatientQueueUiState())
+            MutableStateFlow(
+                com.aistudio.clinicsystem.domain.model
+                    .PatientQueueUiState(),
+            )
         val queueState: StateFlow<com.aistudio.clinicsystem.domain.model.PatientQueueUiState> =
             _queueState.asStateFlow()
 
@@ -75,7 +78,10 @@ class PatientViewModel
         private val _slotsLoading = MutableStateFlow(false)
         val slotsLoading: StateFlow<Boolean> = _slotsLoading.asStateFlow()
 
-        fun loadTimeSlots(doctorServerId: Int?, date: String) {
+        fun loadTimeSlots(
+            doctorServerId: Int?,
+            date: String,
+        ) {
             if (doctorServerId == null) {
                 _availableTimeSlots.value = emptyList()
                 return

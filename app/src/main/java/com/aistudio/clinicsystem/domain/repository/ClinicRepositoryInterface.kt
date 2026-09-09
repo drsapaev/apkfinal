@@ -38,6 +38,7 @@ interface ClinicRepositoryInterface {
     suspend fun deleteAppointment(id: String)
 
     // ── Appointment Sync Operations ──
+
     /**
      * TASK-1: patient self-booking. Books the signed-in patient for
      * themselves via the mobile contract; retried exclusively on the

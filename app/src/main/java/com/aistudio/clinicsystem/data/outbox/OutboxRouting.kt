@@ -16,7 +16,6 @@ package com.aistudio.clinicsystem.data.outbox
  * tested on the JVM without Android/Robolectric.
  */
 object OutboxRouting {
-
     /** Recorded actor of an UPDATE_STATUS row. */
     const val ACTOR_SELF = "SELF"
     const val ACTOR_STAFF = "STAFF"
@@ -62,7 +61,10 @@ object OutboxRouting {
      * staff PUT (the only route for staff status changes, including approve /
      * complete / cancel by registrar or doctor).
      */
-    fun statusRoute(actor: String, status: String): StatusRoute =
+    fun statusRoute(
+        actor: String,
+        status: String,
+    ): StatusRoute =
         if (actor == ACTOR_SELF && status.uppercase() == "CANCELLED") {
             StatusRoute.MOBILE_CANCEL
         } else {

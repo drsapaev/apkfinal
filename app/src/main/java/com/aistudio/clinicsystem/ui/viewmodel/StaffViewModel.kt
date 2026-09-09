@@ -223,6 +223,7 @@ class StaffViewModel
 
         val draftCreatePatientPhone = MutableStateFlow(prefs.getString("draft_create_patient_phone", "") ?: "")
         val draftCreatePatientName = MutableStateFlow(prefs.getString("draft_create_patient_name", "") ?: "")
+
         // TASK-4: no hardcoded default doctor — the registrar must pick a
         // real doctor from the synced directory.
         val draftCreateDoctorSelected =
@@ -237,10 +238,12 @@ class StaffViewModel
                 )
                     ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry),
             )
+
         // TASK-4: default to TODAY — the fixed "2026-06-10" let registrars
         // silently create appointments in the past.
         private val todayDateStr: String =
-            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            java.text
+                .SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
                 .format(java.util.Date())
         val draftCreateDate = MutableStateFlow(prefs.getString("draft_create_date", todayDateStr) ?: todayDateStr)
         val draftCreateTime = MutableStateFlow(prefs.getString("draft_create_time", "10:00") ?: "10:00")

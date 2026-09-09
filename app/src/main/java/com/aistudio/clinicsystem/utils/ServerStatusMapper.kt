@@ -19,7 +19,6 @@ package com.aistudio.clinicsystem.utils
  * sends a status to the server MUST go through [toServer].
  */
 object ServerStatusMapper {
-
     /** Client ("PENDING") → backend ("scheduled"). Unknown → lowercase passthrough. */
     fun toServer(clientStatus: String): String =
         when (clientStatus.uppercase()) {

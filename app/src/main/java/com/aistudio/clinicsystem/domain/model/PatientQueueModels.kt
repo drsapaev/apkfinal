@@ -31,11 +31,15 @@ data class PatientQueueUiState(
 
 /** TASK-6: result of a queue-position fetch — empty vs error are different. */
 sealed class PatientQueueFetchResult {
-    data class Success(val positions: List<PatientQueuePosition>) : PatientQueueFetchResult()
+    data class Success(
+        val positions: List<PatientQueuePosition>,
+    ) : PatientQueueFetchResult()
 
     /** Server answered successfully: no active queue positions right now. */
     data object Empty : PatientQueueFetchResult()
 
     /** Transport or HTTP failure — stale data must be kept and flagged. */
-    data class Error(val cause: Exception) : PatientQueueFetchResult()
+    data class Error(
+        val cause: Exception,
+    ) : PatientQueueFetchResult()
 }

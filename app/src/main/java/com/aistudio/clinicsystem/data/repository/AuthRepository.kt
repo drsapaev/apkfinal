@@ -118,15 +118,15 @@ class AuthRepository(
                         biometricEnabled = userProfile.biometricEnabled ?: false,
                         telegramChatId = userProfile.telegramChatId,
                     )
-                    // CODEX-P2-FIX (PR #147): complete the login via
-                    // onLoginSuccess so SessionManager.saveSession() persists
-                    // phone + role, not just the tokens. Previously only
-                    // access/refresh tokens were stored —
-                    // sessionRepository.phone stayed null (breaking the
-                    // Telegram test-notification flow) and an offline process
-                    // restart restored an authenticated session with no cached
-                    // user, routing staff as patients.
-                    sessionRepository.onLoginSuccess(accessToken, refreshToken, cachedUser)
+                // CODEX-P2-FIX (PR #147): complete the login via
+                // onLoginSuccess so SessionManager.saveSession() persists
+                // phone + role, not just the tokens. Previously only
+                // access/refresh tokens were stored —
+                // sessionRepository.phone stayed null (breaking the
+                // Telegram test-notification flow) and an offline process
+                // restart restored an authenticated session with no cached
+                // user, routing staff as patients.
+                sessionRepository.onLoginSuccess(accessToken, refreshToken, cachedUser)
 
                 val existing = userDao.getUserByPhone(cachedUser.phone)
                 if (existing == null) {
@@ -239,10 +239,10 @@ class AuthRepository(
                         biometricEnabled = userProfile.biometricEnabled ?: false,
                         telegramChatId = userProfile.telegramChatId,
                     )
-                        // CODEX-P2-FIX (PR #147): persist phone/role via
-                    // saveSession — same rationale as the non-2FA login
-                    // branch above.
-                    sessionRepository.onLoginSuccess(accessToken, refreshToken, cachedUser)
+                // CODEX-P2-FIX (PR #147): persist phone/role via
+                // saveSession — same rationale as the non-2FA login
+                // branch above.
+                sessionRepository.onLoginSuccess(accessToken, refreshToken, cachedUser)
 
                 val existing = userDao.getUserByPhone(cachedUser.phone)
                 if (existing == null) {
