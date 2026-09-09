@@ -1,5 +1,8 @@
 package com.aistudio.clinicsystem.ui.viewmodel
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.data.api.UserDto
 import com.aistudio.clinicsystem.data.repository.AuthError
 import com.aistudio.clinicsystem.data.repository.ClinicRepository
@@ -52,6 +55,13 @@ class AuthViewModelTest {
     private lateinit var verify2FAUseCase: Verify2FAUseCase
     private lateinit var loginWithBiometricsUseCase: LoginWithBiometricsUseCase
 
+    /** Locale-independent expectations: the ViewModel resolves user-facing
+     *  messages via Context.getString — under Robolectric (en-US) that yields
+     *  values-en strings, so the assertions must resolve the SAME resources
+     *  from a REAL application context instead of hardcoded Russian literals
+     *  (see 4452b79 for the original patient-UI variant of this fix). */
+    private val appContext: Context = ApplicationProvider.getApplicationContext()
+
     private val testUser =
         UserDto(
             id = 1,
@@ -80,7 +90,7 @@ class AuthViewModelTest {
 
         viewModel =
             AuthViewModel(
-                appContext = mockk(relaxed = true),
+                appContext = appContext,
                 repository = repository,
                 sessionRepository = sessionRepository,
                 loginUseCase = loginUseCase,
@@ -171,16 +181,21 @@ class AuthViewModelTest {
         runTest {
             viewModel.verify2FA("123456", false)
             advanceUntilIdle()
-            assertEquals("Сессия 2FA истекла, войдите заново", viewModel.authError.value)
+            assertEquals(appContext.getString(R.string.vm_2fa_expired), viewModel.authError.value)
         }
 
     @Test
     fun `verify2FA with wrong code length sets error`() =
         runTest {
             set2FAChallenge("challenge-token")
+            // The ViewModel surfaces the IllegalArgumentException message from
+            // the use case verbatim (error.message) — assert that exact text.
+            val lengthError = "Код должен состоять из 6 цифр (TOTP) или быть резервным кодом (8-10 символов)"
+            coEvery { verify2FAUseCase(any(), any(), any()) } returns
+                Result.failure(IllegalArgumentException(lengthError))
             viewModel.verify2FA("12345", false)
             advanceUntilIdle()
-            assertEquals("Код должен состоять из 6 цифр (TOTP) или быть резервным кодом (8-10 символов)", viewModel.authError.value)
+            assertEquals(lengthError, viewModel.authError.value)
         }
 
     @Test
@@ -191,7 +206,7 @@ class AuthViewModelTest {
                 Result.failure(AuthError.InvalidTwoFACode)
             viewModel.verify2FA("000000", false)
             advanceUntilIdle()
-            assertEquals("Неверный код 2FA", viewModel.authError.value)
+            assertEquals(appContext.getString(R.string.vm_2fa_error_invalid), viewModel.authError.value)
         }
 
     @Test
@@ -213,7 +228,7 @@ class AuthViewModelTest {
             viewModel.updatePasswordInput("wrongpass")
             viewModel.login()
             advanceUntilIdle()
-            assertEquals("Неверный логин или пароль", viewModel.authError.value)
+            assertEquals(appContext.getString(R.string.vm_error_invalid_credentials), viewModel.authError.value)
         }
 
     @Test
@@ -260,16 +275,20 @@ class AuthViewModelTest {
     @Test
     fun `loginWithBiometrics with null cipher sets biometric unavailable error and does not call repository`() =
         runTest {
+            // The REAL use case fails closed on a null cipher with this exact
+            // IllegalStateException — mirror that contract in the mock.
+            val unavailableError = "Биометрический ключ недоступен. Войдите по паролю."
+            coEvery { loginWithBiometricsUseCase(any(), any()) } returns
+                Result.failure(IllegalStateException(unavailableError))
             viewModel.loginWithBiometrics("+77771112233", cipher = null)
             advanceUntilIdle()
 
-            assertEquals(
-                "Биометрический ключ недоступен. Войдите по паролю.",
-                viewModel.authError.value,
+            // The ViewModel wraps use-case failures as "Сбой биометрического
+            // токена: <message>" — assert the underlying message is present.
+            assertTrue(
+                "authError should contain the biometric-unavailable message",
+                viewModel.authError.value!!.contains(unavailableError),
             )
-            // High-5 audit fix: use cases are mocked as relaxed, so this is
-            // just a sanity check that the mock returns success by default.
-            // The actual biometric login is tested via loginWithBiometricsUseCase mock.
         }
 
     @Test

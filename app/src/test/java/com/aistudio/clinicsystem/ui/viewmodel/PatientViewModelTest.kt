@@ -189,6 +189,10 @@ class PatientViewModelTest {
                     id = "apt-123",
                     status = "CANCELLED",
                     cancelReason = "Not available",
+                    // TASK-1: the patient cancels through the mobile contract
+                    // with actorIsPatient = true — the replay can never cross
+                    // to the staff route.
+                    actorIsPatient = true,
                 )
             }
         }

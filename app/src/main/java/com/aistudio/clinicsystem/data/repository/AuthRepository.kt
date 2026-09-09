@@ -10,7 +10,6 @@ import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.data.session.SessionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
 import timber.log.Timber
 
 /**
@@ -533,54 +532,28 @@ class AuthRepository(
                     user?.telegramChatId
                         ?: return@withContext Result.failure(Exception("Telegram не привязан"))
 
-                // Use the telegram-integration send-notification endpoint.
-                // Body: {"chat_id": "...", "message": "...", "parse_mode": "HTML"}
-                val payload =
-                    mapOf(
-                        "chat_id" to chatId,
-                        "message" to "🧪 Тестовое уведомление от Clinic System — Telegram интеграция работает корректно.",
-                        "parse_mode" to "HTML",
-                    )
-                val moshi =
-                    com.squareup.moshi.Moshi
-                        .Builder()
-                        .build()
-                val type =
-                    com.squareup.moshi.Types.newParameterizedType(
-                        Map::class.java,
-                        String::class.java,
-                        Any::class.java,
-                    )
-
-                @Suppress("UNCHECKED_CAST")
-                val adapter = moshi.adapter<Map<String, Any>>(type)
-                val body = adapter.toJson(payload)
-
-                // Build a POST request manually — this endpoint is not in the
-                // ApiService interface (it's in telegram_integration router,
-                // not the mobile contract). Using OkHttp directly avoids
-                // adding a one-off method to ApiService.
-                val client = okhttp3.OkHttpClient()
-                val request =
-                    okhttp3.Request
-                        .Builder()
-                        .url(
-                            com.aistudio.clinicsystem.BuildConfig.BASE_URL
-                                .trimEnd('/') + "/api/v1/telegram-integration/send-notification",
-                        ).post(
-                            okhttp3.RequestBody.create(
-                                "application/json; charset=utf-8".toMediaType(),
-                                body,
+                // FIX (testability + contract): route through the typed
+                // Retrofit endpoint instead of a hand-rolled OkHttp call.
+                // The manual call baked BuildConfig.BASE_URL into the URL,
+                // which made the route unreachable from unit tests (the
+                // MockWebServer could never see the request) and duplicated
+                // serialization logic. The bearer token is passed explicitly
+                // — the endpoint lives in the telegram_integration router,
+                // outside the AuthInterceptor-scoped mobile contract family.
+                val response =
+                    mobileApiService.sendTelegramNotification(
+                        authorization = "Bearer $token",
+                        request =
+                            com.aistudio.clinicsystem.data.api.TelegramNotificationRequest(
+                                chatId = chatId,
+                                message = "🧪 Тестовое уведомление от Clinic System — Telegram интеграция работает корректно.",
+                                parseMode = "HTML",
                             ),
-                        ).addHeader("Authorization", "Bearer $token")
-                        .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        Result.success(Unit)
-                    } else {
-                        Result.failure(Exception("HTTP ${response.code}: ${response.message}"))
-                    }
+                    )
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)

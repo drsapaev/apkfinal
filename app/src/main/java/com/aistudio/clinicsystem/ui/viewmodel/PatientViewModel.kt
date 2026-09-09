@@ -277,8 +277,15 @@ class PatientViewModel
             }
         }
 
+        // FIX (PatientViewModelTest): one-shot operations must not depend on
+        // an ACTIVE collector of the WhileSubscribed [currentUser] flow —
+        // outside UI collection `currentUser.value` is still null and every
+        // action silently returned. Read the session state directly instead;
+        // semantics are identical (same SSOT), without the collector caveat.
+        private fun currentUserOrNull(): UserEntity? = (sessionRepository.sessionState.value as? SessionState.Authenticated)?.user
+
         fun setBiometricEnrollment(enabled: Boolean) {
-            val user = currentUser.value ?: return
+            val user = currentUserOrNull() ?: return
             viewModelScope.launch {
                 val updatedUser = user.copy(biometricEnabled = enabled)
                 repository.updateUser(updatedUser)
@@ -288,7 +295,7 @@ class PatientViewModel
         }
 
         fun updateProfileName(newName: String) {
-            val user = currentUser.value ?: return
+            val user = currentUserOrNull() ?: return
             if (newName.isBlank()) return
             viewModelScope.launch {
                 val updatedUser = user.copy(fullName = newName)
@@ -385,7 +392,7 @@ class PatientViewModel
             doctorServerId: Int? = null,
         ) {
             if (_isBookingInProgress.value) return
-            val user = currentUser.value ?: return
+            val user = currentUserOrNull() ?: return
             viewModelScope.launch {
                 _isBookingInProgress.value = true
                 try {

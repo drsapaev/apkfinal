@@ -11,6 +11,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -50,6 +51,8 @@ class StaffViewModelTest {
     private lateinit var repository: ClinicRepository
     private lateinit var authRepository: AuthRepository
     private lateinit var sessionRepository: SessionRepository
+    private lateinit var realContext: android.content.Context
+    private lateinit var realDatabase: com.aistudio.clinicsystem.data.db.ClinicDatabase
 
     private val testStaffUser =
         UserEntity(
@@ -77,21 +80,52 @@ class StaffViewModelTest {
             )
         every { sessionRepository.accessToken } returns "staff-token"
 
+        // FIX (UncaughtExceptionsBeforeTest): the StaffViewModel init block
+        // collects webSocketClient.partialQueueEvents / recoveryEvents. On a
+        // RELAXED mock those getters return mockk's default, and collect()
+        // throws KotlinNothingValueException inside an eager
+        // viewModelScope.launch on Main — the uncaught exception then poisons
+        // every runTest in the class. Real never-emitting SharedFlows keep
+        // the collectors suspended (harmless) instead of exploding.
+        val webSocketClient = mockk<com.aistudio.clinicsystem.utils.ClinicWebSocketClient>(relaxed = true)
+        every { webSocketClient.partialQueueEvents } returns MutableSharedFlow()
+        every { webSocketClient.recoveryEvents } returns MutableSharedFlow()
+
+        // FIX (mockk "class redefinition failed"): framework/concrete classes
+        // (Context, ClinicDatabase) are inline-mocked by the mockk agent;
+        // combined with Robolectric's per-sandbox classloaders that triggers
+        // retransformation conflicts mid-suite. Real instances are drop-in:
+        // SharedPreferences + getString work on the Robolectric context, and
+        // an in-memory Room behaves better than relaxed no-op DAO mocks.
+        realContext =
+            androidx.test.core.app.ApplicationProvider
+                .getApplicationContext()
+        realDatabase =
+            androidx.room.Room
+                .inMemoryDatabaseBuilder(
+                    realContext,
+                    com.aistudio.clinicsystem.data.db.ClinicDatabase::class.java,
+                ).allowMainThreadQueries()
+                .build()
+
         viewModel =
             StaffViewModel(
-                appContext = mockk(relaxed = true),
-                database = mockk(relaxed = true),
+                appContext = realContext,
+                database = realDatabase,
                 repository = repository,
                 authRepository = authRepository,
                 sessionRepository = sessionRepository,
                 apiService = mockk(relaxed = true),
-                webSocketClient = mockk(relaxed = true),
+                webSocketClient = webSocketClient,
             )
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        if (this::realDatabase.isInitialized) {
+            realDatabase.close()
+        }
     }
 
     @Test

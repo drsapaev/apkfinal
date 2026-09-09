@@ -401,6 +401,17 @@ class ClinicWebSocketClient
                             val event = adapter.fromJson(json)
                             val reason = event?.reason ?: "unknown"
                             Timber.e("WS backend error: $reason")
+                            val isAuthError =
+                                reason.contains("auth", ignoreCase = true) ||
+                                    reason.contains("Authentication", ignoreCase = true)
+                            // FIX (CI test run): the log insert must complete
+                            // BEFORE stop() cancels the scope — stop() cancels
+                            // `scope`, and a sibling `scope.launch { insertLog }`
+                            // coroutine that is still suspended inside Room's
+                            // executor gets cancelled with it, silently losing
+                            // the diagnostic log. The insert now happens in the
+                            // SAME coroutine, and stop() runs only after the
+                            // insert has returned.
                             scope.launch {
                                 database.syncLogDao().insertLog(
                                     com.aistudio.clinicsystem.data.db.SyncLogEntity(
@@ -408,14 +419,12 @@ class ClinicWebSocketClient
                                         direction = "SYSTEM_SYNC",
                                     ),
                                 )
-                            }
-                            // Auth errors are not recoverable via reconnect.
-                            // Force-stop — RealtimeManager will restart on next
-                            // session state change.
-                            if (reason.contains("auth", ignoreCase = true) ||
-                                reason.contains("Authentication", ignoreCase = true)
-                            ) {
-                                stop()
+                                // Auth errors are not recoverable via reconnect.
+                                // Force-stop — RealtimeManager will restart on
+                                // next session state change.
+                                if (isAuthError) {
+                                    stop()
+                                }
                             }
                         }
 

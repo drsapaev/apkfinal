@@ -183,8 +183,17 @@ android {
             // version in src/main/res/xml/.
             // Stage 0.3: enable Jacoco coverage instrumentation in debug builds.
             // The release variant does NOT get coverage (smaller APK, no perf hit).
+            //
+            // CI-FAST-TESTS: the JaCoCo java agent multiplies the Robolectric
+            // suite runtime (35 classes / 291 tests) far past the CI budget —
+            // the agent instruments every framework class Robolectric loads.
+            // The unit-test job now passes `-Pclinic.unitTestCoverage=false`
+            // for the plain test run; coverage is produced by the dedicated
+            // coverage job (default = true, unchanged for local dev and
+            // jacocoTestReport runs).
+            enableUnitTestCoverage =
+                (project.findProperty("clinic.unitTestCoverage") as? String)?.toBoolean() ?: true
             enableAndroidTestCoverage = true
-            enableUnitTestCoverage = true
         }
     }
     compileOptions {
@@ -231,6 +240,13 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     systemProperty("robolectric.offline", "false")
     // Enable headless mode for AWT (Robolectric may trigger it)
     systemProperty("java.awt.headless", "true")
+    // CI-FAST-TESTS: run test JVMs in parallel. The GitHub CI runner has
+    // 4 vCPUs; two forks overlap Robolectric sandbox warm-up with pure-JVM
+    // classes and cut the wall-clock roughly in half. Tests are fork-isolated
+    // (separate JVMs), so shared /tmp/robolectric-tmp subdirs are per-process.
+    maxParallelForks =
+        (project.findProperty("clinic.maxTestForks") as? String)?.toIntOrNull()
+            ?: 2
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files

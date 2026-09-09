@@ -96,6 +96,9 @@ class ClinicWebSocketClientTest {
             database.appointmentDao().insertAppointment(
                 com.aistudio.clinicsystem.data.db.AppointmentEntity(
                     id = "42",
+                    // M3B.4: WS events are matched by the backend Int id —
+                    // the local row must carry serverId for the lookup.
+                    serverId = 42,
                     patientPhone = "+77771112233",
                     patientName = "Patient",
                     doctorName = "Dr. Smith",
@@ -126,7 +129,9 @@ class ClinicWebSocketClientTest {
         )
 
         runBlocking {
-            val created = database.appointmentDao().getAppointmentById("99")
+            // M3B.4: the handler inserts with a fresh local UUID and the
+            // backend id in serverId — match by serverId, not by local PK.
+            val created = database.appointmentDao().getAppointmentByServerId(99)
             assertNotNull("Appointment should be created", created)
             assertEquals("Dr. New", created?.doctorName)
             assertEquals("PENDING", created?.status)
@@ -182,7 +187,9 @@ class ClinicWebSocketClientTest {
         )
 
         runBlocking {
-            val record = database.medicalRecordDao().getRecordById("55")
+            // The handler inserts with a fresh local UUID and the backend id
+            // in serverId — match by serverId, not by local PK.
+            val record = database.medicalRecordDao().getMedicalRecordByServerId(55)
             assertNotNull("Medical record should be inserted", record)
             assertEquals("Dr. House", record?.doctorName)
             assertEquals("Lupus", record?.diagnosis)
@@ -194,7 +201,7 @@ class ClinicWebSocketClientTest {
         handleMessage("""{"event":"NEW_MEDICAL_RECORD","data":{"id":56,"patient_phone":"+77771112233"}}""")
 
         runBlocking {
-            val record = database.medicalRecordDao().getRecordById("56")
+            val record = database.medicalRecordDao().getMedicalRecordByServerId(56)
             assertNotNull("Record should be inserted even with null fields", record)
             assertEquals("", record?.diagnosis)
         }
@@ -202,57 +209,96 @@ class ClinicWebSocketClientTest {
 
     // ─── QUEUE_UPDATE ────────────────────────────────────────────────
 
-    @Test
-    fun `QUEUE_UPDATE replaces queue snapshots in Room`() {
-        runBlocking {
-            database.queueSnapshotDao().insertQueueSnapshots(
-                listOf(
-                    com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
-                        id = 1,
-                        patientName = "Old",
-                        appointmentId = 1,
-                        position = 1,
-                        status = "WAITING",
-                        timestamp = 0,
-                    ),
+    /** TASK-8 contract: a full snapshot is bound to its room
+     *  `specialist_{id}::{date}` and replaces ONLY that specialist's rows. */
+    private suspend fun seedTwoSpecialists() {
+        database.queueSnapshotDao().insertQueueSnapshots(
+            listOf(
+                com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
+                    id = 1,
+                    patientName = "Alice-Old",
+                    appointmentId = 1,
+                    position = 1,
+                    status = "WAITING",
+                    timestamp = 0,
+                    queueId = 100,
+                    specialistId = 5,
+                    day = "2026-09-09",
                 ),
-            )
-        }
+                com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
+                    id = 2,
+                    patientName = "Bob-OtherDoctor",
+                    appointmentId = 2,
+                    position = 1,
+                    status = "WAITING",
+                    timestamp = 0,
+                    queueId = 200,
+                    specialistId = 7,
+                    day = "2026-09-09",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `QUEUE_UPDATE replaces only the room specialist's snapshots`() {
+        runBlocking { seedTwoSpecialists() }
 
         handleMessage(
-            """{"event":"QUEUE_UPDATE","data":{"queue":[{"id":1,"patient_name":"Alice","appointment_id":1,"position":1,"status":"WAITING"},{"id":2,"patient_name":"Bob","appointment_id":2,"position":2,"status":"WAITING"},{"id":3,"patient_name":"Charlie","appointment_id":3,"position":3,"status":"IN_PROGRESS"}]}}""",
+            "{\"event\":\"QUEUE_UPDATE\",\"room\":\"specialist_5::2026-09-09\",\"data\":{\"queue\":" +
+                "[{\"id\":1,\"patient_name\":\"Alice\",\"appointment_id\":1,\"position\":1,\"status\":\"WAITING\"}," +
+                "{\"id\":3,\"patient_name\":\"Charlie\",\"appointment_id\":3,\"position\":2,\"status\":\"IN_PROGRESS\"}]}}",
         )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
+            // Specialist 5's rows are replaced; specialist 7's last known
+            // queue MUST survive (Codex P1: snapshots are room-scoped).
             assertEquals(3, snapshots.size)
-            assertTrue(snapshots.none { it.patientName == "Old" })
+            assertTrue(snapshots.none { it.patientName == "Alice-Old" })
             assertTrue(snapshots.any { it.patientName == "Alice" })
+            assertTrue(snapshots.any { it.patientName == "Charlie" })
+            assertTrue(snapshots.any { it.patientName == "Bob-OtherDoctor" })
+            // Identity fields are carried over so WS and REST caches stay
+            // the same logical queue.
+            val alice = snapshots.first { it.patientName == "Alice" }
+            assertEquals(5, alice.specialistId)
+            assertEquals(100, alice.queueId)
+            assertEquals("2026-09-09", alice.day)
         }
     }
 
     @Test
-    fun `QUEUE_UPDATE with empty queue clears Room`() {
-        runBlocking {
-            database.queueSnapshotDao().insertQueueSnapshots(
-                listOf(
-                    com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
-                        id = 1,
-                        patientName = "X",
-                        appointmentId = 1,
-                        position = 1,
-                        status = "WAITING",
-                        timestamp = 0,
-                    ),
-                ),
-            )
-        }
+    fun `QUEUE_UPDATE with empty queue clears only that specialist's rows`() {
+        runBlocking { seedTwoSpecialists() }
 
-        handleMessage("""{"event":"QUEUE_UPDATE","data":{"queue":[]}}""")
+        // A successful-but-empty snapshot for specialist 5 is a valid state
+        // (last patient left) — it clears ONLY specialist 5's rows.
+        handleMessage(
+            """{"event":"QUEUE_UPDATE","room":"specialist_5::2026-09-09","data":{"queue":[]}}""",
+        )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-            assertEquals(0, snapshots.size)
+            assertTrue(snapshots.none { it.specialistId == 5 })
+            assertTrue(snapshots.any { it.specialistId == 7 })
+        }
+    }
+
+    @Test
+    fun `QUEUE_UPDATE without a specialist room is not applied to the cache`() {
+        // Codex P1: a snapshot that cannot be attributed to a queue (legacy
+        // "general" room / no room) must NOT clear the whole table — the
+        // client schedules a REST re-read instead.
+        runBlocking { seedTwoSpecialists() }
+
+        handleMessage(
+            """{"event":"QUEUE_UPDATE","data":{"queue":[]}}""",
+        )
+
+        runBlocking {
+            val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
+            assertEquals("cache must stay intact for non-specialist rooms", 2, snapshots.size)
         }
     }
 
@@ -353,20 +399,21 @@ class ClinicWebSocketClientTest {
     @Test
     fun `lowercase queue_update event type is handled like QUEUE_UPDATE`() {
         handleMessage(
-            """{"type":"queue_update","data":{"queue":[{"id":10,"patient_name":"Dave","appointment_id":10,"position":1,"status":"WAITING"}]}}""",
+            """{"type":"queue_update","room":"specialist_5::2026-09-09","data":{"queue":[{"id":10,"patient_name":"Dave","appointment_id":10,"position":1,"status":"WAITING"}]}}""",
         )
 
         runBlocking {
             val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
             assertEquals(1, snapshots.size)
             assertEquals("Dave", snapshots[0].patientName)
+            assertEquals(5, snapshots[0].specialistId)
         }
     }
 
     @Test
     fun `lowercase patient_called event type is handled like QUEUE_UPDATE`() {
         handleMessage(
-            """{"type":"patient_called","data":{"queue":[{"id":11,"patient_name":"Eve","appointment_id":11,"position":1,"status":"CALLED"}]}}""",
+            """{"type":"patient_called","room":"specialist_5::2026-09-09","data":{"queue":[{"id":11,"patient_name":"Eve","appointment_id":11,"position":1,"status":"CALLED"}]}}""",
         )
 
         runBlocking {
@@ -379,7 +426,7 @@ class ClinicWebSocketClientTest {
     @Test
     fun `lowercase entry_added event type is handled like QUEUE_UPDATE`() {
         handleMessage(
-            """{"type":"entry_added","data":{"queue":[{"id":12,"patient_name":"Frank","appointment_id":12,"position":1,"status":"WAITING"}]}}""",
+            """{"type":"entry_added","room":"specialist_5::2026-09-09","data":{"queue":[{"id":12,"patient_name":"Frank","appointment_id":12,"position":1,"status":"WAITING"}]}}""",
         )
 
         runBlocking {
@@ -393,7 +440,7 @@ class ClinicWebSocketClientTest {
     fun `type and event fields both present - type wins`() {
         // Edge case: backend migration emits both fields. `type` takes priority.
         handleMessage(
-            """{"type":"QUEUE_UPDATE","event":"APPOINTMENT_STATUS","data":{"queue":[{"id":13,"patient_name":"Grace","appointment_id":13,"position":1,"status":"WAITING"}]}}""",
+            """{"type":"QUEUE_UPDATE","event":"APPOINTMENT_STATUS","room":"specialist_5::2026-09-09","data":{"queue":[{"id":13,"patient_name":"Grace","appointment_id":13,"position":1,"status":"WAITING"}]}}""",
         )
 
         runBlocking {

@@ -75,9 +75,10 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   unit-test:
     runs-on: ubuntu-latest
-    # The full Robolectric suite (all 35 classes, incl. the ones that used to
-    # be env-blocked) under JaCoCo needs >45 min on a cold runner cache.
-    timeout-minutes: 75
+    # CI-FAST-TESTS: the plain (non-JaCoCo) Robolectric suite runs in ~15 min
+    # with 2 parallel test forks; the JaCoCo agent multiplied it past 75 min
+    # (three cancelled runs). Coverage is built by the coverage job on main.
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -116,7 +117,21 @@ jobs:
       - name: Create Robolectric temp directories
         run: mkdir -p /tmp/robolectric-tmp
 
-      - name: Run unit tests with coverage
+      - name: Run unit tests
+        # CI-FAST-TESTS: no JaCoCo agent, 2 parallel test forks (build.gradle.kts
+        # maxParallelForks). The JaCoCo agent instrumented every Robolectric
+        # framework class and tripled the wall-clock; the coverage gate is
+        # continue-on-error anyway (R-5 audit) and coverage now runs on main
+        # only, via the dedicated coverage job.
+        run: ./gradlew testDebugUnitTest --max-workers=4 -Pclinic.unitTestCoverage=false -Pclinic.maxTestForks=2
+        env:
+          ROBOLECTRIC_SDK_DOWNLOAD_TIMEOUT: "600"
+
+      - name: Generate coverage report (main only)
+        if: github.ref == 'refs/heads/main'
+        # Coverage job: re-runs the suite WITH the JaCoCo agent on main only.
+        # PRs stay on the fast path; the coverage gate (continue-on-error)
+        # keeps its R-5 audit rationale.
         run: ./gradlew testDebugUnitTest jacocoTestReport --max-workers=2
         env:
           ROBOLECTRIC_SDK_DOWNLOAD_TIMEOUT: "600"

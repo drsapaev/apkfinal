@@ -196,10 +196,19 @@ interface PendingSyncDao {
         // Mark each row as PROCESSING — sets `updatedAt` to now, which
         // prevents another worker from reclaiming it within the 5-min
         // stale threshold.
+        //
+        // FIX (ClinicRepositorySyncTest): return the UPDATED entities — the
+        // previous version updated the rows in the DB but returned the
+        // stale PENDING copies, so any caller reading `status` off the
+        // result saw a lie. The copy mirrors updateStatus (status +
+        // updatedAt = now).
+        val now = System.currentTimeMillis()
+        val claimed = ArrayList<PendingSyncEntity>(allToProcess.size)
         for (sync in allToProcess) {
             updateStatus(sync.id, "PROCESSING")
+            claimed.add(sync.copy(status = "PROCESSING", updatedAt = now))
         }
-        return allToProcess
+        return claimed
     }
 }
 

@@ -5,6 +5,7 @@ import com.aistudio.clinicsystem.data.api.MobileApiService
 import com.aistudio.clinicsystem.data.db.ClinicDatabase
 import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.utils.SessionManagerImpl
+import io.mockk.every
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -45,6 +46,7 @@ class AuthRepository2FALogoutTest {
     private lateinit var repository: AuthRepository
     private lateinit var context: android.content.Context
     private lateinit var db: ClinicDatabase
+    private lateinit var sessionManager: com.aistudio.clinicsystem.utils.SessionManagerImpl
 
     @Before
     fun setUp() {
@@ -60,19 +62,16 @@ class AuthRepository2FALogoutTest {
                 .build()
                 .create(MobileApiService::class.java)
 
-        // Reset SessionManager singleton
-        try {
-            val companionInstance =
-                SessionManagerImpl::class.java
-                    .getDeclaredField("Companion")
-                    .apply { isAccessible = true }
-                    .get(SessionManagerImpl) as Any
-            val instanceField = companionInstance.javaClass.getDeclaredField("instance")
-            instanceField.isAccessible = true
-            instanceField.set(companionInstance, null)
-        } catch (e: Exception) {
-            // best-effort
-        }
+        // FIX (CI hang): TokenManager persists tokens via
+        // EncryptedSharedPreferences, which is UNAVAILABLE under Robolectric —
+        // getPrefs() returns null and every saveTokens call is a silent no-op.
+        // Seeding real storage is therefore impossible; the session manager
+        // is mocked instead, and individual tests stub getRefreshToken().
+        sessionManager =
+            io.mockk.mockk(relaxed = true) {
+                every { getRefreshToken() } returns null
+                every { getToken() } returns null
+            }
 
         db =
             androidx.room.Room
@@ -87,7 +86,7 @@ class AuthRepository2FALogoutTest {
         val sessionRepo =
             SessionRepository(
                 appContext = context,
-                sessionManager = SessionManagerImpl.getInstance(context),
+                sessionManager = sessionManager,
                 database = db,
             )
 
@@ -197,6 +196,15 @@ class AuthRepository2FALogoutTest {
     @Test
     fun logout_callsBackendLogoutEndpoint() =
         runBlocking {
+            // logout() notifies the server ONLY when a refresh token exists —
+            // a fresh session skips the server call entirely, and the original
+            // unguarded takeRequest() then blocked FOREVER, hanging the whole
+            // Gradle test JVM until the CI job timeout (the root cause of the
+            // repeated unit-test timeouts). Real storage cannot be seeded
+            // under Robolectric (EncryptedSharedPreferences unavailable), so
+            // the refresh token is stubbed on the mocked session manager.
+            io.mockk.every { sessionManager.getRefreshToken() } returns "test-refresh-token"
+
             // Backend returns 200 for POST /authentication/logout
             mockWebServer.enqueue(
                 MockResponse()
@@ -208,10 +216,14 @@ class AuthRepository2FALogoutTest {
 
             assertTrue("logout should succeed", result.isSuccess)
 
-            val recordedRequest = mockWebServer.takeRequest()
+            // Bounded wait — a regression that skips the server call must
+            // fail the assertion, never hang the suite.
+            val recordedRequest =
+                mockWebServer.takeRequest(10, java.util.concurrent.TimeUnit.SECONDS)
+            assertTrue("logout must reach the network", recordedRequest != null)
             assertTrue(
-                "logout must POST to /api/v1/authentication/logout, was: ${recordedRequest.path}",
-                recordedRequest.path?.contains("/api/v1/authentication/logout") == true &&
+                "logout must POST to /api/v1/authentication/logout, was: ${recordedRequest?.path}",
+                recordedRequest?.path?.contains("/api/v1/authentication/logout") == true &&
                     recordedRequest.method == "POST",
             )
         }
@@ -219,6 +231,11 @@ class AuthRepository2FALogoutTest {
     @Test
     fun logout_networkError_returnsFailure() =
         runBlocking {
+            // The server call only happens with a refresh token present —
+            // stub it so the 500 below actually flows through the repository
+            // error path (fresh sessions skip the network entirely).
+            io.mockk.every { sessionManager.getRefreshToken() } returns "test-refresh-token"
+
             // Backend returns 500 (server error) — should NOT clear local tokens
             mockWebServer.enqueue(
                 MockResponse()
