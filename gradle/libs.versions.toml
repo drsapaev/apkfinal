@@ -32,7 +32,7 @@ hiltCompiler = "1.2.0"
 timber = "5.0.1"
 
 # Stage 4.6: Play Integrity API
-playIntegrity = "1.4.0"
+playIntegrity = "1.6.0"
 
 # Stage 7.2: Baseline Profile installer
 profileinstaller = "1.4.1"
