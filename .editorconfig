@@ -1,0 +1,15 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.{kt,kts}]
+# Compose projects conventionally use wildcard imports for the heavily-used
+# material3/runtime/layout APIs (125 occurrences across the UI layer) and
+# PascalCase @Composable factory functions (45 occurrences). Both rules are
+# disabled project-wide — enforcing them would churn every UI file with no
+# functional benefit. See ktlint docs: https://pinterest.github.io/ktlint/
+ktlint_standard_no-wildcard-imports = disabled
+ktlint_standard_function-naming = disabled
