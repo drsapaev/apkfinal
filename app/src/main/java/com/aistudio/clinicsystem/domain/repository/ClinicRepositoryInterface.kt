@@ -38,10 +38,18 @@ interface ClinicRepositoryInterface {
     suspend fun deleteAppointment(id: String)
 
     // ── Appointment Sync Operations ──
+
+    /**
+     * TASK-1: patient self-booking. Books the signed-in patient for
+     * themselves via the mobile contract; retried exclusively on the
+     * mobile route. `patientId`/`doctorId` are structured identifiers.
+     */
     suspend fun createAppointmentOnServerAndLocal(
         token: String?,
+        patientId: Int?,
         patientPhone: String,
         patientName: String,
+        doctorId: Int?,
         doctorName: String,
         specialty: String,
         date: String,
@@ -49,12 +57,37 @@ interface ClinicRepositoryInterface {
         reason: String,
     ): com.aistudio.clinicsystem.data.db.AppointmentEntity
 
+    /**
+     * TASK-1: staff booking for a chosen patient. Books the SPECIFIC patient
+     * via the staff endpoint; retried exclusively on the staff route.
+     */
+    suspend fun createAppointmentForPatientOnServerAndLocal(
+        token: String?,
+        patientId: Int?,
+        patientPhone: String,
+        patientName: String,
+        doctorId: Int?,
+        doctorName: String,
+        specialty: String,
+        date: String,
+        time: String,
+        reason: String,
+    ): com.aistudio.clinicsystem.data.db.AppointmentEntity
+
+    /**
+     * TASK-1: `actorIsPatient` selects the route (mobile cancel vs staff PUT)
+     * and is recorded in the outbox so retries replay the original scenario.
+     * TASK-2: returns a [com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome]
+     * so the UI can distinguish a server confirmation from a queued draft
+     * and from a server rejection.
+     */
     suspend fun updateAppointmentStatusOnServerAndLocal(
         token: String?,
         id: String,
         status: String,
         cancelReason: String = "",
-    ): com.aistudio.clinicsystem.data.db.AppointmentEntity?
+        actorIsPatient: Boolean = false,
+    ): com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome?
 
     suspend fun retryUnsyncedWrites(token: String?): Boolean
 
@@ -76,11 +109,29 @@ interface ClinicRepositoryInterface {
         recommendations: String,
     ): com.aistudio.clinicsystem.data.db.MedicalRecordEntity
 
-    suspend fun fetchMedicalRecordsFromServer(
+    /**
+     * TASK-3: staff clinical note anchored to a real visit via EMR v2.
+     * Roles without EMR write rights get a LocalDraft outcome instead of a
+     * fake "saved medical record". 409 conflicts never destroy the draft.
+     */
+    suspend fun saveMedicalRecordWithEmr(
+        token: String?,
+        patientPhone: String,
+        doctorName: String,
+        diagnosis: String,
+        prescription: String,
+        recommendations: String,
+        actorRole: String? = null,
+    ): com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome
+
+    /**
+     * TASK-3: lab results land in the dedicated lab_results table — they are
+     * never mapped into medical records (no testName→diagnosis substitution).
+     */
+    suspend fun fetchLabResultsFromServer(
         token: String?,
         phone: String,
-        onNewRecordAction: (com.aistudio.clinicsystem.data.db.MedicalRecordEntity) -> Unit = {},
-    ): List<com.aistudio.clinicsystem.data.db.MedicalRecordEntity>
+    ): List<com.aistudio.clinicsystem.data.db.LabResultEntity>
 
     // ── Queue Operations ──
     // M-CONTRACT-FIX: the backend removed POST /api/v1/queue/register —

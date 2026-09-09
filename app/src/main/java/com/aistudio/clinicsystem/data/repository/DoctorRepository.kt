@@ -195,35 +195,9 @@ class DoctorRepository
         }
 
         /**
-         * Seed fallback doctors when backend is unavailable and cache is empty.
-         *
-         * This provides a graceful degradation path — the app remains usable
-         * even if backend is down on first launch. These doctors get replaced
-         * by real data on next successful sync.
+         * TASK-4: demo-doctor seeding REMOVED from the production flow.
+         * A clean installation now shows the REAL directory from the backend
+         * or an explicit loading/empty/error state — never fictitious
+         * doctors that a patient could book.
          */
-        suspend fun seedFallbackDoctorsIfEmpty() {
-            val count = doctorDao.getDoctorCount()
-            if (count > 0) return
-
-            val fallback =
-                listOf(
-                    DoctorEntity(
-                        fullName = "Dr. Rustam Sapaev",
-                        specialty = "Стоматолог-Хирург",
-                        phone = "+7 999 123-45-67",
-                    ),
-                    DoctorEntity(
-                        fullName = "Dr. Elena Petrova",
-                        specialty = "Кардиолог",
-                        phone = "+7 999 234-56-78",
-                    ),
-                    DoctorEntity(
-                        fullName = "Dr. Alexander Smirnov",
-                        specialty = "Невролог",
-                        phone = "+7 999 345-67-89",
-                    ),
-                )
-            doctorDao.insertDoctors(fallback)
-            Timber.i("P-04: seeded ${fallback.size} fallback doctors (backend unavailable)")
-        }
     }

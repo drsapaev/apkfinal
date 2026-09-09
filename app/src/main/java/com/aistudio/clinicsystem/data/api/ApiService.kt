@@ -73,6 +73,20 @@ interface ApiService {
         @Query("limit") limit: Int = 1,
     ): Response<List<StaffPatientDto>>
 
+    /**
+     * TASK-9: clinical patient REGISTRY search (GET /api/v1/patients?q=…).
+     * Separate from auth accounts — this is the clinical directory the
+     * registrar/doctor actually works with. Supports partial search by
+     * name/phone and pagination via skip/limit.
+     */
+    @GET("api/v1/patients/")
+    suspend fun searchPatients(
+        @Query("q") q: String? = null,
+        @Query("phone") phone: String? = null,
+        @Query("skip") skip: Int = 0,
+        @Query("limit") limit: Int = 50,
+    ): Response<List<StaffPatientDto>>
+
     // --- Queues (staff) ---
 
     /** Public specialists list for the QR queue console. */
@@ -114,7 +128,185 @@ interface ApiService {
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 50,
     ): Response<StaffUsersPageDto>
+
+    // ── Visits + EMR v2 (TASK-3) ──────────────────────────────────────────
+
+    /**
+     * TASK-3: visits of a patient (GET /api/v1/visits?patient_id=…).
+     * Roles: Admin, Registrar, Doctor-family, Cashier, Lab.
+     * Used to anchor a clinical note to a real visit for EMR v2.
+     */
+    @GET("api/v1/visits")
+    suspend fun getVisitsForPatient(
+        @Query("patient_id") patientId: Int,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+    ): Response<List<StaffVisitDto>>
+
+    /** TASK-3: current EMR of a visit (GET /api/v1/emr/{visit_id}). */
+    @GET("api/v1/emr/{visit_id}")
+    suspend fun getEmrForVisit(
+        @Path("visit_id") visitId: Int,
+    ): Response<EmrRecordDto>
+
+    /**
+     * TASK-3: save EMR of a visit (POST /api/v1/emr/{visit_id}) with
+     * optimistic locking (row_version; 409 on conflict). Signing is a
+     * SEPARATE endpoint and is never triggered here — saves are drafts.
+     * Roles: Admin + Doctor family (backend EMR_V2_WRITE_ROLES).
+     */
+    @POST("api/v1/emr/{visit_id}")
+    suspend fun saveEmrForVisit(
+        @Path("visit_id") visitId: Int,
+        @Body payload: EmrSaveRequest,
+    ): Response<EmrRecordDto>
+
+    // ── Queue registration / reorder (TASK-7) ─────────────────────────────
+
+    /**
+     * TASK-7: server-side queue registration via the batch endpoint
+     * (POST /api/v1/registrar-integration/queue/entries/batch).
+     * Roles: Admin, Registrar. One entry per specialist is created.
+     */
+    @POST("api/v1/registrar-integration/queue/entries/batch")
+    suspend fun createQueueEntriesBatch(
+        @Body request: BatchQueueEntriesRequest,
+    ): Response<BatchQueueEntriesResponse>
+
+    /**
+     * TASK-7: move a single queue entry to a new position
+     * (PUT /api/v1/queue/move-entry). Roles: Admin, Registrar, Doctor.
+     */
+    @PUT("api/v1/queue/move-entry")
+    suspend fun moveQueueEntry(
+        @Body request: QueueEntryMoveRequest,
+    ): Response<QueueMoveResponse>
+
+    /** TASK-7: visit with its services (source of service ids for batch). */
+    @GET("api/v1/visits/{visit_id}")
+    suspend fun getVisitWithServices(
+        @Path("visit_id") visitId: Int,
+    ): Response<VisitWithServicesDto>
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// DTOs — queue batch registration / reorder (TASK-7)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Body of POST /registrar-integration/queue/entries/batch. */
+@JsonClass(generateAdapter = true)
+data class BatchQueueEntriesRequest(
+    @Json(name = "patient_id") val patientId: Int,
+    /** online | desk | morning_assignment. */
+    @Json(name = "source") val source: String = "desk",
+    @Json(name = "services") val services: List<BatchServiceItem>,
+)
+
+@JsonClass(generateAdapter = true)
+data class BatchServiceItem(
+    @Json(name = "specialist_id") val specialistId: Int,
+    @Json(name = "service_id") val serviceId: Int,
+    @Json(name = "quantity") val quantity: Int = 1,
+)
+
+@JsonClass(generateAdapter = true)
+data class BatchQueueEntriesResponse(
+    @Json(name = "success") val success: Boolean = false,
+    @Json(name = "entries") val entries: List<BatchQueueEntryOut> = emptyList(),
+    @Json(name = "message") val message: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class BatchQueueEntryOut(
+    @Json(name = "specialist_id") val specialistId: Int,
+    @Json(name = "queue_id") val queueId: Int,
+    @Json(name = "number") val number: Int,
+    @Json(name = "queue_time") val queueTime: String? = null,
+)
+
+/** Body of PUT /queue/move-entry. */
+@JsonClass(generateAdapter = true)
+data class QueueEntryMoveRequest(
+    @Json(name = "entry_id") val entryId: Int,
+    @Json(name = "new_position") val newPosition: Int,
+)
+
+@JsonClass(generateAdapter = true)
+data class QueueMoveResponse(
+    @Json(name = "success") val success: Boolean = false,
+    @Json(name = "message") val message: String? = null,
+    @Json(name = "updated_entries") val updatedEntries: Int = 0,
+)
+
+/** Minimal visit-with-services (backend `VisitWithServices`). */
+@JsonClass(generateAdapter = true)
+data class VisitWithServicesDto(
+    @Json(name = "visit") val visit: StaffVisitDto? = null,
+    @Json(name = "services") val services: List<VisitServiceOutDto> = emptyList(),
+)
+
+@JsonClass(generateAdapter = true)
+data class VisitServiceOutDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "visit_id") val visitId: Int? = null,
+    /**
+     * Catalog Service.id — the value the batch queue-registration endpoint
+     * expects. NOTE: the current backend `VisitServiceOut` schema does NOT
+     * expose service_id (documented limitation in the task report); when
+     * absent the client falls back to the visit-service row id and tolerates
+     * a server 404 by NOT creating any local ticket.
+     */
+    @Json(name = "service_id") val serviceId: Int? = null,
+    @Json(name = "code") val code: String? = null,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "price") val price: Double? = null,
+    @Json(name = "qty") val qty: Int = 1,
+)
+
+// ─────────────────────────────────────────────────────────────────────────
+// DTOs — visits + EMR v2 (TASK-3)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Minimal visit row (backend `VisitOut`). */
+@JsonClass(generateAdapter = true)
+data class StaffVisitDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "patient_id") val patientId: Int? = null,
+    @Json(name = "doctor_id") val doctorId: Int? = null,
+    @Json(name = "status") val status: String = "open",
+    @Json(name = "notes") val notes: String? = null,
+    @Json(name = "visit_date") val visitDate: String? = null,
+    @Json(name = "visit_time") val visitTime: String? = null,
+)
+
+/**
+ * TASK-3: EMR v2 record (backend `EMRRecordOut`). `data` is the clinical
+ * JSON blob; Moshi's Any-adapter parses it into Map/List/String/Number —
+ * the client only reads/extends its own flat keys (diagnosis, prescription,
+ * recommendations) and never assumes nested shapes from other clients.
+ */
+@JsonClass(generateAdapter = true)
+data class EmrRecordDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "patient_id") val patientId: Int? = null,
+    @Json(name = "visit_id") val visitId: Int,
+    @Json(name = "version") val version: Int = 1,
+    @Json(name = "row_version") val rowVersion: Int = 0,
+    @Json(name = "data") val data: Any? = null,
+    @Json(name = "diagnosis_main") val diagnosisMain: String? = null,
+    @Json(name = "status") val status: String = "draft",
+    @Json(name = "signed_at") val signedAt: String? = null,
+    @Json(name = "is_active") val isActive: Boolean = true,
+)
+
+/** TASK-3: body of POST /api/v1/emr/{visit_id} (backend `EMRSaveRequest`). */
+@JsonClass(generateAdapter = true)
+data class EmrSaveRequest(
+    @Json(name = "data") val data: Any,
+    @Json(name = "row_version") val rowVersion: Int = 0,
+    @Json(name = "client_session_id") val clientSessionId: String? = null,
+    @Json(name = "is_draft") val isDraft: Boolean = true,
+)
 
 // ─────────────────────────────────────────────────────────────────────────
 // DTOs — system users (backend `app/schemas/user_management.py`)
@@ -306,6 +498,55 @@ data class QueueDto(
     @Json(name = "position") val position: Int,
     @Json(name = "status") val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
     @Json(name = "clinic_id") val clinicId: String? = "clinic_base",
+)
+
+/**
+ * TASK-1: structured outbox payload for appointment creation rows
+ * (CREATE_APPOINTMENT_SELF / CREATE_APPOINTMENT_STAFF).
+ *
+ * Unlike the legacy [AppointmentDto], this carries the STRUCTURED
+ * identifiers (patient_id / doctor_id) captured at booking time plus the
+ * operation owner, so the outbox retry replays the ORIGINAL scenario:
+ *   - owner=PATIENT  → POST /api/v1/mobile/appointments/book  (self-booking)
+ *   - owner=STAFF    → POST /api/v1/appointments              (staff books a patient)
+ * No route switching after a server rejection; identity is never
+ * re-derived from the display name alone (serverId is re-resolved only
+ * as a fallback when null, and a failed resolution dead-letters the row).
+ */
+@JsonClass(generateAdapter = true)
+data class AppointmentOutboxPayload(
+    /** PATIENT = self-booking by the signed-in patient; STAFF = registrar/doctor booking for a chosen patient. */
+    @Json(name = "owner") val owner: String,
+    @Json(name = "patient_id") val patientId: Int? = null,
+    @Json(name = "patient_phone") val patientPhone: String = "",
+    @Json(name = "patient_name") val patientName: String = "",
+    @Json(name = "doctor_id") val doctorId: Int? = null,
+    @Json(name = "doctor_name") val doctorName: String = "",
+    @Json(name = "specialty") val specialty: String = "",
+    @Json(name = "date") val date: String = "",
+    @Json(name = "time") val time: String = "",
+    @Json(name = "reason") val reason: String = "",
+    @Json(name = "status") val status: String = "PENDING",
+)
+
+/**
+ * TASK-2: structured outbox payload for UPDATE_APPOINTMENT rows — a full
+ * edit of an existing appointment that could not be delivered immediately
+ * (offline, 5xx, 408/429). Carries the serverId of the target appointment
+ * so the retry hits the same row; `rowVersion`/`localId` let the retry
+ * reconcile the local entity afterwards.
+ */
+@JsonClass(generateAdapter = true)
+data class AppointmentEditOutboxPayload(
+    @Json(name = "server_id") val serverId: Int,
+    @Json(name = "local_id") val localId: String,
+    @Json(name = "doctor_id") val doctorId: Int? = null,
+    @Json(name = "doctor_name") val doctorName: String = "",
+    @Json(name = "date") val date: String = "",
+    @Json(name = "time") val time: String = "",
+    @Json(name = "reason") val reason: String = "",
+    @Json(name = "status") val status: String = "",
+    @Json(name = "notes") val notes: String? = null,
 )
 
 /**

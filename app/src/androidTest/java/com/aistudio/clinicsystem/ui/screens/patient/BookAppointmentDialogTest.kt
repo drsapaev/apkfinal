@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.ui.theme.MyApplicationTheme
 import org.junit.Rule
 import org.junit.Test
@@ -28,6 +30,11 @@ import org.junit.runner.RunWith
 class BookAppointmentDialogTest {
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    /** Locale-independent expectations: the device may run any locale
+     *  (CI emulators default to en-US), so expected labels are resolved
+     *  from resources instead of hardcoded Russian literals. */
+    private val appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
     private val testDoctors =
         listOf(
@@ -76,10 +83,10 @@ class BookAppointmentDialogTest {
     fun bookDialog_showsStepLabels() {
         setupDialog()
 
-        composeTestRule.onNodeWithText("1. ВЫБЕРИТЕ СПЕЦИАЛИСТА").assertIsDisplayed()
-        composeTestRule.onNodeWithText("2. ВЫБЕРИТЕ ДАТУ ПРИЁМА").assertIsDisplayed()
-        composeTestRule.onNodeWithText("3. ВЫБЕРИТЕ ВРЕМЯ").assertIsDisplayed()
-        composeTestRule.onNodeWithText("4. ОПИШИТЕ ЖАЛОБЫ / ПРИЧИНУ").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_select_specialist)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_select_date)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_select_time)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_describe_complaint)).assertIsDisplayed()
     }
 
     @Test

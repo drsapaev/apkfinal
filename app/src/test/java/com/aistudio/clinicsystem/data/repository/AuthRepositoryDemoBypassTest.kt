@@ -123,7 +123,10 @@ class AuthRepositoryDemoBypassTest {
             )
 
             // Prove the request actually reached the network (no bypass short-circuit)
-            val recordedRequest = mockWebServer.takeRequest()
+            val recordedRequest =
+                checkNotNull(mockWebServer.takeRequest(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "Request must reach the network"
+                }
             assertEquals("POST", recordedRequest.method)
             assertTrue(
                 "Request must hit /api/v1/authentication/login, was: ${recordedRequest.path}",
@@ -141,11 +144,10 @@ class AuthRepositoryDemoBypassTest {
                 result.isFailure,
             )
 
-            val recordedRequest = mockWebServer.takeRequest()
-            assertTrue(
-                "Request must reach the network — bypass must not have short-circuited",
-                recordedRequest != null,
-            )
+            val recordedRequest =
+                checkNotNull(mockWebServer.takeRequest(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "Request must reach the network — bypass must not have short-circuited"
+                }
         }
 
     @Test
@@ -157,7 +159,10 @@ class AuthRepositoryDemoBypassTest {
                 "Arbitrary credentials must go through the network and fail with 401",
                 result.isFailure,
             )
-            val recordedRequest = mockWebServer.takeRequest()
+            val recordedRequest =
+                checkNotNull(mockWebServer.takeRequest(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "Request must reach the network"
+                }
             assertEquals("POST", recordedRequest.method)
             assertTrue(
                 "Request must hit /api/v1/authentication/login, was: ${recordedRequest.path}",

@@ -210,6 +210,22 @@ interface MobileApiService {
         @Body request: AppointmentCancelRequest,
     ): Response<Unit>
 
+    /**
+     * Telegram test notification — served by the backend's
+     * telegram_integration router (NOT part of the /mobile contract family,
+     * hence the absolute path). The bearer token is passed explicitly so
+     * unit tests can exercise the route against a bare OkHttp/Retrofit
+     * without the production AuthInterceptor (FIX: the previous manual
+     * OkHttp call baked BuildConfig.BASE_URL into the request and could
+     * never be redirected to a MockWebServer — the AuthRepository test for
+     * this route was structurally unpassable).
+     */
+    @POST("api/v1/telegram-integration/send-notification")
+    suspend fun sendTelegramNotification(
+        @Header("Authorization") authorization: String,
+        @Body request: TelegramNotificationRequest,
+    ): Response<Unit>
+
     /** Reserved for future: Reschedule dialog — POST /mobile/appointments/reschedule. */
     @Suppress("unused")
     @POST("api/v1/mobile/appointments/reschedule")
@@ -676,6 +692,14 @@ data class AppointmentRescheduleRequest(
     @Json(name = "appointment_id") val appointmentId: Int,
     @Json(name = "new_date") val newDate: String,
     @Json(name = "new_time") val newTime: String,
+)
+
+/** Body for POST /api/v1/telegram-integration/send-notification. */
+@JsonClass(generateAdapter = true)
+data class TelegramNotificationRequest(
+    @Json(name = "chat_id") val chatId: String,
+    @Json(name = "message") val message: String,
+    @Json(name = "parse_mode") val parseMode: String = "HTML",
 )
 
 // ═══════════════════════════════════════════════════════════════════════

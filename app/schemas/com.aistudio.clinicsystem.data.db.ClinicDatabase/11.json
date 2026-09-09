@@ -1,0 +1,870 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 11,
+    "identityHash": "07f1ee542b6a5e164b51851ac95b29b9",
+    "entities": [
+      {
+        "tableName": "users",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `phone` TEXT NOT NULL, `fullName` TEXT NOT NULL, `role` TEXT NOT NULL, `jobTitle` TEXT NOT NULL, `clinicId` TEXT NOT NULL, `dateOfBirth` TEXT NOT NULL, `biometricEnabled` INTEGER NOT NULL, `telegramChatId` TEXT, `registeredTimestamp` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phone",
+            "columnName": "phone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fullName",
+            "columnName": "fullName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jobTitle",
+            "columnName": "jobTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clinicId",
+            "columnName": "clinicId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateOfBirth",
+            "columnName": "dateOfBirth",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "biometricEnabled",
+            "columnName": "biometricEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "telegramChatId",
+            "columnName": "telegramChatId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "registeredTimestamp",
+            "columnName": "registeredTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_users_phone",
+            "unique": true,
+            "columnNames": [
+              "phone"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_users_phone` ON `${TABLE_NAME}` (`phone`)"
+          },
+          {
+            "name": "index_users_role",
+            "unique": false,
+            "columnNames": [
+              "role"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_users_role` ON `${TABLE_NAME}` (`role`)"
+          },
+          {
+            "name": "index_users_clinicId",
+            "unique": false,
+            "columnNames": [
+              "clinicId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_users_clinicId` ON `${TABLE_NAME}` (`clinicId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "appointments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `serverId` INTEGER, `patientPhone` TEXT NOT NULL, `patientName` TEXT NOT NULL, `doctorName` TEXT NOT NULL, `specialty` TEXT NOT NULL, `date` TEXT NOT NULL, `time` TEXT NOT NULL, `status` TEXT NOT NULL, `reason` TEXT NOT NULL, `clinicId` TEXT NOT NULL, `notes` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `clientRequestId` TEXT, `version` INTEGER NOT NULL, `etag` TEXT, `syncState` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "patientPhone",
+            "columnName": "patientPhone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "patientName",
+            "columnName": "patientName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "doctorName",
+            "columnName": "doctorName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "specialty",
+            "columnName": "specialty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "time",
+            "columnName": "time",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clinicId",
+            "columnName": "clinicId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clientRequestId",
+            "columnName": "clientRequestId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "etag",
+            "columnName": "etag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "syncState",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_appointments_patientPhone",
+            "unique": false,
+            "columnNames": [
+              "patientPhone"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_appointments_patientPhone` ON `${TABLE_NAME}` (`patientPhone`)"
+          },
+          {
+            "name": "index_appointments_serverId",
+            "unique": false,
+            "columnNames": [
+              "serverId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_appointments_serverId` ON `${TABLE_NAME}` (`serverId`)"
+          },
+          {
+            "name": "index_appointments_clientRequestId",
+            "unique": false,
+            "columnNames": [
+              "clientRequestId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_appointments_clientRequestId` ON `${TABLE_NAME}` (`clientRequestId`)"
+          },
+          {
+            "name": "index_appointments_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_appointments_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_appointments_clinicId",
+            "unique": false,
+            "columnNames": [
+              "clinicId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_appointments_clinicId` ON `${TABLE_NAME}` (`clinicId`)"
+          },
+          {
+            "name": "index_appointments_date_time",
+            "unique": false,
+            "columnNames": [
+              "date",
+              "time"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_appointments_date_time` ON `${TABLE_NAME}` (`date`, `time`)"
+          }
+        ]
+      },
+      {
+        "tableName": "medical_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `serverId` INTEGER, `patientPhone` TEXT NOT NULL, `doctorName` TEXT NOT NULL, `diagnosis` TEXT NOT NULL, `prescription` TEXT NOT NULL, `visitDate` TEXT NOT NULL, `clinicId` TEXT NOT NULL, `recommendations` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `version` INTEGER NOT NULL, `etag` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "patientPhone",
+            "columnName": "patientPhone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "doctorName",
+            "columnName": "doctorName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diagnosis",
+            "columnName": "diagnosis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prescription",
+            "columnName": "prescription",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "visitDate",
+            "columnName": "visitDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clinicId",
+            "columnName": "clinicId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recommendations",
+            "columnName": "recommendations",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "etag",
+            "columnName": "etag",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_medical_records_patientPhone",
+            "unique": false,
+            "columnNames": [
+              "patientPhone"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_medical_records_patientPhone` ON `${TABLE_NAME}` (`patientPhone`)"
+          },
+          {
+            "name": "index_medical_records_serverId",
+            "unique": false,
+            "columnNames": [
+              "serverId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_medical_records_serverId` ON `${TABLE_NAME}` (`serverId`)"
+          },
+          {
+            "name": "index_medical_records_clinicId",
+            "unique": false,
+            "columnNames": [
+              "clinicId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_medical_records_clinicId` ON `${TABLE_NAME}` (`clinicId`)"
+          },
+          {
+            "name": "index_medical_records_visitDate",
+            "unique": false,
+            "columnNames": [
+              "visitDate"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_medical_records_visitDate` ON `${TABLE_NAME}` (`visitDate`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sync_logs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `logMessage` TEXT NOT NULL, `clinicId` TEXT NOT NULL, `direction` TEXT NOT NULL, `timestamp` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logMessage",
+            "columnName": "logMessage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clinicId",
+            "columnName": "clinicId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "direction",
+            "columnName": "direction",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sync_logs_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sync_logs_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ]
+      },
+      {
+        "tableName": "queue_snapshots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `patientName` TEXT NOT NULL, `appointmentId` INTEGER NOT NULL, `position` INTEGER NOT NULL, `clinicId` TEXT NOT NULL, `status` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `queueId` INTEGER, `specialistId` INTEGER, `day` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "patientName",
+            "columnName": "patientName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appointmentId",
+            "columnName": "appointmentId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clinicId",
+            "columnName": "clinicId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queueId",
+            "columnName": "queueId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "specialistId",
+            "columnName": "specialistId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "day",
+            "columnName": "day",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_queue_snapshots_appointmentId",
+            "unique": false,
+            "columnNames": [
+              "appointmentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_queue_snapshots_appointmentId` ON `${TABLE_NAME}` (`appointmentId`)"
+          },
+          {
+            "name": "index_queue_snapshots_clinicId",
+            "unique": false,
+            "columnNames": [
+              "clinicId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_queue_snapshots_clinicId` ON `${TABLE_NAME}` (`clinicId`)"
+          },
+          {
+            "name": "index_queue_snapshots_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_queue_snapshots_status` ON `${TABLE_NAME}` (`status`)"
+          }
+        ]
+      },
+      {
+        "tableName": "pending_syncs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `type` TEXT NOT NULL, `payload` TEXT NOT NULL, `clientRequestId` TEXT NOT NULL, `clinicId` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `retryCount` INTEGER NOT NULL, `status` TEXT NOT NULL, `lastError` TEXT, `nextRetryAt` INTEGER, `updatedAt` INTEGER NOT NULL, `lastHttpCode` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clientRequestId",
+            "columnName": "clientRequestId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clinicId",
+            "columnName": "clinicId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryCount",
+            "columnName": "retryCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nextRetryAt",
+            "columnName": "nextRetryAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastHttpCode",
+            "columnName": "lastHttpCode",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_pending_syncs_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pending_syncs_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_pending_syncs_status_nextRetryAt",
+            "unique": false,
+            "columnNames": [
+              "status",
+              "nextRetryAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pending_syncs_status_nextRetryAt` ON `${TABLE_NAME}` (`status`, `nextRetryAt`)"
+          },
+          {
+            "name": "index_pending_syncs_clientRequestId",
+            "unique": false,
+            "columnNames": [
+              "clientRequestId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pending_syncs_clientRequestId` ON `${TABLE_NAME}` (`clientRequestId`)"
+          },
+          {
+            "name": "index_pending_syncs_clinicId",
+            "unique": false,
+            "columnNames": [
+              "clinicId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_pending_syncs_clinicId` ON `${TABLE_NAME}` (`clinicId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "doctors",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `serverId` INTEGER, `fullName` TEXT NOT NULL, `specialty` TEXT NOT NULL, `phone` TEXT NOT NULL, `email` TEXT NOT NULL, `avatarUrl` TEXT, `isActive` INTEGER NOT NULL, `clinicId` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "fullName",
+            "columnName": "fullName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "specialty",
+            "columnName": "specialty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phone",
+            "columnName": "phone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarUrl",
+            "columnName": "avatarUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clinicId",
+            "columnName": "clinicId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_doctors_serverId",
+            "unique": true,
+            "columnNames": [
+              "serverId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_doctors_serverId` ON `${TABLE_NAME}` (`serverId`)"
+          },
+          {
+            "name": "index_doctors_specialty",
+            "unique": false,
+            "columnNames": [
+              "specialty"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_doctors_specialty` ON `${TABLE_NAME}` (`specialty`)"
+          }
+        ]
+      },
+      {
+        "tableName": "lab_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `serverId` INTEGER, `patientPhone` TEXT NOT NULL, `testName` TEXT NOT NULL, `result` TEXT, `unit` TEXT, `referenceRange` TEXT, `status` TEXT NOT NULL, `performedAt` TEXT, `doctorName` TEXT, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "patientPhone",
+            "columnName": "patientPhone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "testName",
+            "columnName": "testName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "result",
+            "columnName": "result",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "referenceRange",
+            "columnName": "referenceRange",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "performedAt",
+            "columnName": "performedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "doctorName",
+            "columnName": "doctorName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lab_results_patientPhone",
+            "unique": false,
+            "columnNames": [
+              "patientPhone"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lab_results_patientPhone` ON `${TABLE_NAME}` (`patientPhone`)"
+          },
+          {
+            "name": "index_lab_results_serverId",
+            "unique": false,
+            "columnNames": [
+              "serverId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lab_results_serverId` ON `${TABLE_NAME}` (`serverId`)"
+          },
+          {
+            "name": "index_lab_results_performedAt",
+            "unique": false,
+            "columnNames": [
+              "performedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lab_results_performedAt` ON `${TABLE_NAME}` (`performedAt`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '07f1ee542b6a5e164b51851ac95b29b9')"
+    ]
+  }
+}

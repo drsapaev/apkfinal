@@ -48,6 +48,9 @@ class ClinicRepository
         override val allMedicalRecords: Flow<List<MedicalRecordEntity>> = medicalRecordDao.getAllRecordsFlow()
         override val recentLogs: Flow<List<SyncLogEntity>> = syncLogDao.getRecentLogsFlow()
         override val allQueueSnapshots: Flow<List<QueueSnapshotEntity>> = queueSnapshotDao.getAllQueueSnapshotsFlow()
+
+        // TASK-3: dedicated lab results flow
+        val allLabResults: Flow<List<LabResultEntity>> = labResultDao.getAllResultsFlow()
         override val allPendingSyncs: Flow<List<com.aistudio.clinicsystem.data.db.PendingSyncEntity>> =
             pendingSyncDao
                 .observeAllPendingSyncs()
@@ -204,6 +207,19 @@ class ClinicRepository
                             .fromCode(sync.type)
                     val result =
                         when (operation) {
+                            com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_SELF -> {
+                                // TASK-1: patient self-booking retry — replay the
+                                // ORIGINAL scenario through the mobile contract
+                                // only. Never dispatched to the staff endpoint.
+                                retrySelfBooking(sync)
+                            }
+                            com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_STAFF -> {
+                                // TASK-1: staff booking retry — replay through
+                                // POST /api/v1/appointments only. The booked
+                                // patient identity comes from the structured
+                                // payload, not from the display name.
+                                retryStaffBooking(sync)
+                            }
                             com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT -> {
                                 val dto = appointmentAdapter.fromJson(sync.payload)
                                 if (dto != null) {
@@ -212,8 +228,10 @@ class ClinicRepository
                                     // (int patient_id + appointment_date/appointment_time).
                                     val staffCreate =
                                         buildStaffCreateRequest(
+                                            patientId = null, // legacy payload has no structured id — resolve from phone
                                             patientPhone = dto.patientPhone,
                                             patientName = dto.patientName,
+                                            doctorId = null,
                                             doctorName = dto.doctorName,
                                             date = dto.date,
                                             time = dto.time,
@@ -258,47 +276,83 @@ class ClinicRepository
                                     ProcessResult.PayloadCorrupt("payload is null")
                                 }
                             }
+                            com.aistudio.clinicsystem.data.outbox.OutboxOperation.UPDATE_APPOINTMENT -> {
+                                // TASK-2: full-edit retry via the staff PUT
+                                // with the structured payload. Marks the local
+                                // row clean on success / REJECTED on 4xx.
+                                retryUpdateAppointment(sync)
+                            }
                             com.aistudio.clinicsystem.data.outbox.OutboxOperation.UPDATE_STATUS -> {
                                 // Stage 1.2 / 3.2: payload = `<serverId:Int>|<status>|<notes>|<localUuid>`
-                                val parts = sync.payload.split("|", limit = 4)
+                                // TASK-1: 5th segment `<actor>` (SELF|STAFF) — the
+                                // retry replays the ORIGINAL route. Legacy rows
+                                // (4 segments) keep the historical STAFF behavior.
+                                val parts = sync.payload.split("|", limit = 5)
                                 if (parts.size >= 3) {
                                     val serverId = parts[0].toIntOrNull()
                                     val status = parts[1]
                                     val notes = parts[2]
                                     val localUuid = parts.getOrNull(3)
+                                    val actor =
+                                        com.aistudio.clinicsystem.data.outbox.OutboxRouting
+                                            .parseActor(sync.payload)
                                     if (serverId != null) {
-                                        // M-CONTRACT-FIX: status changes go through the
-                                        // generic PUT /api/v1/appointments/{id} — the old
-                                        // PUT /appointments/{id}/status route is gone.
-                                        val response =
-                                            legacyApiService.updateAppointment(
-                                                id = serverId,
-                                                appointment =
-                                                    com.aistudio.clinicsystem.data.api.StaffAppointmentUpdateRequest(
-                                                        status = toServerStatus(status),
-                                                        notes = notes,
-                                                    ),
-                                            )
-                                        if (response.isSuccessful) {
-                                            // Stage 3.2: if localUuid provided, bump version
-                                            if (localUuid != null) {
-                                                val local = appointmentDao.getAppointmentById(localUuid)
-                                                if (local != null) {
-                                                    appointmentDao.updateAppointment(
-                                                        local.copy(
-                                                            version = local.version + 1,
-                                                            updatedAt = System.currentTimeMillis(),
+                                        if (com.aistudio.clinicsystem.data.outbox.OutboxRouting
+                                                .statusRoute(actor, status) ==
+                                            com.aistudio.clinicsystem.data.outbox.OutboxRouting.StatusRoute.MOBILE_CANCEL
+                                        ) {
+                                            // Patient cancel retry — mobile contract only.
+                                            val cancelRequest =
+                                                com.aistudio.clinicsystem.data.api.AppointmentCancelRequest(
+                                                    appointmentId = serverId,
+                                                    reason =
+                                                        notes.takeIf { it.isNotBlank() && it != "Отклонено." }?.removePrefix(
+                                                            "Отменено: ",
                                                         ),
-                                                    )
+                                                )
+                                            val mobileResponse =
+                                                try {
+                                                    mobileApiService.cancelAppointment(cancelRequest)
+                                                } catch (e: Exception) {
+                                                    null
+                                                }
+                                            if (mobileResponse != null && mobileResponse.isSuccessful) {
+                                                bumpLocalVersion(localUuid)
+                                                addSyncLog(
+                                                    "✓ Outbox: Приём отменён пациентом (mobile route, serverId=$serverId)",
+                                                    "CLOUD_SYNC_SIMULATOR",
+                                                )
+                                                ProcessResult.Success
+                                            } else {
+                                                val code = mobileResponse?.code() ?: 0
+                                                if (mobileResponse == null) {
+                                                    ProcessResult.TransportError(IllegalStateException("mobile cancel transport failure"))
+                                                } else {
+                                                    ProcessResult.HttpFailure(code, "HTTP $code")
                                                 }
                                             }
-                                            addSyncLog(
-                                                "✓ Outbox: Обновлен статус приема (serverId=$serverId) → $status",
-                                                "CLOUD_SYNC_SIMULATOR",
-                                            )
-                                            ProcessResult.Success
                                         } else {
-                                            ProcessResult.HttpFailure(response.code(), "HTTP ${response.code()}")
+                                            // Staff route — generic PUT /api/v1/appointments/{id}.
+                                            val response =
+                                                legacyApiService.updateAppointment(
+                                                    id = serverId,
+                                                    appointment =
+                                                        com.aistudio.clinicsystem.data.api.StaffAppointmentUpdateRequest(
+                                                            status = toServerStatus(status),
+                                                            notes = notes,
+                                                        ),
+                                                )
+                                            if (response.isSuccessful) {
+                                                // Stage 3.2: if localUuid provided, bump version
+                                                bumpLocalVersion(localUuid)
+                                                addSyncLog(
+                                                    "✓ Outbox: Обновлен статус приема (serverId=$serverId) → $status",
+                                                    "CLOUD_SYNC_SIMULATOR",
+                                                )
+                                                ProcessResult.Success
+                                            } else {
+                                                ProcessResult.HttpFailure(response.code(), "HTTP ${response.code()}")
+                                            }
                                         }
                                     } else {
                                         addSyncLog(
@@ -324,6 +378,19 @@ class ClinicRepository
                         }
 
                     when (result) {
+                        is ProcessResult.TransportError -> {
+                            // Network/exception error — schedule retry with backoff
+                            handleOutboxFailureWithCode(
+                                sync,
+                                null,
+                                result.cause.localizedMessage ?: result.cause.javaClass.simpleName,
+                                retryPolicy,
+                            )
+                            addSyncLog(
+                                "⚠️ Outbox: Сбой (${sync.type}): ${result.cause.message}. Повтор через backoff.",
+                                "CLOUD_SYNC_SIMULATOR",
+                            )
+                        }
                         is ProcessResult.Success -> {
                             // Stage 3.2 (H-2 fix): atomic COMPLETED + delete
                             database.withTransaction {
@@ -395,6 +462,11 @@ class ClinicRepository
             data class PayloadCorrupt(
                 val reason: String,
             ) : ProcessResult()
+
+            /** TASK-1: transport-level failure (no HTTP response) — retry with backoff. */
+            data class TransportError(
+                val cause: Exception,
+            ) : ProcessResult()
         }
 
         /**
@@ -442,10 +514,96 @@ class ClinicRepository
         // the HTTP status code so that non-retriable 4xx errors can be moved
         // to DEAD_LETTER immediately instead of cycling through 5 retries.
 
+        /**
+         * TASK-1: PATIENT self-booking. The signed-in patient books for
+         * themselves through the mobile contract
+         * (POST /api/v1/mobile/appointments/book — JWT, patient-scoped).
+         *
+         * There is deliberately NO fallback to the staff endpoint: a patient
+         * has no registrar rights, and after a server rejection retrying the
+         * same payload against a different route would either 403 or create
+         * a booking the patient never intended. The row stays queued with
+         * owner=PATIENT and is retried exclusively against the same route.
+         *
+         * `patientId`/`doctorId` are structured identifiers captured by the
+         * UI from the doctor directory; identity is NOT re-derived from the
+         * display name (serverId resolution is a fallback of last resort).
+         */
         override suspend fun createAppointmentOnServerAndLocal(
             token: String?,
+            patientId: Int?,
             patientPhone: String,
             patientName: String,
+            doctorId: Int?,
+            doctorName: String,
+            specialty: String,
+            date: String,
+            time: String,
+            reason: String,
+        ): AppointmentEntity =
+            enqueueAndAttemptCreateAppointment(
+                owner = com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_SELF,
+                patientId = patientId,
+                patientPhone = patientPhone,
+                patientName = patientName,
+                doctorId = doctorId,
+                doctorName = doctorName,
+                specialty = specialty,
+                date = date,
+                time = time,
+                reason = reason,
+            )
+
+        /**
+         * TASK-1: STAFF booking for a chosen patient. The registrar/doctor
+         * books a SPECIFIC patient through the staff endpoint
+         * (POST /api/v1/appointments — requires int patient_id, resolved
+         * structurally from the patient registry by phone, not from names).
+         *
+         * There is deliberately NO fallback to the mobile contract: the
+         * mobile endpoint books the JWT caller as the patient, which is
+         * exactly the wrong identity when a registrar books for someone else.
+         */
+        override suspend fun createAppointmentForPatientOnServerAndLocal(
+            token: String?,
+            patientId: Int?,
+            patientPhone: String,
+            patientName: String,
+            doctorId: Int?,
+            doctorName: String,
+            specialty: String,
+            date: String,
+            time: String,
+            reason: String,
+        ): AppointmentEntity =
+            enqueueAndAttemptCreateAppointment(
+                owner = com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_STAFF,
+                patientId = patientId,
+                patientPhone = patientPhone,
+                patientName = patientName,
+                doctorId = doctorId,
+                doctorName = doctorName,
+                specialty = specialty,
+                date = date,
+                time = time,
+                reason = reason,
+            )
+
+        /**
+         * TASK-1: shared offline-first create flow. Writes the local
+         * placeholder, enqueues a structured outbox row carrying the owner
+         * and the identifiers, then attempts the ORIGINAL route once.
+         *   - transport failure  → row stays queued, retried later verbatim;
+         *   - server rejection   → row is left for the outbox classifier,
+         *     which dead-letters non-retriable 4xx on the next flush. No
+         *     second attempt through any other endpoint.
+         */
+        private suspend fun enqueueAndAttemptCreateAppointment(
+            owner: com.aistudio.clinicsystem.data.outbox.OutboxOperation,
+            patientId: Int?,
+            patientPhone: String,
+            patientName: String,
+            doctorId: Int?,
             doctorName: String,
             specialty: String,
             date: String,
@@ -484,53 +642,170 @@ class ClinicRepository
             // Save locally for high offline availability
             val savedApp = insertAppointment(newApp)
 
-            // Stage 3.10 (PERF-11 fix): use the injected Moshi singleton instead
-            // of allocating a new instance per call.
-            val appointmentAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentDto::class.java)
-            val dto =
-                AppointmentDto(
-                    id = null,
+            // TASK-1: structured outbox payload — owner + identifiers, so the
+            // retry replays the original scenario (patient self / staff for
+            // patient) with the same route and the same identity.
+            val payloadAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentOutboxPayload::class.java)
+            val payload =
+                com.aistudio.clinicsystem.data.api.AppointmentOutboxPayload(
+                    owner =
+                        if (owner == com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_SELF) {
+                            com.aistudio.clinicsystem.data.outbox.OutboxRouting.OWNER_PATIENT
+                        } else {
+                            com.aistudio.clinicsystem.data.outbox.OutboxRouting.OWNER_STAFF
+                        },
+                    patientId = patientId,
                     patientPhone = patientPhone,
                     patientName = patientName,
+                    doctorId = doctorId,
                     doctorName = doctorName,
                     specialty = specialty,
                     date = date,
                     time = time,
-                    status = "PENDING",
                     reason = reason,
-                    notes = null,
+                    status = "PENDING",
                 )
-            val payString = appointmentAdapter.toJson(dto)
             val syncRecord =
                 PendingSyncEntity(
-                    type = com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT.code,
-                    payload = payString,
+                    type = owner.code,
+                    payload = payloadAdapter.toJson(payload),
                     clientRequestId = clientReqId,
                 )
             pendingSyncDao.insertPendingSync(syncRecord)
 
             try {
-                // M-CONTRACT-FIX: the mobile contract endpoint
-                // POST /api/v1/mobile/appointments/book now expects
-                // {doctor_id, preferred_date, preferred_time?, complaint?,
-                //  services?, notes?} (backend MobileBookAppointmentRequest) —
-                // the previous {date, time, reason, clinic_id} body was
-                // rejected with HTTP 422 on every booking.
-                val doctorServerId = resolveDoctorServerId(doctorName)
-                if (doctorServerId != null) {
-                    // Patient self-booking via mobile contract
-                    val bookRequest =
-                        com.aistudio.clinicsystem.data.api.AppointmentBookRequest(
-                            doctorId = doctorServerId,
-                            preferredDate = date,
-                            preferredTime = time.ifBlank { null },
-                            complaint = reason.ifBlank { null },
-                            services = emptyList(),
-                            notes = null,
+                val outcome =
+                    when (owner) {
+                        com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_SELF,
+                        -> {
+                            // Patient self-booking via the mobile contract.
+                            // doctor_id is required by the backend — resolve
+                            // structurally, falling back to the cached
+                            // directory ONLY when the UI could not provide one.
+                            val resolvedDoctorId = doctorId ?: resolveDoctorServerId(doctorName)
+                            if (resolvedDoctorId == null) {
+                                addSyncLog(
+                                    "⚠️ Mobile booking: doctor_id не определён — запись останется локальной до синхронизации.",
+                                    "CLOUD_SYNC_SIMULATOR",
+                                )
+                                null
+                            } else {
+                                val bookRequest =
+                                    com.aistudio.clinicsystem.data.api.AppointmentBookRequest(
+                                        doctorId = resolvedDoctorId,
+                                        preferredDate = date,
+                                        preferredTime = time.ifBlank { null },
+                                        complaint = reason.ifBlank { null },
+                                        services = emptyList(),
+                                        notes = null,
+                                    )
+                                val mobileResponse = mobileApiService.bookAppointment(bookRequest)
+                                if (mobileResponse.isSuccessful && mobileResponse.body() != null) {
+                                    val saved = mobileResponse.body()!!
+                                    CreateOutcome.Confirmed(
+                                        ConfirmedCreate(
+                                            serverId = saved.id,
+                                            date = saved.date,
+                                            time = saved.time,
+                                            doctorName = saved.doctorName,
+                                            specialty = saved.specialty,
+                                            clinicAddress = saved.clinicAddress,
+                                        ),
+                                    )
+                                } else {
+                                    // TASK-1: NO staff fallback after a server
+                                    // rejection — the row stays queued for the
+                                    // outbox classifier.
+                                    addSyncLog(
+                                        "⚠️ Mobile API отклонено сервером: Код ${mobileResponse.code()} (маршрут не меняется, запись в очереди)",
+                                        "CLOUD_SYNC_SIMULATOR",
+                                    )
+                                    CreateOutcome.Rejected(mobileResponse.code())
+                                }
+                            }
+                        }
+                        com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_STAFF -> {
+                            // Staff booking for the chosen patient via
+                            // POST /api/v1/appointments.
+                            val staffCreate =
+                                buildStaffCreateRequest(
+                                    patientId = patientId,
+                                    patientPhone = patientPhone,
+                                    patientName = patientName,
+                                    doctorId = doctorId,
+                                    doctorName = doctorName,
+                                    date = date,
+                                    time = time,
+                                    reason = reason,
+                                    status = "PENDING",
+                                )
+                            if (staffCreate == null) {
+                                addSyncLog(
+                                    "⚠️ POST /api/v1/appointments: patient_id не разрешён — запись останется локальной до синхронизации.",
+                                    "CLOUD_SYNC_SIMULATOR",
+                                )
+                                null
+                            } else {
+                                val response = legacyApiService.createAppointment(staffCreate)
+                                if (response.isSuccessful && response.body() != null) {
+                                    val saved = response.body()!!
+                                    CreateOutcome.Confirmed(
+                                        ConfirmedCreate(
+                                            serverId = saved.id,
+                                            date = saved.appointmentDate,
+                                            time = saved.appointmentTime ?: "",
+                                            doctorName = doctorName,
+                                            specialty = specialty,
+                                            clinicAddress = null,
+                                        ),
+                                    )
+                                } else {
+                                    // TASK-1: NO mobile fallback after a server
+                                    // rejection — the mobile route would book
+                                    // the STAFF account as the patient.
+                                    addSyncLog(
+                                        "⚠️ API Отклонено сервером: Код ${response.code()} (маршрут не меняется, запись в очереди)",
+                                        "CLOUD_SYNC_SIMULATOR",
+                                    )
+                                    CreateOutcome.Rejected(response.code())
+                                }
+                            }
+                        }
+                        else -> null
+                    }
+
+                when (outcome) {
+                    is CreateOutcome.Rejected -> {
+                        if (isRetriableHttp(outcome.httpCode)) {
+                            // Codex P1 (#150): a retriable server failure
+                            // (500/503/408/429/401) is NOT a rejection — the
+                            // booking must stay queued and be replayed
+                            // verbatim later. Marking it rejected would turn
+                            // a temporary failure into a permanent loss.
+                            val queued = savedApp.copy(syncState = AppointmentEntity.SYNC_STATE_QUEUED)
+                            updateAppointment(queued)
+                            addSyncLog(
+                                "⏳ Сервер временно недоступен: HTTP ${outcome.httpCode}. Запись остаётся в очереди на доставку.",
+                                "SYSTEM_SYNC",
+                            )
+                            return queued
+                        }
+                        // TASK-2: the server REFUSED the create (4xx). This is
+                        // not network absence — retrying on another route is
+                        // forbidden and retrying this route is pointless until
+                        // the user changes something. Mark the local row
+                        // REJECTED and dead-letter the outbox row immediately.
+                        val marked = savedApp.copy(syncState = AppointmentEntity.SYNC_STATE_REJECTED)
+                        updateAppointment(marked)
+                        deadLetterOutboxRow(syncRecord, "HTTP ${outcome.httpCode} (server rejected create)")
+                        addSyncLog(
+                            "⛔ Сервер отклонил запись: HTTP ${outcome.httpCode}. Изменение помечено как отклонённое, маршрут не менялся.",
+                            "SYSTEM_SYNC",
                         )
-                    val mobileResponse = mobileApiService.bookAppointment(bookRequest)
-                    if (mobileResponse.isSuccessful && mobileResponse.body() != null) {
-                        val saved = mobileResponse.body()!!
+                        return marked
+                    }
+                    is CreateOutcome.Confirmed -> {
+                        val saved = outcome.normalized
                         pendingSyncDao.deletePendingSync(syncRecord)
                         deleteAppointment(savedApp.id)
                         // High-1 audit fix: AppointmentUpcomingOut uses
@@ -551,78 +826,366 @@ class ClinicRepository
                                     java.util.UUID
                                         .randomUUID()
                                         .toString(),
-                                serverId = saved.id,
-                                date = saved.date,
+                                serverId = saved.serverId,
+                                date = if (saved.date.isBlank()) date else saved.date,
                                 time = resolvedTime,
-                                doctorName = saved.doctorName,
-                                specialty = saved.specialty,
-                                clinicId = saved.clinicAddress, // clinic_address → clinicId field (semantic)
+                                doctorName = saved.doctorName.ifBlank { doctorName },
+                                specialty = saved.specialty.ifBlank { specialty },
+                                clinicId = saved.clinicAddress ?: newApp.clinicId,
                             )
                         insertAppointment(finalApp)
                         addSyncLog(
-                            "🟢 API УСПЕХ [POST /api/v1/mobile/appointments/book]: Приём записан на сервере с ID #${saved.id}",
+                            "🟢 API УСПЕХ: Приём записан на сервере с ID #${saved.serverId} (${syncRecord.type})",
                             "CLOUD_SYNC_SIMULATOR",
                         )
                         return finalApp
-                    } else {
-                        addSyncLog(
-                            "⚠️ Mobile API отклонено сервером: Код ${mobileResponse.code()} (fallback на staff-эндпоинт)",
-                            "CLOUD_SYNC_SIMULATOR",
-                        )
-                        // Fall through to staff attempt below
                     }
+                    null -> Unit // route not attempted (unresolvable identity) — row stays queued
                 }
+            } catch (e: Exception) {
+                // Transport failure — the queued row will be retried verbatim
+                // (same route, same owner) by retryUnsyncedWrites. The local
+                // row is explicitly marked QUEUED so the UI can show a draft.
+                val queued = savedApp.copy(syncState = AppointmentEntity.SYNC_STATE_QUEUED)
+                updateAppointment(queued)
+                addSyncLog(
+                    "⏳ Сервер недоступен. Запись сохранена локально и добавлена в очередь отложенной отправки: ${e.localizedMessage}",
+                    "CLOUD_SYNC_SIMULATOR",
+                )
+                return queued
+            }
+            return savedApp
+        }
 
-                // Staff fallback (registrar/doctor booking for a patient).
-                // POST /api/v1/appointments requires an int patient_id —
-                // resolve it from the phone first. Legacy PUT
-                // /appointments/{id}/status and the old flat create body are
-                // gone from the backend (404).
-                val staffCreate =
-                    buildStaffCreateRequest(
-                        patientPhone = patientPhone,
-                        patientName = patientName,
-                        doctorName = doctorName,
-                        date = date,
-                        time = time,
-                        reason = reason,
-                        status = "PENDING",
+        /**
+         * TASK-2: dead-letters an outbox row immediately at the call site —
+         * used when the server answered with a non-retriable 4xx during the
+         * immediate attempt. Keeps the classification rules of
+         * retryUnsyncedWrites consistent for rows that never leave the
+         * foreground path.
+         */
+        private suspend fun deadLetterOutboxRow(
+            syncRecord: PendingSyncEntity,
+            error: String,
+        ) {
+            pendingSyncDao.updateRetryStateWithHttpCode(
+                id = syncRecord.id,
+                status = "DEAD_LETTER",
+                retryCount = 1,
+                error = error,
+                nextRetryAt = null,
+                httpCode = null,
+            )
+        }
+
+        /**
+         * TASK-1: normalized result of the immediate create attempt — both
+         * backend DTOs (mobile [com.aistudio.clinicsystem.data.api.AppointmentUpcomingOut]
+         * and staff [com.aistudio.clinicsystem.data.api.StaffAppointmentDto])
+         * are mapped into one shape so the reconciliation code below is
+         * route-agnostic.
+         */
+        private data class ConfirmedCreate(
+            val serverId: Int,
+            val date: String,
+            val time: String,
+            val doctorName: String,
+            val specialty: String,
+            val clinicAddress: String?,
+        )
+
+        /** TASK-1: internal result of the immediate create attempt. */
+        private sealed class CreateOutcome {
+            data class Confirmed(
+                val normalized: ConfirmedCreate,
+            ) : CreateOutcome()
+
+            data class Rejected(
+                val httpCode: Int,
+            ) : CreateOutcome()
+        }
+
+        /** TASK-1: Moshi adapter for the structured create-appointment payload. */
+        private val outboxPayloadAdapter by lazy {
+            moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentOutboxPayload::class.java)
+        }
+
+        /** TASK-2: outbox type codes that create an appointment. */
+        private val createOperationCodes =
+            setOf(
+                com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT.code,
+                com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_SELF.code,
+                com.aistudio.clinicsystem.data.outbox.OutboxOperation.CREATE_APPOINTMENT_STAFF.code,
+            )
+
+        /**
+         * TASK-1: outbox retry for CREATE_APPOINTMENT_SELF. Route is FIXED to
+         * the mobile contract; doctor identity is resolved from the payload's
+         * structured doctor_id (fallback: cached directory). A row whose
+         * doctor can never be resolved is dead-lettered — retrying it against
+         * a different route would break ownership rules.
+         */
+        private suspend fun retrySelfBooking(sync: PendingSyncEntity): ProcessResult {
+            val payload =
+                outboxPayloadAdapter.fromJson(sync.payload)
+                    ?: return ProcessResult.PayloadCorrupt("payload is null")
+            val doctorId = payload.doctorId ?: resolveDoctorServerId(payload.doctorName)
+            if (doctorId == null) {
+                addSyncLog(
+                    "💀 Outbox: CREATE_APPOINTMENT_SELF без doctor_id — маршрутизация в staff-эндпоинт запрещена (владелец — пациент).",
+                    "SYSTEM_SYNC",
+                )
+                return ProcessResult.HttpFailure(404, "doctor_id unresolvable for self-booking")
+            }
+            return try {
+                val bookRequest =
+                    com.aistudio.clinicsystem.data.api.AppointmentBookRequest(
+                        doctorId = doctorId,
+                        preferredDate = payload.date,
+                        preferredTime = payload.time.ifBlank { null },
+                        complaint = payload.reason.ifBlank { null },
+                        services = emptyList(),
+                        notes = null,
                     )
-                if (staffCreate != null) {
-                    val response = legacyApiService.createAppointment(staffCreate)
-                    if (response.isSuccessful && response.body() != null) {
-                        val saved = response.body()!!
-                        pendingSyncDao.deletePendingSync(syncRecord)
-                        deleteAppointment(savedApp.id)
-                        val finalApp =
-                            newApp.copy(
-                                id =
-                                    java.util.UUID
-                                        .randomUUID()
-                                        .toString(),
-                                serverId = saved.id,
-                                status = "PENDING",
+                val response = mobileApiService.bookAppointment(bookRequest)
+                if (response.isSuccessful && response.body() != null) {
+                    val saved = response.body()!!
+                    reconcileConfirmedCreate(sync, saved.id, saved.date, saved.time, saved.doctorName, saved.specialty)
+                    ProcessResult.Success
+                } else {
+                    ProcessResult.HttpFailure(response.code(), "HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                ProcessResult.TransportError(e)
+            }
+        }
+
+        /**
+         * TASK-1: outbox retry for CREATE_APPOINTMENT_STAFF. Route is FIXED to
+         * POST /api/v1/appointments; the patient identity comes from the
+         * structured patient_id, re-resolved from the phone only as a
+         * fallback. Unresolvable patient → dead-letter (a staff create
+         * without patient_id can never succeed).
+         */
+        private suspend fun retryStaffBooking(sync: PendingSyncEntity): ProcessResult {
+            val payload =
+                outboxPayloadAdapter.fromJson(sync.payload)
+                    ?: return ProcessResult.PayloadCorrupt("payload is null")
+            val patientId = payload.patientId ?: resolvePatientIdByPhone(payload.patientPhone)
+            if (patientId == null) {
+                return ProcessResult.HttpFailure(404, "patient not found on server")
+            }
+            val doctorId = payload.doctorId ?: resolveDoctorServerId(payload.doctorName)
+            return try {
+                val notesParts = listOf(payload.reason, payload.patientName).filter { it.isNotBlank() }
+                val request =
+                    com.aistudio.clinicsystem.data.api.StaffAppointmentCreateRequest(
+                        patientId = patientId,
+                        doctorId = doctorId,
+                        appointmentDate = payload.date,
+                        appointmentTime = payload.time.ifBlank { null },
+                        notes = notesParts.joinToString("\n").ifBlank { null },
+                        status = toServerStatus(payload.status),
+                    )
+                val response = legacyApiService.createAppointment(request)
+                if (response.isSuccessful && response.body() != null) {
+                    val saved = response.body()!!
+                    reconcileConfirmedCreate(
+                        sync,
+                        saved.id,
+                        saved.appointmentDate,
+                        saved.appointmentTime ?: payload.time,
+                        payload.doctorName,
+                        payload.specialty,
+                    )
+                    ProcessResult.Success
+                } else {
+                    ProcessResult.HttpFailure(response.code(), "HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                ProcessResult.TransportError(e)
+            }
+        }
+
+        /**
+         * TASK-1: after an outbox retry confirms the create on the server,
+         * swap the local placeholder for the confirmed entity (atomic).
+         */
+        private suspend fun reconcileConfirmedCreate(
+            sync: PendingSyncEntity,
+            serverId: Int,
+            date: String,
+            time: String,
+            doctorName: String,
+            specialty: String,
+        ) {
+            val local = appointmentDao.getAppointmentByClientRequestId(sync.clientRequestId)
+            if (local != null) {
+                database.withTransaction {
+                    appointmentDao.deleteAppointmentById(local.id)
+                    appointmentDao.insertAppointment(
+                        local.copy(
+                            id =
+                                java.util.UUID
+                                    .randomUUID()
+                                    .toString(),
+                            serverId = serverId,
+                            date = date.ifBlank { local.date },
+                            time = if (time.isBlank() || time == "00:00") local.time else time,
+                            doctorName = doctorName.ifBlank { local.doctorName },
+                            specialty = specialty.ifBlank { local.specialty },
+                            version = local.version + 1,
+                            // Codex P2 (#150): the server accepted the replay —
+                            // the row is no longer an unsent draft.
+                            syncState = AppointmentEntity.SYNC_STATE_CLEAN,
+                            updatedAt = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+            addSyncLog("✓ Outbox: Синхронизирован приём (serverId=$serverId, ${sync.type})", "CLOUD_SYNC_SIMULATOR")
+        }
+
+        /** Stage 3.2 helper: bump the local version after a confirmed server write. */
+        private suspend fun bumpLocalVersion(localUuid: String?) {
+            if (localUuid == null) return
+            val local = appointmentDao.getAppointmentById(localUuid) ?: return
+            appointmentDao.updateAppointment(
+                local.copy(
+                    version = local.version + 1,
+                    // Codex P2 (#150): a confirmed server write clears the
+                    // queued marker — later reconciliation must not keep
+                    // labelling the row as unsent.
+                    syncState = AppointmentEntity.SYNC_STATE_CLEAN,
+                    updatedAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        /**
+         * TASK-2: outbox retry for UPDATE_APPOINTMENT — delivers a deferred
+         * full edit through PUT /api/v1/appointments/{id} and reconciles the
+         * local row (clean on success; REJECTED on 4xx).
+         */
+        private suspend fun retryUpdateAppointment(sync: PendingSyncEntity): ProcessResult {
+            val adapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentEditOutboxPayload::class.java)
+            val payload =
+                adapter.fromJson(sync.payload)
+                    ?: return ProcessResult.PayloadCorrupt("payload is null")
+            return try {
+                val response =
+                    legacyApiService.updateAppointment(
+                        id = payload.serverId,
+                        appointment =
+                            StaffAppointmentUpdateRequest(
+                                doctorId = payload.doctorId,
+                                appointmentDate = payload.date,
+                                appointmentTime = payload.time.ifBlank { null },
+                                notes = payload.notes,
+                                status = toServerStatus(payload.status),
+                            ),
+                    )
+                val dto = response.body()
+                when {
+                    response.isSuccessful && dto != null -> {
+                        val local = appointmentDao.getAppointmentById(payload.localId)
+                        if (local != null) {
+                            appointmentDao.updateAppointment(
+                                local.copy(
+                                    date = dto.appointmentDate,
+                                    time = dto.appointmentTime ?: local.time,
+                                    status = fromServerStatus(dto.status),
+                                    notes = dto.notes ?: local.notes,
+                                    syncState = AppointmentEntity.SYNC_STATE_CLEAN,
+                                    version = local.version + 1,
+                                    updatedAt = System.currentTimeMillis(),
+                                ),
                             )
-                        insertAppointment(finalApp)
-                        addSyncLog(
-                            "🟢 API УСПЕХ [POST /api/v1/appointments]: Прием записан на сервере с ID #${saved.id}",
-                            "CLOUD_SYNC_SIMULATOR",
-                        )
-                        return finalApp
-                    } else {
-                        addSyncLog(
-                            "⚠️ API Отклонено сервером: Код ${response.code()} (Работаем оффлайн, запись сохранена)",
-                            "CLOUD_SYNC_SIMULATOR",
-                        )
+                        }
+                        addSyncLog("✓ Outbox: Правка приёма #${payload.serverId} доставлена на сервер.", "CLOUD_SYNC_SIMULATOR")
+                        ProcessResult.Success
+                    }
+                    response.isSuccessful -> ProcessResult.PayloadCorrupt("empty body")
+                    else -> {
+                        // 4xx → the caller dead-letters; 5xx → retried. Mark
+                        // REJECTED only for definitive refusals, matching the
+                        // foreground classification.
+                        if (!isRetriableHttp(response.code())) {
+                            val local = appointmentDao.getAppointmentById(payload.localId)
+                            if (local != null) {
+                                appointmentDao.updateAppointment(
+                                    local.copy(syncState = AppointmentEntity.SYNC_STATE_REJECTED),
+                                )
+                            }
+                        }
+                        ProcessResult.HttpFailure(response.code(), "HTTP ${response.code()}")
                     }
                 }
             } catch (e: Exception) {
-                addSyncLog(
-                    "⏳ Сервер FastAPI offline. Запись сохранена локально и добавлена в очередь отложенной отправки: ${e.localizedMessage}",
-                    "CLOUD_SYNC_SIMULATOR",
-                )
+                ProcessResult.TransportError(e)
             }
-            return savedApp
+        }
+
+        /**
+         * TASK-2: undo support — re-enqueue the CREATE outbox row for a
+         * not-yet-synced appointment that was restored via Undo, so the
+         * restored draft is still delivered. [owner] fixes the retry route.
+         */
+        suspend fun reEnqueueCreateForUnsynced(
+            entity: AppointmentEntity,
+            owner: String,
+        ) {
+            if (entity.serverId != null) return
+            val requestId = entity.clientRequestId ?: return
+            val existing =
+                pendingSyncDao.getAllPendingSyncs().any {
+                    it.clientRequestId == requestId &&
+                        it.type in createOperationCodes &&
+                        (it.status == "PENDING" || it.status == "FAILED" || it.status == "PROCESSING")
+                }
+            if (existing) return
+            val payloadAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentOutboxPayload::class.java)
+            val payload =
+                com.aistudio.clinicsystem.data.api.AppointmentOutboxPayload(
+                    owner = owner,
+                    patientId = null,
+                    patientPhone = entity.patientPhone,
+                    patientName = entity.patientName,
+                    doctorId = resolveDoctorServerId(entity.doctorName),
+                    doctorName = entity.doctorName,
+                    specialty = entity.specialty,
+                    date = entity.date,
+                    time = entity.time,
+                    reason = entity.reason,
+                    status = entity.status,
+                )
+            pendingSyncDao.insertPendingSync(
+                PendingSyncEntity(
+                    type =
+                        com.aistudio.clinicsystem.data.outbox.OutboxRouting
+                            .ownerOperation(owner)
+                            .code,
+                    payload = payloadAdapter.toJson(payload),
+                    clientRequestId = requestId,
+                ),
+            )
+            addSyncLog("↩️ Undo: черновик записи восстановлен и снова в очереди отправки.", "SYSTEM_SYNC")
+        }
+
+        /**
+         * TASK-2: undo support for a staff-created appointment — removes the
+         * local row AND its queued CREATE row, so undoing a create never
+         * leaves a phantom row that would later be created on the server.
+         */
+        suspend fun deleteLocalAppointmentAndOutbox(id: String) {
+            val entity = appointmentDao.getAppointmentById(id) ?: return
+            database.withTransaction {
+                appointmentDao.deleteAppointmentById(id)
+                entity.clientRequestId?.let { requestId ->
+                    pendingSyncDao.deleteByClientRequestIdAndTypes(requestId, createOperationCodes.toList())
+                }
+            }
+            addSyncLog("↩️ Undo: локальная запись и её отложенная отправка отменены.", "SYSTEM_SYNC")
         }
 
         /**
@@ -632,16 +1195,24 @@ class ClinicRepository
          * the create schema requires an int `patient_id`.
          */
         private suspend fun buildStaffCreateRequest(
+            patientId: Int?,
             patientPhone: String,
             patientName: String,
+            doctorId: Int?,
             doctorName: String,
             date: String,
             time: String,
             reason: String,
             status: String,
         ): com.aistudio.clinicsystem.data.api.StaffAppointmentCreateRequest? {
-            val patientId = resolvePatientIdByPhone(patientPhone)
-            if (patientId == null) {
+            // TASK-1: use the STRUCTURED patientId when the UI resolved it
+            // from the patient registry; re-resolve from the phone only as a
+            // fallback for legacy callers. Identity is never guessed from
+            // the display name.
+            val resolvedPatientId =
+                patientId
+                    ?: resolvePatientIdByPhone(patientPhone)
+            if (resolvedPatientId == null) {
                 addSyncLog(
                     "⚠️ POST /api/v1/appointments: пациент с телефоном $patientPhone не найден на сервере — пациент должен быть зарегистрирован в клинике.",
                     "CLOUD_SYNC_SIMULATOR",
@@ -650,8 +1221,8 @@ class ClinicRepository
             }
             val notesParts = listOf(reason, patientName).filter { it.isNotBlank() }
             return com.aistudio.clinicsystem.data.api.StaffAppointmentCreateRequest(
-                patientId = patientId,
-                doctorId = resolveDoctorServerId(doctorName),
+                patientId = resolvedPatientId,
+                doctorId = doctorId ?: resolveDoctorServerId(doctorName),
                 appointmentDate = date,
                 appointmentTime = time.ifBlank { null },
                 notes = notesParts.joinToString("\n").ifBlank { null },
@@ -672,13 +1243,8 @@ class ClinicRepository
          * backend appointment statuses (scheduled/confirmed/completed/cancelled).
          */
         private fun toServerStatus(clientStatus: String): String =
-            when (clientStatus.uppercase()) {
-                "PENDING", "PLANNED" -> "scheduled"
-                "APPROVED", "CONFIRMED" -> "confirmed"
-                "CANCELLED" -> "cancelled"
-                "COMPLETED" -> "completed"
-                else -> clientStatus.lowercase()
-            }
+            com.aistudio.clinicsystem.utils.ServerStatusMapper
+                .toServer(clientStatus)
 
         private fun normalizeQueueStatus(status: String): String =
             when (status.lowercase()) {
@@ -716,7 +1282,8 @@ class ClinicRepository
             id: String,
             status: String,
             cancelReason: String,
-        ): AppointmentEntity? {
+            actorIsPatient: Boolean,
+        ): com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome? {
             val appointment = getAppointmentById(id) ?: return null
             val notesText =
                 if (status == "CANCELLED") {
@@ -731,86 +1298,130 @@ class ClinicRepository
                     notes = notesText,
                     updatedAt = System.currentTimeMillis(),
                     version = nextVersion,
+                    syncState = AppointmentEntity.SYNC_STATE_QUEUED,
                 )
+
+            // TASK-2: cancel of an appointment that has NOT been synced yet.
+            // The local row is removed TOGETHER with its queued CREATE row —
+            // the draft must never materialize on the server afterwards
+            // ("отменённая offline-запись впоследствии не создаётся").
+            val serverId = appointment.serverId
+            if (serverId == null) {
+                if (status == "CANCELLED") {
+                    database.withTransaction {
+                        appointmentDao.deleteAppointmentById(id)
+                        appointment.clientRequestId?.let { requestId ->
+                            pendingSyncDao.deleteByClientRequestIdAndTypes(requestId, createOperationCodes.toList())
+                        }
+                    }
+                    addSyncLog(
+                        "🗑️ Offline-запись отменена: локальный черновик и отложенная CREATE-операция удалены (на сервере не создавался).",
+                        "SYSTEM_SYNC",
+                    )
+                    return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome
+                        .CancelledLocally(appointment)
+                }
+                // Non-cancel status on an unsynced appointment: amend the
+                // pending CREATE payload so the eventual create carries the
+                // new status; the local row keeps the QUEUED draft mark.
+                updateAppointment(updated)
+                amendPendingCreatePayload(updated)
+                addSyncLog(
+                    "ℹ️ Статус $status сохранён в черновике: приём ещё не синхронизирован; CREATE-операция обновлена.",
+                    "CLOUD_SYNC_SIMULATOR",
+                )
+                return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued(
+                    updated,
+                    "приём ещё не синхронизирован с сервером",
+                )
+            }
+
             updateAppointment(updated)
 
-            // Stage 1.2 (Critical fix C-2): the outbox payload MUST carry the
-            // server-side Int id (used by `legacyApiService.updateAppointment(id: Int, ...)`),
-            // NOT the local UUID primary key. The previous implementation packed
-            // the local UUID into `payString` and the retry path called
-            // `parts[0].toIntOrNull()` — which returned null for every UUID →
-            // every offline cancel/approve was guaranteed to fail and end in
-            // DEAD_LETTER. See FINAL_RELEASE_AUDIT.md finding C-2.
-            //
-            // If the appointment has not been synced to the server yet
-            // (`serverId == null`), we CANNOT enqueue a status update — the
-            // server doesn't know about this appointment. The local update is
-            // still saved above; the server will see the new status when the
-            // CREATE_APPOINTMENT outbox row is processed (the server's
-            // `createAppointment` should accept a `status` field — backend
-            // ticket).
-            val serverId = appointment.serverId
+            // Payload format: `<serverId:Int>|<status:String>|<notes:String>|<localUuid:String>|<actor:String>`
+            // The 4th segment is the local UUID, used for client-side
+            // reconciliation after the server confirms the update.
+            // The 5th segment records the ACTOR (TASK-1) so the outbox
+            // retry replays the original route: SELF → mobile cancel,
+            // STAFF → staff PUT. Legacy rows without the segment are
+            // treated as STAFF (the historical behavior).
+            val actor =
+                if (actorIsPatient) {
+                    com.aistudio.clinicsystem.data.outbox.OutboxRouting.ACTOR_SELF
+                } else {
+                    com.aistudio.clinicsystem.data.outbox.OutboxRouting.ACTOR_STAFF
+                }
+            val payString = "$serverId|$status|$notesText|$id|$actor"
             val clientReqId =
                 java.util.UUID
                     .randomUUID()
                     .toString()
-            if (serverId != null) {
-                // Payload format: `<serverId:Int>|<status:String>|<notes:String>|<localUuid:String>`
-                // The 4th segment is the local UUID, used for client-side
-                // reconciliation after the server confirms the update.
-                val payString = "$serverId|$status|$notesText|$id"
-                val syncRecord =
-                    PendingSyncEntity(
-                        type = com.aistudio.clinicsystem.data.outbox.OutboxOperation.UPDATE_STATUS.code,
-                        payload = payString,
-                        clientRequestId = clientReqId,
-                    )
-                pendingSyncDao.insertPendingSync(syncRecord)
+            val syncRecord =
+                PendingSyncEntity(
+                    type = com.aistudio.clinicsystem.data.outbox.OutboxOperation.UPDATE_STATUS.code,
+                    payload = payString,
+                    clientRequestId = clientReqId,
+                )
+            pendingSyncDao.insertPendingSync(syncRecord)
 
-                try {
-                    // M-CONTRACT-FIX: patient-side cancellations go through
-                    // POST /api/v1/mobile/appointments/cancel (JWT, patient-
-                    // scoped, 2-hour window). Staff-side status changes
-                    // (APPROVED, COMPLETED, ...) go through the generic
-                    // PUT /api/v1/appointments/{id} — the dedicated
-                    // PUT /appointments/{id}/status route was removed from
-                    // the backend together with the legacy API.
-                    val isPatientCancel = status == "CANCELLED"
-                    var mobileAttempted = false
-                    if (isPatientCancel) {
-                        mobileAttempted = true
-                        val cancelRequest =
-                            com.aistudio.clinicsystem.data.api.AppointmentCancelRequest(
-                                appointmentId = serverId,
-                                reason = cancelReason.ifBlank { null },
-                            )
-                        try {
-                            val mobileResponse = mobileApiService.cancelAppointment(cancelRequest)
-                            if (mobileResponse.isSuccessful) {
-                                pendingSyncDao.deletePendingSync(syncRecord)
-                                addSyncLog(
-                                    "🟢 API [POST /api/v1/mobile/appointments/cancel]: Приём #$serverId отменён.",
-                                    "CLOUD_SYNC_SIMULATOR",
-                                )
-                                return updated
-                            } else {
-                                addSyncLog(
-                                    "⚠️ Mobile cancel API отклонён: Код ${mobileResponse.code()} (fallback на PUT /appointments/{id})",
-                                    "CLOUD_SYNC_SIMULATOR",
-                                )
-                                // Fall through to staff attempt
-                            }
-                        } catch (e: Exception) {
+            try {
+                // TASK-1: the route is chosen by the ACTOR, not by the
+                // outcome of the first attempt. A patient cancels through
+                // the mobile contract only; staff change statuses through
+                // the generic PUT /api/v1/appointments/{id} only. There is
+                // deliberately NO cross-route fallback after a server
+                // rejection — a rejected request must not silently become
+                // a second, different operation.
+                if (com.aistudio.clinicsystem.data.outbox.OutboxRouting
+                        .statusRoute(actor, status) ==
+                    com.aistudio.clinicsystem.data.outbox.OutboxRouting.StatusRoute.MOBILE_CANCEL
+                ) {
+                    val cancelRequest =
+                        com.aistudio.clinicsystem.data.api.AppointmentCancelRequest(
+                            appointmentId = serverId,
+                            reason = cancelReason.ifBlank { null },
+                        )
+                    val mobileResponse = mobileApiService.cancelAppointment(cancelRequest)
+                    if (mobileResponse.isSuccessful) {
+                        pendingSyncDao.deletePendingSync(syncRecord)
+                        val confirmed = updated.copy(syncState = AppointmentEntity.SYNC_STATE_CLEAN)
+                        updateAppointment(confirmed)
+                        addSyncLog(
+                            "🟢 API [POST /api/v1/mobile/appointments/cancel]: Приём #$serverId отменён.",
+                            "CLOUD_SYNC_SIMULATOR",
+                        )
+                        return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome
+                            .Confirmed(confirmed, serverId)
+                    } else {
+                        val code = mobileResponse.code()
+                        if (isRetriableHttp(code)) {
                             addSyncLog(
-                                "⚠️ Mobile cancel API exception: ${e.message} (fallback на PUT /appointments/{id})",
+                                "⚠️ Mobile cancel API: HTTP $code — отмена останется в очереди на повтор.",
                                 "CLOUD_SYNC_SIMULATOR",
                             )
-                            // Fall through to staff attempt
+                            return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued(
+                                updated,
+                                "HTTP $code — будет повторено автоматически",
+                            )
                         }
+                        // 4xx: the server refused (e.g. the 2-hour cancel
+                        // window). Not network absence — mark REJECTED and
+                        // dead-letter the row immediately.
+                        val rejected = updated.copy(syncState = AppointmentEntity.SYNC_STATE_REJECTED)
+                        updateAppointment(rejected)
+                        deadLetterOutboxRow(syncRecord, "HTTP $code (server rejected cancel)")
+                        addSyncLog(
+                            "⛔ Сервер отклонил отмену приёма #$serverId: HTTP $code.",
+                            "CLOUD_SYNC_SIMULATOR",
+                        )
+                        return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Rejected(
+                            rejected,
+                            code,
+                            "сервер отклонил отмену (HTTP $code)",
+                        )
                     }
-
-                    // Staff fallback (registrar/doctor status changes, or mobile
-                    // cancel failed and we retry against the staff endpoint).
+                } else {
+                    // Staff route (registrar/doctor status changes).
                     val response =
                         legacyApiService.updateAppointment(
                             id = serverId,
@@ -822,35 +1433,65 @@ class ClinicRepository
                         )
                     if (response.isSuccessful) {
                         pendingSyncDao.deletePendingSync(syncRecord)
-                        val endpoint =
-                            if (mobileAttempted) {
-                                "PUT /api/v1/appointments/$serverId (fallback)"
-                            } else {
-                                "PUT /api/v1/appointments/$serverId"
-                            }
-                        addSyncLog("🟢 API [$endpoint]: Статус $status подтвержден на сервере.", "CLOUD_SYNC_SIMULATOR")
+                        val confirmed = updated.copy(syncState = AppointmentEntity.SYNC_STATE_CLEAN)
+                        updateAppointment(confirmed)
+                        addSyncLog(
+                            "🟢 API [PUT /api/v1/appointments/$serverId]: Статус $status подтвержден на сервере.",
+                            "CLOUD_SYNC_SIMULATOR",
+                        )
+                        return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome
+                            .Confirmed(confirmed, serverId)
                     } else {
-                        addSyncLog("⚠️ API Статус отклонен сервером: Код ${response.code()}", "CLOUD_SYNC_SIMULATOR")
+                        val code = response.code()
+                        if (isRetriableHttp(code)) {
+                            addSyncLog("⏳ Сервер временно не принял статус: HTTP $code — в очереди на повтор.", "CLOUD_SYNC_SIMULATOR")
+                            return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued(
+                                updated,
+                                "HTTP $code — будет повторено автоматически",
+                            )
+                        }
+                        val rejected = updated.copy(syncState = AppointmentEntity.SYNC_STATE_REJECTED)
+                        updateAppointment(rejected)
+                        deadLetterOutboxRow(syncRecord, "HTTP $code (server rejected status change)")
+                        addSyncLog("⚠️ API Статус отклонен сервером: Код $code.", "CLOUD_SYNC_SIMULATOR")
+                        return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Rejected(
+                            rejected,
+                            code,
+                            "сервер отклонил изменение статуса (HTTP $code)",
+                        )
                     }
-                } catch (e: Exception) {
-                    addSyncLog(
-                        "⏳ Сервер FastAPI offline. Статус сохранен локально в очереди транзакций: ${e.localizedMessage}",
-                        "CLOUD_SYNC_SIMULATOR",
-                    )
                 }
-            } else {
-                // Appointment not yet synced — server can't update what it doesn't
-                // have. Log the situation; the CREATE_APPOINTMENT outbox row will
-                // carry the final status.
+            } catch (e: Exception) {
+                // Transport failure — the queued row will be retried verbatim
+                // (same route, same actor) by retryUnsyncedWrites.
                 addSyncLog(
-                    "ℹ️ Outbox: Приём #$id ещё не синхронизирован с сервером (serverId=null). " +
-                        "Статус $status будет применён при следующей синхронизации создания.",
+                    "⏳ Сервер недоступен. Статус сохранен локально в очереди транзакций: ${e.localizedMessage}",
                     "CLOUD_SYNC_SIMULATOR",
                 )
+                return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued(
+                    updated,
+                    e.localizedMessage ?: "нет сети",
+                )
             }
-            return updated
         }
 
+        /**
+         * TASK-2: full edit with guaranteed deferred delivery.
+         *
+         * Outcome contract:
+         *   - server confirmed            → Confirmed (row syncState = clean)
+         *   - transport error / 5xx / 408 / 429 → Queued: an
+         *     UPDATE_APPOINTMENT outbox row is durably stored and retried
+         *     until delivered (row syncState = QUEUED — a visible draft);
+         *   - server rejected (4xx)       → Rejected: row marked REJECTED,
+         *     NO outbox row (retrying 403/409/422 is pointless), the user
+         *     sees the rejection.
+         *
+         * If the appointment has not been synced yet (serverId == null), the
+         * pending CREATE outbox row is amended instead, so the eventual
+         * create already carries the edited values — local data and outbox
+         * are updated consistently.
+         */
         suspend fun updateAppointmentOnServerAndLocal(
             id: String,
             doctorName: String,
@@ -859,7 +1500,7 @@ class ClinicRepository
             reason: String,
             status: String,
             notes: String? = null,
-        ): AppointmentEntity? {
+        ): com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome? {
             val appointment = getAppointmentById(id) ?: return null
             val localUpdate =
                 appointment.copy(
@@ -871,13 +1512,24 @@ class ClinicRepository
                     notes = notes ?: appointment.notes,
                     updatedAt = System.currentTimeMillis(),
                     version = appointment.version + 1,
+                    syncState = AppointmentEntity.SYNC_STATE_QUEUED,
                 )
             updateAppointment(localUpdate)
 
             val serverId = appointment.serverId
             if (serverId == null) {
-                addSyncLog("ℹ️ Запись изменена локально: серверный ID ещё не получен.", "CLOUD_SYNC_SIMULATOR")
-                return localUpdate
+                // Not synced yet — amend the pending CREATE row so the
+                // eventual create carries the edited values, then keep the
+                // local edit as an explicit QUEUED draft.
+                amendPendingCreatePayload(localUpdate)
+                addSyncLog(
+                    "ℹ️ Правка сохранена в черновике: приём ещё не синхронизирован, отложенная CREATE-операция обновлена.",
+                    "CLOUD_SYNC_SIMULATOR",
+                )
+                return com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued(
+                    localUpdate,
+                    "приём ещё не синхронизирован с сервером",
+                )
             }
 
             return try {
@@ -895,8 +1547,27 @@ class ClinicRepository
                     )
                 val dto = response.body()
                 if (!response.isSuccessful || dto == null) {
-                    addSyncLog("⚠️ Сервер не принял изменение записи #$serverId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
-                    localUpdate
+                    val code = response.code()
+                    if (isRetriableHttp(code)) {
+                        // 5xx / 408 / 429 — server-side trouble, retry later.
+                        enqueueUpdateAppointmentRow(localUpdate, serverId)
+                        addSyncLog("⏳ Сервер временно не принял правку #$serverId: HTTP $code — правка в очереди.", "CLOUD_SYNC_SIMULATOR")
+                        com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued(
+                            localUpdate,
+                            "HTTP $code — будет повторено автоматически",
+                        )
+                    } else {
+                        // 4xx — the server REFUSED the edit (403/409/422…).
+                        // Not network absence: mark REJECTED, no retry row.
+                        val rejected = localUpdate.copy(syncState = AppointmentEntity.SYNC_STATE_REJECTED)
+                        updateAppointment(rejected)
+                        addSyncLog("⛔ Сервер отклонил правку #$serverId: HTTP $code.", "CLOUD_SYNC_SIMULATOR")
+                        com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Rejected(
+                            rejected,
+                            code,
+                            "сервер отклонил изменение (HTTP $code)",
+                        )
+                    }
                 } else {
                     val persisted =
                         localUpdate.copy(
@@ -906,25 +1577,91 @@ class ClinicRepository
                             status = fromServerStatus(dto.status),
                             notes = dto.notes ?: localUpdate.notes,
                             updatedAt = System.currentTimeMillis(),
+                            syncState = AppointmentEntity.SYNC_STATE_CLEAN,
                         )
                     updateAppointment(persisted)
                     addSyncLog("🟢 Запись #$serverId изменена на сервере.", "CLOUD_SYNC_SIMULATOR")
-                    persisted
+                    com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome
+                        .Confirmed(persisted, dto.id)
                 }
             } catch (e: Exception) {
-                addSyncLog("⏳ Изменение записи #$serverId сохранено локально: ${e.message}", "CLOUD_SYNC_SIMULATOR")
-                localUpdate
+                // Transport failure — durably queue the edit for delivery
+                // after restart (regression scenario: offline edit → restart).
+                enqueueUpdateAppointmentRow(localUpdate, serverId)
+                addSyncLog("⏳ Изменение записи #$serverId сохранено локально и поставлено в очередь: ${e.message}", "CLOUD_SYNC_SIMULATOR")
+                com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued(
+                    localUpdate,
+                    e.localizedMessage ?: "нет сети",
+                )
             }
         }
 
+        /** TASK-2: HTTP codes that are worth retrying later. */
+        private fun isRetriableHttp(code: Int): Boolean =
+            com.aistudio.clinicsystem.data.outbox.OutboxRouting
+                .isRetriableHttp(code)
+
+        /** TASK-2: durably queue a full-edit row for a synced appointment. */
+        private suspend fun enqueueUpdateAppointmentRow(
+            localUpdate: AppointmentEntity,
+            serverId: Int,
+        ) {
+            val payloadAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentEditOutboxPayload::class.java)
+            val payload =
+                com.aistudio.clinicsystem.data.api.AppointmentEditOutboxPayload(
+                    serverId = serverId,
+                    localId = localUpdate.id,
+                    doctorId = resolveDoctorServerId(localUpdate.doctorName),
+                    doctorName = localUpdate.doctorName,
+                    date = localUpdate.date,
+                    time = localUpdate.time,
+                    reason = localUpdate.reason,
+                    status = localUpdate.status,
+                    notes = localUpdate.notes,
+                )
+            val editAdapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentEditOutboxPayload::class.java)
+            pendingSyncDao.insertPendingSync(
+                PendingSyncEntity(
+                    type = com.aistudio.clinicsystem.data.outbox.OutboxOperation.UPDATE_APPOINTMENT.code,
+                    payload = payloadAdapter.toJson(payload),
+                    clientRequestId =
+                        localUpdate.clientRequestId
+                            ?: java.util.UUID
+                                .randomUUID()
+                                .toString(),
+                ),
+            )
+        }
+
+        /**
+         * TASK-2: rewrites the pending CREATE payload (found by
+         * clientRequestId) so it carries the edited values — used when the
+         * user edits an appointment that has not been synced yet.
+         */
+        private suspend fun amendPendingCreatePayload(edited: AppointmentEntity) {
+            val requestId = edited.clientRequestId ?: return
+            val pending =
+                pendingSyncDao.getAllPendingSyncs().firstOrNull {
+                    it.clientRequestId == requestId &&
+                        it.type in createOperationCodes &&
+                        (it.status == "PENDING" || it.status == "FAILED" || it.status == "PROCESSING")
+                } ?: return
+            val adapter = moshi.adapter(com.aistudio.clinicsystem.data.api.AppointmentOutboxPayload::class.java)
+            val current = adapter.fromJson(pending.payload) ?: return
+            val amended =
+                current.copy(
+                    doctorName = edited.doctorName,
+                    date = edited.date,
+                    time = edited.time,
+                    reason = edited.reason,
+                    status = edited.status,
+                )
+            pendingSyncDao.updatePayload(pending.id, adapter.toJson(amended))
+        }
+
         private fun fromServerStatus(status: String): String =
-            when (status.lowercase()) {
-                "scheduled" -> "PENDING"
-                "confirmed" -> "APPROVED"
-                "completed" -> "COMPLETED"
-                "cancelled", "canceled" -> "CANCELLED"
-                else -> status.uppercase()
-            }
+            com.aistudio.clinicsystem.utils.ServerStatusMapper
+                .fromServer(status)
 
         override suspend fun createMedicalRecordOnServerAndLocal(
             token: String?,
@@ -959,68 +1696,270 @@ class ClinicRepository
             return savedRecord
         }
 
-        override suspend fun fetchMedicalRecordsFromServer(
+        /**
+         * TASK-3: lab results are fetched into the DEDICATED lab_results
+         * table (LabResultEntity). They are NEVER mapped into
+         * medical_records — the previous testName→diagnosis /
+         * resultValue→prescription / notes→doctorName mapping displayed a
+         * lab test as a diagnosis, a result as a prescription and an
+         * arbitrary note as a doctor's name, which is clinically wrong.
+         */
+        override suspend fun fetchLabResultsFromServer(
             token: String?,
             phone: String,
-            onNewRecordAction: (MedicalRecordEntity) -> Unit,
-        ): List<MedicalRecordEntity> {
-            // High-2 audit fix: prefer the mobile contract endpoint
-            // GET /api/v1/mobile/lab/results over the legacy
-            // GET /api/v1/patients/records/{phone}. The mobile endpoint:
-            //   - authenticates via JWT (no need to pass phone — backend
-            //     derives patient_id from current_user)
-            //   - returns List<LabResultOut> with typed fields
-            //   - enforces patient-scoped access (no cross-patient leak)
-            //
-            // The legacy endpoint accepted an arbitrary phone number in the
-            // URL path — any authenticated user could read any patient's
-            // medical records by guessing/enumerating phone numbers. The
-            // mobile endpoint is patient-scoped by design.
-            //
-            // We map LabResultOut → MedicalRecordEntity for backward compat
-            // with the existing UI (which expects MedicalRecordEntity). The
-            // mapping is semantic: testName→diagnosis, resultValue→
-            // prescription, resultDate→visitDate, referenceRange→
-            // recommendations, notes→doctorName.
-            addSyncLog("🛰️ CONNECTING to API: GET /api/v1/mobile/lab/results", "CLOUD_SYNC_SIMULATOR")
+        ): List<LabResultEntity> {
+            addSyncLog("🛰️ GET /api/v1/mobile/lab/results (lab_results table)", "CLOUD_SYNC_SIMULATOR")
             try {
                 val response = mobileApiService.getLabResults()
                 if (response.isSuccessful && response.body() != null) {
                     val labResults = response.body()!!
-                    addSyncLog("✓ УСПЕШНЫЙ ЗАПРОС: Импортировано ${labResults.size} lab results с сервера final.", "CLOUD_SYNC_SIMULATOR")
-                    val results = mutableListOf<MedicalRecordEntity>()
-                    for (dto in labResults) {
-                        // High-1 audit fix: LabResultOut field mapping
-                        val recordEntity =
-                            MedicalRecordEntity(
+                    addSyncLog("✓ Импортировано ${labResults.size} лабораторных результатов.", "CLOUD_SYNC_SIMULATOR")
+                    val entities =
+                        labResults.map { dto ->
+                            LabResultEntity(
                                 id =
                                     java.util.UUID
                                         .randomUUID()
                                         .toString(),
                                 serverId = dto.id,
-                                patientPhone = phone, // backend doesn't return it; use caller's phone
-                                doctorName = dto.notes ?: "",
-                                diagnosis = dto.testName,
-                                prescription = dto.resultValue,
-                                visitDate = dto.resultDate,
-                                recommendations = dto.referenceRange,
+                                patientPhone = phone,
+                                testName = dto.testName,
+                                result = dto.resultValue,
+                                unit = dto.unit,
+                                referenceRange = dto.referenceRange,
+                                status = dto.status,
+                                performedAt = dto.resultDate,
+                                doctorName = dto.notes,
                             )
-                        val existing = medicalRecordDao.getMedicalRecordByServerId(dto.id)
-                        if (existing == null) {
-                            insertMedicalRecord(recordEntity)
-                            onNewRecordAction(recordEntity)
                         }
-                        results.add(recordEntity)
+                    database.withTransaction {
+                        for (entity in entities) {
+                            if (labResultDao.getLabResultByServerId(entity.serverId ?: -1) == null) {
+                                labResultDao.insertAll(listOf(entity))
+                            }
+                        }
                     }
-                    return results
+                    return entities
                 } else {
-                    addSyncLog("⚠️ Сервер вернул код ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
+                    addSyncLog("⚠️ Лабораторные результаты: сервер вернул код ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
                 }
             } catch (e: Exception) {
                 addSyncLog("⏳ Сервер временно недоступен: (${e.localizedMessage}).", "CLOUD_SYNC_SIMULATOR")
             }
             return emptyList()
         }
+
+        /**
+         * TASK-3: staff clinical notes anchored to a real visit through the
+         * visit-based EMR v2 (POST /api/v1/emr/{visit_id}).
+         *
+         * Behavior:
+         *   1. The note is ALWAYS stored locally first (a local draft —
+         *      serverId == null marks it as a draft in the UI).
+         *   2. Only roles allowed by [com.aistudio.clinicsystem.domain.model.EmrAccessPolicy]
+         *      attempt the EMR save; a registrar's note stays a local draft.
+         *   3. The visit is resolved structurally (GET /visits?patient_id=…);
+         *      the current EMR row_version is fetched to satisfy optimistic
+         *      locking; is_draft=true — signing NEVER happens automatically.
+         *   4. 409 CONFLICT preserves the local draft and surfaces the
+         *      conflict — a conflict never destroys work.
+         *
+         * @param actorRole backend role of the signed-in staff user.
+         */
+        override suspend fun saveMedicalRecordWithEmr(
+            token: String?,
+            patientPhone: String,
+            doctorName: String,
+            diagnosis: String,
+            prescription: String,
+            recommendations: String,
+            actorRole: String?,
+        ): com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome {
+            // 1. Local draft first — the note is never lost.
+            val visitDate =
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val newRecord =
+                MedicalRecordEntity(
+                    patientPhone = patientPhone,
+                    doctorName = doctorName,
+                    diagnosis = diagnosis,
+                    prescription = prescription,
+                    visitDate = visitDate,
+                    recommendations = recommendations,
+                )
+            val savedRecord = insertMedicalRecord(newRecord)
+
+            // 2. Role gate — Registrar/Lab/Patient notes stay local drafts.
+            if (!com.aistudio.clinicsystem.domain.model.EmrAccessPolicy
+                    .canAttemptEmr(actorRole)
+            ) {
+                addSyncLog(
+                    "📝 Запись сохранена как локальный черновик: роль '$actorRole' не имеет прав записи EMR v2.",
+                    "CLOUD_SYNC_SIMULATOR",
+                )
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                    savedRecord,
+                    "роль '$actorRole' не имеет прав записи EMR",
+                )
+            }
+
+            // 3. Resolve the patient on the server, then their visit.
+            val patientId = resolvePatientIdByPhone(patientPhone)
+            if (patientId == null) {
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                    savedRecord,
+                    "пациент не найден на сервере — визит не определён",
+                )
+            }
+
+            try {
+                val visitsResponse = legacyApiService.getVisitsForPatient(patientId = patientId, limit = 20)
+                val visit =
+                    if (visitsResponse.isSuccessful) {
+                        visitsResponse
+                            .body()
+                            ?.firstOrNull()
+                            ?: return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                                savedRecord,
+                                "у пациента нет визита — черновик не привязан к визиту",
+                            )
+                    } else {
+                        return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                            savedRecord,
+                            "визит недоступен (HTTP ${visitsResponse.code()})",
+                        )
+                    }
+
+                // 4. Current EMR + row_version for optimistic locking.
+                val existingEmrResponse = legacyApiService.getEmrForVisit(visit.id)
+                var rowVersion = 0
+                var existingData: MutableMap<String, Any?>? = null
+                if (existingEmrResponse.isSuccessful) {
+                    val existing = existingEmrResponse.body()
+                    if (existing != null) {
+                        rowVersion = existing.rowVersion
+                        @Suppress("UNCHECKED_CAST")
+                        existingData =
+                            (existing.data as? Map<String, Any?>)?.let { LinkedHashMap(it) }
+                    }
+                }
+
+                // Extend the existing clinical data (or start a flat payload) —
+                // other clients' nested keys are preserved as-is.
+                val data =
+                    existingData ?: LinkedHashMap<String, Any?>().also {
+                        it["doctor_name"] = doctorName
+                    }
+                data["diagnosis"] = diagnosis
+                data["prescription"] = prescription
+                data["recommendations"] = recommendations
+                data["doctor_name"] = doctorName
+                data["source"] = "android_mobile"
+
+                val saveResponse =
+                    legacyApiService.saveEmrForVisit(
+                        visitId = visit.id,
+                        payload =
+                            com.aistudio.clinicsystem.data.api.EmrSaveRequest(
+                                data = data,
+                                rowVersion = rowVersion,
+                                clientSessionId =
+                                    java.util.UUID
+                                        .randomUUID()
+                                        .toString(),
+                                isDraft = true, // signing is an explicit separate action
+                            ),
+                    )
+
+                if (saveResponse.isSuccessful && saveResponse.body() != null) {
+                    val emr = saveResponse.body()!!
+                    val persisted =
+                        savedRecord.copy(
+                            serverId = emr.id,
+                            visitDate = visitDate,
+                        )
+                    medicalRecordDao.updateRecord(persisted)
+                    addSyncLog(
+                        "🟢 EMR v2: запись сохранена в визите #${emr.visitId} (EMR #${emr.id}, draft=true, без подписания).",
+                        "CLOUD_SYNC_SIMULATOR",
+                    )
+                    return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Confirmed(
+                        persisted,
+                        emr.id,
+                        emr.visitId,
+                    )
+                }
+
+                val code = saveResponse.code()
+                if (code == 409) {
+                    // CONFLICT — never destroy the draft.
+                    addSyncLog(
+                        "⚠️ EMR v2: конфликт версии (409) для визита #${visit.id}. Локальный черновик сохранён; обновите данные и повторите.",
+                        "SYSTEM_SYNC",
+                    )
+                    return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Conflict(
+                        savedRecord,
+                        null,
+                        "конфликт версии EMR (409): на сервере более новая версия",
+                    )
+                }
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Rejected(
+                    savedRecord,
+                    code,
+                    "сервер отклонил сохранение (HTTP $code)",
+                )
+            } catch (e: Exception) {
+                return com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft(
+                    savedRecord,
+                    "сервер недоступен: ${e.localizedMessage ?: e.javaClass.simpleName}",
+                )
+            }
+        }
+
+        /**
+         * TASK-6: structured fetch of the patient's queue positions.
+         * Distinguishes three outcomes the UI must not confuse:
+         *   - Success(positions) — fresh data;
+         *   - Empty — the server SUCCESSFULLY reported no active positions:
+         *     old cached positions must be cleared;
+         *   - Error — transport/HTTP failure: the UI keeps showing stale
+         *     data with a warning instead of silently wiping the queue.
+         */
+        suspend fun fetchMyQueuePositions(): com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult =
+            try {
+                val response = mobileApiService.getMyQueuePosition()
+                if (response.isSuccessful && response.body() != null) {
+                    val positions =
+                        response.body()!!.positions.map { pos ->
+                            com.aistudio.clinicsystem.domain.model.PatientQueuePosition(
+                                queueId = pos.queueId,
+                                doctorName = pos.doctorName,
+                                specialty = pos.specialty,
+                                myNumber = pos.myNumber,
+                                currentNumber = pos.currentNumber,
+                                patientsBeforeMe = pos.patientsBeforeMe,
+                                estimatedWaitMinutes = pos.estimatedWaitMinutes,
+                                status = pos.status,
+                            )
+                        }
+                    if (positions.isEmpty()) {
+                        com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Empty
+                    } else {
+                        com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult
+                            .Success(positions)
+                    }
+                } else if (response.code() == 404) {
+                    // No patient profile on the backend → no queues.
+                    com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Empty
+                } else {
+                    com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Error(
+                        IllegalStateException("HTTP ${response.code()}"),
+                    )
+                }
+            } catch (e: Exception) {
+                com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult
+                    .Error(e)
+            }
 
         override suspend fun syncAllAppointmentsFromServer(token: String?): Boolean {
             val startTime = System.currentTimeMillis()
@@ -1073,47 +2012,14 @@ class ClinicRepository
                         val serverList = apptsResponse.body()!!
                         addSyncLog("✓ Успешно получено ${serverList.size} предстоящих приёмов.", "CLOUD_SYNC_SIMULATOR")
 
-                        // High-1 audit fix: map AppointmentUpcomingOut → AppointmentEntity
-                        // using computed date/time accessors for ISO datetime split.
-                        val entities =
-                            serverList.map { dto ->
-                                AppointmentEntity(
-                                    id =
-                                        java.util.UUID
-                                            .randomUUID()
-                                            .toString(),
-                                    serverId = dto.id,
-                                    patientPhone = patientPhone,
-                                    patientName = "",
-                                    doctorName = dto.doctorName,
-                                    specialty = dto.specialty,
-                                    date = dto.date, // computed from appointment_date
-                                    time = dto.time, // computed from appointment_date
-                                    status = dto.status,
-                                    reason = "",
-                                    notes = "",
-                                    clinicId = dto.clinicAddress,
-                                    updatedAt = System.currentTimeMillis(),
-                                    version = 1,
-                                )
-                            }
+                        // TASK-5: full reconciliation for EVERY row — all
+                        // changed server fields (date/time/doctor/specialty/
+                        // status) are merged; statuses are normalized; a time
+                        // transfer without a status change is no longer
+                        // dropped (the old loop only updated on status diff).
                         database.withTransaction {
-                            for (entity in entities) {
-                                val existing = appointmentDao.getAppointmentByServerId(entity.serverId ?: -1)
-                                if (existing == null) {
-                                    appointmentDao.insertAppointment(entity)
-                                } else if (existing.status != entity.status) {
-                                    appointmentDao.updateAppointment(
-                                        existing.copy(
-                                            status = entity.status,
-                                            date = entity.date,
-                                            time = entity.time,
-                                            doctorName = entity.doctorName,
-                                            specialty = entity.specialty,
-                                            updatedAt = System.currentTimeMillis(),
-                                        ),
-                                    )
-                                }
+                            for (dto in serverList) {
+                                reconcileUpcomingAppointment(dto, patientPhone)
                             }
                         }
 
@@ -1167,30 +2073,26 @@ class ClinicRepository
                                 emptyList()
                             }
 
-                        val snapshotsList = mutableListOf<QueueSnapshotEntity>()
+                        var anyQueueFetchSucceeded = false
                         for (specialist in specialists) {
-                            val statusResponse = legacyApiService.getQueueStatus(specialist.id)
-                            if (!statusResponse.isSuccessful) continue
-                            val status = statusResponse.body() ?: continue
-                            for (entry in status.entries) {
-                                snapshotsList.add(
-                                    QueueSnapshotEntity(
-                                        id = entry.id,
-                                        patientName = entry.patientName ?: "",
-                                        appointmentId = entry.id, // queue-entry id (no appointment linkage in QR queue)
-                                        position = entry.number,
-                                        status = normalizeQueueStatus(entry.status),
-                                        timestamp = System.currentTimeMillis(),
-                                    ),
-                                )
+                            // Codex P1 (#150): each specialist is refreshed
+                            // INDEPENDENTLY (delete their rows, insert fresh
+                            // ones with queueId/specialistId/day identity) —
+                            // a failed request for one specialist must NOT
+                            // erase another specialist's last known queue.
+                            if (refreshQueueForSpecialist(specialist.id)) {
+                                anyQueueFetchSucceeded = true
                             }
                         }
-                        if (snapshotsList.isNotEmpty()) {
-                            addSyncLog("✓ Активная очередь: ${snapshotsList.size} пациент(ов) у специалистов.", "CLOUD_SYNC_SIMULATOR")
-                            database.withTransaction {
-                                queueSnapshotDao.clearQueueSnapshots()
-                                queueSnapshotDao.insertQueueSnapshots(snapshotsList)
-                            }
+                        // CODEX-P2-FIX (PR #147): a successful-but-EMPTY result
+                        // is a valid state (last patient left). Only transport
+                        // failures keep the previous cache; each successful
+                        // specialist status request replaces THAT specialist's
+                        // rows — including with an empty list — so stale
+                        // entries never stay actionable in the staff console.
+                        if (anyQueueFetchSucceeded) {
+                            val total = queueSnapshotDao.getAllQueueSnapshots().size
+                            addSyncLog("✓ Активная очередь: $total пациент(ов) у специалистов.", "CLOUD_SYNC_SIMULATOR")
                             addSyncLog("✓ Очередь закэширована в локальную базу данных (доступно оффлайн)", "CLOUD_SYNC_SIMULATOR")
                         }
 
@@ -1207,9 +2109,30 @@ class ClinicRepository
                             "🛰️ GET /api/v1/appointments (staff: все приёмы клиники) [Delta cursor: $sinceParam]",
                             "CLOUD_SYNC_SIMULATOR",
                         )
-                        val appointmentsResponse = legacyApiService.getAppointments(limit = 200)
-                        if (appointmentsResponse.isSuccessful && appointmentsResponse.body() != null) {
-                            val serverList = appointmentsResponse.body()!!
+                        // TASK-5: paginated fetch — the old single call with
+                        // limit=200 silently hid every appointment beyond the
+                        // first 200. Pages of 200 are pulled until a short
+                        // page arrives (hard cap prevents runaway loops).
+                        val serverList = mutableListOf<com.aistudio.clinicsystem.data.api.StaffAppointmentDto>()
+                        val pageSize = 200
+                        var skip = 0
+                        var fetchFailed = false
+                        while (true) {
+                            val pageResponse = legacyApiService.getAppointments(limit = pageSize, skip = skip)
+                            if (!pageResponse.isSuccessful || pageResponse.body() == null) {
+                                // Codex P2 (#150): ANY failed page fails the
+                                // whole fetch — reconciling a partial list
+                                // would hide later-page appointments while
+                                // reporting a successful sync.
+                                fetchFailed = true
+                                break
+                            }
+                            val page = pageResponse.body()!!
+                            serverList.addAll(page)
+                            if (page.size < pageSize || serverList.size >= 5000) break
+                            skip += pageSize
+                        }
+                        if (!fetchFailed) {
                             addSyncLog("✓ Успешно получено ${serverList.size} записей с сервера.", "CLOUD_SYNC_SIMULATOR")
 
                             database.withTransaction {
@@ -1224,7 +2147,10 @@ class ClinicRepository
                                 .recordSuccess(latency)
                             return true
                         } else {
-                            addSyncLog("⚠️ Сервер вернул код ${appointmentsResponse.code()}.", "CLOUD_SYNC_SIMULATOR")
+                            addSyncLog(
+                                "⚠️ Сервер недоступен: не удалось загрузить страницу приёмов (skip=$skip). Частичная синхронизация не выполняется.",
+                                "CLOUD_SYNC_SIMULATOR",
+                            )
                             com.aistudio.clinicsystem.utils.SyncMetricsManager
                                 .recordFailure()
                         }
@@ -1270,6 +2196,11 @@ class ClinicRepository
 
             if (existing == null) {
                 // New appointment from server — insert with a fresh local UUID.
+                // CODEX-P1-FIX (PR #147): the staff endpoint returns lowercase
+                // backend statuses ("scheduled"/"confirmed"/…) while the staff
+                // UI only recognizes client statuses ("PENDING"/"APPROVED"/…).
+                // Normalize on INSERT — otherwise freshly synced rows render
+                // as an unknown state and lose the approve/complete actions.
                 val entity =
                     AppointmentEntity(
                         id =
@@ -1283,7 +2214,7 @@ class ClinicRepository
                         specialty = specialty,
                         date = appDto.appointmentDate,
                         time = appDto.appointmentTime ?: "",
-                        status = appDto.status,
+                        status = fromServerStatus(appDto.status),
                         reason = "",
                         notes = appDto.notes ?: "",
                         clinicId = "clinic_base",
@@ -1294,13 +2225,24 @@ class ClinicRepository
                 return
             }
 
-            // Existing appointment — check stale-write guard.
-            // Stage 3.4: payload format is `<serverId>|<status>|<notes>|<localUuid>`.
+            // TASK-5: stale-write guard covers ALL unconfirmed local writes —
+            // status changes (UPDATE_STATUS) AND full edits (UPDATE_APPOINTMENT)
+            // — so a queued draft is never overwritten by an older server
+            // snapshot. Payload prefixes identify the target row.
             val pendingForThis =
-                pendingSyncDao.getAllPendingSyncs().any {
-                    it.type == "UPDATE_STATUS" &&
-                        it.payload.startsWith("${appDto.id}|") &&
-                        (it.status == "PENDING" || it.status == "PROCESSING" || it.status == "FAILED")
+                pendingSyncDao.getAllPendingSyncs().any { row ->
+                    val live = row.status == "PENDING" || row.status == "PROCESSING" || row.status == "FAILED"
+                    live &&
+                        (
+                            (
+                                row.type == "UPDATE_STATUS" &&
+                                    row.payload.startsWith("${appDto.id}|")
+                            ) ||
+                                (
+                                    row.type == "UPDATE_APPOINTMENT" &&
+                                        row.payload.contains("\"server_id\":${appDto.id}")
+                                )
+                        )
                 }
             if (pendingForThis) {
                 addSyncLog(
@@ -1311,6 +2253,8 @@ class ClinicRepository
             }
 
             // Server is the source of truth for shared fields — overwrite local.
+            // CODEX-P1-FIX (PR #147): normalize the server status on UPDATE as
+            // well — see the insert comment above.
             val merged =
                 existing.copy(
                     patientName = appDto.patientName ?: existing.patientName,
@@ -1318,7 +2262,7 @@ class ClinicRepository
                     specialty = specialty.ifBlank { existing.specialty },
                     date = appDto.appointmentDate,
                     time = appDto.appointmentTime ?: existing.time,
-                    status = appDto.status,
+                    status = fromServerStatus(appDto.status),
                     notes = appDto.notes ?: existing.notes,
                     updatedAt = updatedAtMs,
                     etag = null,
@@ -1400,12 +2344,22 @@ class ClinicRepository
             snapshotId: Int,
             newStatus: String,
         ): Boolean {
+            // CODEX-P1-FIX (PR #147): Retrofit throws on transport errors
+            // before a Response is produced. The ViewModel calls this from an
+            // unguarded coroutine, so the exception reached the uncaught-
+            // exception handler. Catch and report failure — the cached state
+            // stays intact.
             val response =
-                when (newStatus) {
-                    "CALLED" -> legacyApiService.callQueueEntry(snapshotId)
-                    "IN_PROGRESS" -> legacyApiService.startQueueVisit(snapshotId)
-                    "COMPLETED" -> legacyApiService.completeQueueVisit(snapshotId)
-                    else -> return false
+                try {
+                    when (newStatus) {
+                        "CALLED" -> legacyApiService.callQueueEntry(snapshotId)
+                        "IN_PROGRESS" -> legacyApiService.startQueueVisit(snapshotId)
+                        "COMPLETED" -> legacyApiService.completeQueueVisit(snapshotId)
+                        else -> return false
+                    }
+                } catch (e: Exception) {
+                    addSyncLog("⚠️ Сеть недоступна: статус очереди #$snapshotId не изменён (${e.message}).", "CLOUD_SYNC_SIMULATOR")
+                    return false
                 }
             if (!response.isSuccessful) {
                 addSyncLog("⚠️ Сервер не изменил статус очереди #$snapshotId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
@@ -1420,7 +2374,15 @@ class ClinicRepository
         }
 
         suspend fun removeQueueEntryOnServerAndLocal(snapshotId: Int): Boolean {
-            val response = legacyApiService.cancelQueueEntry(snapshotId)
+            // CODEX-P1-FIX (PR #147): same transport-error handling as above —
+            // a dropped connection must not crash the staff console.
+            val response =
+                try {
+                    legacyApiService.cancelQueueEntry(snapshotId)
+                } catch (e: Exception) {
+                    addSyncLog("⚠️ Сеть недоступна: пациент #$snapshotId не удалён из очереди (${e.message}).", "CLOUD_SYNC_SIMULATOR")
+                    return false
+                }
             if (!response.isSuccessful) {
                 addSyncLog("⚠️ Сервер не удалил пациента из очереди #$snapshotId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
                 return false
@@ -1433,13 +2395,179 @@ class ClinicRepository
         }
 
         /**
-         * M-CONTRACT-FIX: the backend no longer exposes
-         * POST /api/v1/queue/register (registration by appointment id). Queue
-         * joining now works exclusively through the QR-token flow
-         * (/api/v1/queue/join/start + /join/complete), which the mobile app
-         * does not implement; StaffViewModel falls back to the local queue
-         * snapshot when this throws.
+         * TASK-7: per-queue cache replacement. Fetches the CURRENT queue of
+         * ONE specialist (GET /queue/status/{specialist_id}) and replaces
+         * ONLY that specialist's rows — queues of different doctors are never
+         * mixed, and a successful empty queue clears that specialist's cache.
          */
+        suspend fun refreshQueueForSpecialist(specialistId: Int): Boolean {
+            return try {
+                val response = legacyApiService.getQueueStatus(specialistId)
+                if (!response.isSuccessful || response.body() == null) {
+                    addSyncLog("⚠️ Queue status #$specialistId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
+                    return false
+                }
+                val status = response.body()!!
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val fresh =
+                    status.entries.map { entry ->
+                        QueueSnapshotEntity(
+                            id = entry.id,
+                            patientName = entry.patientName ?: "",
+                            appointmentId = entry.id,
+                            position = entry.number,
+                            status = normalizeQueueStatus(entry.status),
+                            timestamp = System.currentTimeMillis(),
+                            queueId = status.queueId,
+                            specialistId = specialistId,
+                            day = status.day ?: today,
+                        )
+                    }
+                database.withTransaction {
+                    queueSnapshotDao.deleteBySpecialist(specialistId)
+                    queueSnapshotDao.insertQueueSnapshots(fresh)
+                }
+                addSyncLog(
+                    "✓ Очередь специалиста #$specialistId обновлена: ${fresh.size} пациент(ов) (queueId=${status.queueId}).",
+                    "CLOUD_SYNC_SIMULATOR",
+                )
+                true
+            } catch (e: Exception) {
+                addSyncLog("⚠️ Обновление очереди #$specialistId: ${e.message}", "CLOUD_SYNC_SIMULATOR")
+                false
+            }
+        }
+
+        /**
+         * TASK-7: server-side queue registration (batch endpoint). The ticket
+         * is created by the SERVER only — on any failure NO local "live"
+         * ticket is created (the old local-fallback is removed), the cache is
+         * not touched, and the error is surfaced to the registrar.
+         *
+         * Service ids come from the patient's latest visit (the registrar
+         * authors services in the web client); the queue specialist is the
+         * appointment's doctor.
+         */
+        suspend fun registerPatientInQueueOnServer(
+            appointmentId: String,
+            specialistId: Int?,
+        ): com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome {
+            val appt =
+                getAppointmentById(appointmentId)
+                    ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome
+                        .Failed("приём не найден локально")
+            val resolvedSpecialist =
+                specialistId
+                    ?: resolveDoctorServerId(appt.doctorName)
+                    ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                        "не определён специалист (doctor_id) — регистрация невозможна",
+                    )
+            val patientId =
+                resolvePatientIdByPhone(appt.patientPhone)
+                    ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                        "пациент не найден на сервере",
+                    )
+
+            return try {
+                // Latest visit of the patient carries the authored services.
+                val visitsResponse = legacyApiService.getVisitsForPatient(patientId = patientId, limit = 5)
+                val visitId =
+                    if (visitsResponse.isSuccessful) {
+                        visitsResponse.body()?.firstOrNull()?.id
+                            ?: return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                                "у пациента нет визита с услугами",
+                            )
+                    } else {
+                        return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                            "визиты недоступны (HTTP ${visitsResponse.code()})",
+                        )
+                    }
+                val visitResponse = legacyApiService.getVisitWithServices(visitId)
+                val services =
+                    if (visitResponse.isSuccessful) {
+                        visitResponse.body()?.services ?: emptyList()
+                    } else {
+                        emptyList()
+                    }
+                if (services.isEmpty()) {
+                    return com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                        "в визите нет услуг — нечего ставить в очередь",
+                    )
+                }
+                val request =
+                    com.aistudio.clinicsystem.data.api.BatchQueueEntriesRequest(
+                        patientId = patientId,
+                        source = "desk",
+                        services =
+                            services.map { svc ->
+                                com.aistudio.clinicsystem.data.api.BatchServiceItem(
+                                    specialistId = resolvedSpecialist,
+                                    serviceId = svc.serviceId ?: svc.id,
+                                    quantity = svc.qty,
+                                )
+                            },
+                    )
+                val response = legacyApiService.createQueueEntriesBatch(request)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val entries = response.body()!!.entries
+                    addSyncLog(
+                        "🎟️ Сервер: пациент поставлен в очередь (${entries.size} запись/ей, specialist #$resolvedSpecialist).",
+                        "CLOUD_SYNC_SIMULATOR",
+                    )
+                    // Per-queue cache refresh from the server.
+                    refreshQueueForSpecialist(resolvedSpecialist)
+                    com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome
+                        .Registered(entries.map { it.number })
+                } else {
+                    com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                        "сервер отклонил регистрацию (HTTP ${response.code()})",
+                    )
+                }
+            } catch (e: Exception) {
+                com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed(
+                    "сеть недоступна: ${e.localizedMessage ?: e.javaClass.simpleName}",
+                )
+            }
+        }
+
+        /**
+         * TASK-7: reorder through the SERVER (PUT /queue/move-entry). The
+         * local cache is updated ONLY from the server response — a failed
+         * move never mutates the confirmed order locally.
+         */
+        suspend fun moveQueueEntryOnServer(
+            entryId: Int,
+            newPosition: Int,
+        ): Boolean =
+            try {
+                val response =
+                    legacyApiService.moveQueueEntry(
+                        com.aistudio.clinicsystem.data.api.QueueEntryMoveRequest(
+                            entryId = entryId,
+                            newPosition = newPosition,
+                        ),
+                    )
+                if (response.isSuccessful && response.body()?.success == true) {
+                    addSyncLog("↕️ Сервер: порядок очереди обновлён (entry #$entryId → позиция $newPosition).", "CLOUD_SYNC_SIMULATOR")
+                    // Refresh the owning specialist's queue from the server.
+                    val specialistId =
+                        queueSnapshotDao
+                            .getAllQueueSnapshots()
+                            .firstOrNull { it.id == entryId }
+                            ?.specialistId
+                    if (specialistId != null) {
+                        refreshQueueForSpecialist(specialistId)
+                    }
+                    true
+                } else {
+                    addSyncLog("⚠️ Сервер не переместил entry #$entryId: HTTP ${response.code()}.", "CLOUD_SYNC_SIMULATOR")
+                    false
+                }
+            } catch (e: Exception) {
+                addSyncLog("⚠️ Сеть недоступна: перемещение не выполнено (${e.message}).", "CLOUD_SYNC_SIMULATOR")
+                false
+            }
+
         override suspend fun registerInQueue(appointmentId: String): Unit =
             throw UnsupportedOperationException(
                 "Сервер не поддерживает запись в очередь по ID приёма — используйте QR-регистрацию.",
@@ -1498,9 +2626,12 @@ class ClinicRepository
             )
 
         /**
-         * M2/E5.3: Observes medical records with offline-first sync.
-         *
-         * Same pattern as [observeAppointmentsWithSync] but for medical records.
+         * TASK-3: clinical documentation flow — LOCAL data only. Lab results
+         * are NOT fetched/mapped here anymore (they live in lab_results via
+         * [observeLabResultsWithSync] / [fetchLabResultsFromServer]).
+         * Server-side clinical documentation arrives through EMR v2 saves
+         * ([saveMedicalRecordWithEmr]) — a local row with serverId == null
+         * is a LOCAL DRAFT by definition.
          */
         fun observeMedicalRecordsWithSync(patientPhone: String): Flow<Resource<List<MedicalRecordEntity>>> =
             networkBoundResource(
@@ -1508,50 +2639,20 @@ class ClinicRepository
                     medicalRecordDao.getRecordsByPatientFlow(patientPhone)
                 },
                 fetch = {
-                    mobileApiService.getLabResults()
+                    // Nothing to fetch from /mobile/lab/results — that data
+                    // belongs to lab_results. Keep an empty typed response so
+                    // the NBR contract stays intact.
+                    retrofit2.Response.success(emptyList<com.aistudio.clinicsystem.data.api.LabResultOut>())
                 },
                 saveFetchResult = { response ->
-                    if (response.isSuccessful && response.body() != null) {
-                        val serverList = response.body()!!
-                        // Stage 6: lab results are now stored in lab_results table
-                        // via observeLabResultsWithSync. This method still fetches
-                        // from /mobile/lab/results for backward compatibility, but
-                        // the data is also written to the lab_results table.
-                        database.withTransaction {
-                            for (dto in serverList) {
-                                val existing = medicalRecordDao.getMedicalRecordByServerId(dto.id)
-                                if (existing == null) {
-                                    // High-1 audit fix: aligned with backend LabResultOut DTO.
-                                    // Backend no longer returns patientPhone/doctorName/result/
-                                    // performedAt as separate fields — these are now derived
-                                    // from the new backend contract (result_value, result_date,
-                                    // notes). The medical_records table fields are mapped
-                                    // semantically: testName→diagnosis, resultValue→
-                                    // prescription, resultDate→visitDate, referenceRange→
-                                    // recommendations, notes→doctorName.
-                                    val entity =
-                                        MedicalRecordEntity(
-                                            id =
-                                                java.util.UUID
-                                                    .randomUUID()
-                                                    .toString(),
-                                            serverId = dto.id,
-                                            patientPhone = patientPhone,
-                                            doctorName = dto.notes ?: "",
-                                            diagnosis = dto.testName,
-                                            prescription = dto.resultValue,
-                                            visitDate = dto.resultDate,
-                                            recommendations = dto.referenceRange,
-                                        )
-                                    medicalRecordDao.insertRecord(entity)
-                                }
-                            }
-                        }
-                        addSyncLog("✓ NBR: Synced ${serverList.size} records from server", "SYSTEM_SYNC")
+                    // TASK-3: no lab→record mapping. Records are created
+                    // locally by staff drafts and by EMR v2 saves only.
+                    if (response.isSuccessful && response.body() != null && response.body()!!.isNotEmpty()) {
+                        addSyncLog("ℹ️ NBR: unexpected lab payload ignored (TASK-3)", "SYSTEM_SYNC")
                     }
                 },
-                shouldFetch = { cachedData ->
-                    cachedData.isEmpty()
+                shouldFetch = { _ ->
+                    false // local documentation only
                 },
                 onFetchFailed = { throwable ->
                     addSyncLog("⚠️ NBR: Medical records fetch failed: ${throwable.message}", "SYSTEM_SYNC")

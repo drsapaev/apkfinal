@@ -66,7 +66,19 @@ data class AppointmentEntity(
     val clientRequestId: String? = null,
     val version: Int = 1, // increments on every local mutation; used for conflict resolution
     val etag: String? = null, // server-assigned ETag (optional, for cache validation)
-)
+    // TASK-2: local sync state of the row, so the UI can tell a confirmed
+    // appointment apart from a queued draft and from a server-rejected edit:
+    //   ""         — clean: the server has acknowledged the current state
+    //   "QUEUED"   — local change not yet delivered (offline / retrying)
+    //   "REJECTED" — the server refused the last change (HTTP 4xx)
+    val syncState: String = "",
+) {
+    companion object {
+        const val SYNC_STATE_CLEAN = ""
+        const val SYNC_STATE_QUEUED = "QUEUED"
+        const val SYNC_STATE_REJECTED = "REJECTED"
+    }
+}
 
 @Entity(
     tableName = "queue_snapshots",
@@ -84,6 +96,14 @@ data class QueueSnapshotEntity(
     val clinicId: String = "clinic_base",
     val status: String, // "WAITING", "IN_PROGRESS", "COMPLETED"
     val timestamp: Long = System.currentTimeMillis(),
+    // TASK-7: identity of the row on the server — the entry belongs to a
+    // specific DAILY QUEUE of a specific SPECIALIST on a specific DAY. The
+    // three ids are stored SEPARATELY so queues of two doctors can never be
+    // mixed and per-queue cache replacement is possible.
+    val queueId: Int? = null,
+    val specialistId: Int? = null,
+    /** "YYYY-MM-DD" — the queue day the entry belongs to. */
+    val day: String = "",
 )
 
 @Entity(

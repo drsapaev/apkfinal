@@ -31,6 +31,8 @@ fun PatientHomeTab(
     appointments: List<AppointmentEntity>,
     records: List<MedicalRecordEntity>,
     cachedQueueSnapshots: List<QueueSnapshotEntity>,
+    queueState: com.aistudio.clinicsystem.domain.model.PatientQueueUiState,
+    onQueueRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -49,6 +51,14 @@ fun PatientHomeTab(
 
         CachedQueueSnapshotsCard(
             snapshots = cachedQueueSnapshots,
+        )
+
+        // TASK-6: the patient's REAL queue positions (my number, current
+        // number, people ahead, stale/empty states) — replacing the old
+        // log-only behaviour of /mobile/queues/my-position.
+        PatientLiveQueueCard(
+            state = queueState,
+            onRefresh = onQueueRefresh,
         )
 
         Spacer(modifier = Modifier.height(80.dp))

@@ -36,6 +36,8 @@ class StaffViewModel
         // ROLE-FIX: role-aware staff console — Admin gets a system-users section
         // served by GET /api/v1/users (Admin-only backend route).
         private val apiService: com.aistudio.clinicsystem.data.api.ApiService,
+        // TASK-8: realtime queue subscription (per-specialist room).
+        private val webSocketClient: com.aistudio.clinicsystem.utils.ClinicWebSocketClient,
     ) : ViewModel() {
         /** Resolved role of the signed-in staff user (drives role-aware UI). */
         val staffRole: StateFlow<com.aistudio.clinicsystem.domain.model.UserRole> =
@@ -50,6 +52,71 @@ class StaffViewModel
                         .WhileSubscribed(5000),
                     com.aistudio.clinicsystem.domain.model.UserRole.PATIENT,
                 )
+
+        // TASK-9: clinical patient registry (GET /api/v1/patients) — separate
+        // from the local auth-user table and from the Admin system-users list.
+        private val _patientRegistry =
+            MutableStateFlow<List<com.aistudio.clinicsystem.data.api.StaffPatientDto>>(emptyList())
+        val patientRegistry: StateFlow<List<com.aistudio.clinicsystem.data.api.StaffPatientDto>> =
+            _patientRegistry.asStateFlow()
+
+        private val _registryQuery = MutableStateFlow("")
+        val registryQuery: StateFlow<String> = _registryQuery.asStateFlow()
+
+        private val _registryLoading = MutableStateFlow(false)
+        val registryLoading: StateFlow<Boolean> = _registryLoading.asStateFlow()
+
+        private val _registryError = MutableStateFlow<String?>(null)
+        val registryError: StateFlow<String?> = _registryError.asStateFlow()
+
+        /** True when the loaded page is the last available one. */
+        private var registryExhausted = false
+
+        fun setRegistryQuery(query: String) {
+            _registryQuery.value = query
+            searchRegistry(query, loadMore = false)
+        }
+
+        fun loadMoreRegistryPatients() {
+            if (_registryLoading.value || registryExhausted) return
+            searchRegistry(_registryQuery.value, loadMore = true)
+        }
+
+        private fun searchRegistry(
+            query: String,
+            loadMore: Boolean,
+        ) {
+            viewModelScope.launch {
+                _registryLoading.value = true
+                _registryError.value = null
+                try {
+                    val skip = if (loadMore) _patientRegistry.value.size else 0
+                    val response =
+                        apiService.searchPatients(
+                            q = query.ifBlank { null },
+                            skip = skip,
+                            limit = 50,
+                        )
+                    if (response.isSuccessful) {
+                        val page = response.body() ?: emptyList()
+                        registryExhausted = page.size < 50
+                        _patientRegistry.value =
+                            if (loadMore) _patientRegistry.value + page else page
+                    } else {
+                        _registryError.value = "HTTP ${response.code()}"
+                    }
+                } catch (e: Exception) {
+                    _registryError.value = e.message ?: "Ошибка сети"
+                } finally {
+                    _registryLoading.value = false
+                }
+            }
+        }
+
+        // TASK-2: one-shot staff console messages for Snackbar surfacing of
+        // the real write outcomes (confirmed / queued / rejected).
+        private val _staffMessageEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+        val staffMessageEvent: SharedFlow<String> = _staffMessageEvent.asSharedFlow()
 
         private val _adminUsers =
             MutableStateFlow<List<com.aistudio.clinicsystem.data.api.StaffUserDto>>(emptyList())
@@ -156,10 +223,12 @@ class StaffViewModel
 
         val draftCreatePatientPhone = MutableStateFlow(prefs.getString("draft_create_patient_phone", "") ?: "")
         val draftCreatePatientName = MutableStateFlow(prefs.getString("draft_create_patient_name", "") ?: "")
+
+        // TASK-4: no hardcoded default doctor — the registrar must pick a
+        // real doctor from the synced directory.
         val draftCreateDoctorSelected =
             MutableStateFlow(
-                prefs.getString("draft_create_doctor_selected", appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev))
-                    ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev),
+                prefs.getString("draft_create_doctor_selected", "") ?: "",
             )
         val draftCreateSpecialtySelected =
             MutableStateFlow(
@@ -169,7 +238,14 @@ class StaffViewModel
                 )
                     ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry),
             )
-        val draftCreateDate = MutableStateFlow(prefs.getString("draft_create_date", "2026-06-10") ?: "2026-06-10")
+
+        // TASK-4: default to TODAY — the fixed "2026-06-10" let registrars
+        // silently create appointments in the past.
+        private val todayDateStr: String =
+            java.text
+                .SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                .format(java.util.Date())
+        val draftCreateDate = MutableStateFlow(prefs.getString("draft_create_date", todayDateStr) ?: todayDateStr)
         val draftCreateTime = MutableStateFlow(prefs.getString("draft_create_time", "10:00") ?: "10:00")
         val draftCreateReason =
             MutableStateFlow(
@@ -259,10 +335,10 @@ class StaffViewModel
                 .apply()
             draftCreatePatientPhone.value = ""
             draftCreatePatientName.value = ""
-            draftCreateDoctorSelected.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_doc_sapaev)
+            draftCreateDoctorSelected.value = "" // TASK-4: explicit pick required
             draftCreateSpecialtySelected.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_spec_dentistry)
-            draftCreateDate.value = "2026-06-10"
-            draftCreateTime.value = "10:00"
+            draftCreateDate.value = todayDateStr
+            draftCreateTime.value = "" // TASK-4: time must be picked from real availability
             draftCreateReason.value = appContext.getString(com.aistudio.clinicsystem.R.string.vm_routine_checkup)
         }
 
@@ -294,6 +370,40 @@ class StaffViewModel
             viewModelScope.launch {
                 repository.syncDoctorsFromServer()
             }
+            // TASK-8: subscribe to the per-specialist queue room. The backend
+            // broadcasts into "specialist_{id}::{date}" — one room per
+            // connection, so the console follows the first available doctor's
+            // room (the REST per-queue refresh keeps the rest current).
+            viewModelScope.launch {
+                repository.allDoctors.collectLatest { doctors ->
+                    val firstDoctor = doctors.firstOrNull { it.serverId != null }
+                    if (firstDoctor != null) {
+                        webSocketClient.subscribeToQueue(
+                            department = "specialist_${firstDoctor.serverId}",
+                            date = "",
+                        )
+                    }
+                }
+            }
+            // TASK-8: partial queue events (no snapshot in the payload) and
+            // reconnect recovery — both re-read the affected queue via REST
+            // instead of wiping the cache.
+            viewModelScope.launch {
+                webSocketClient.partialQueueEvents.collect { room ->
+                    refreshQueueForRoom(room)
+                }
+            }
+            viewModelScope.launch {
+                webSocketClient.recoveryEvents.collect { room ->
+                    refreshQueueForRoom(room)
+                }
+            }
+        }
+
+        private suspend fun refreshQueueForRoom(room: String) {
+            val match = Regex("specialist_(\\d+)").find(room) ?: return
+            val specialistId = match.groupValues[1].toIntOrNull() ?: return
+            repository.refreshQueueForSpecialist(specialistId)
         }
 
         var onLogoutSuccess: (() -> Unit)? = null
@@ -343,14 +453,15 @@ class StaffViewModel
                     if (oldAppt != null) {
                         _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                     }
-                    val patientUser = repository.getUserByPhone(updated.patientPhone)
+                    val entity = updated.entity
+                    val patientUser = repository.getUserByPhone(entity.patientPhone)
                     val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
 
                     com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
                         appContext,
-                        updated.serverId ?: 0,
-                        updated.doctorName,
-                        "${updated.date} в ${updated.time}",
+                        entity.serverId ?: 0,
+                        entity.doctorName,
+                        "${entity.date} в ${entity.time}",
                         "APPROVED",
                         patientName,
                     )
@@ -389,14 +500,15 @@ class StaffViewModel
                     if (oldAppt != null) {
                         _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                     }
-                    val patientUser = repository.getUserByPhone(updated.patientPhone)
+                    val entity = updated.entity
+                    val patientUser = repository.getUserByPhone(entity.patientPhone)
                     val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
 
                     com.aistudio.clinicsystem.utils.NotificationHelper.sendAppointmentStatusNotification(
                         appContext,
-                        updated.serverId ?: 0,
-                        updated.doctorName,
-                        "${updated.date} в ${updated.time}",
+                        entity.serverId ?: 0,
+                        entity.doctorName,
+                        "${entity.date} в ${entity.time}",
                         "CANCELLED",
                         patientName,
                     )
@@ -444,16 +556,22 @@ class StaffViewModel
                 val activeUser = currentUser.value
                 val doctor = activeUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_duty_doctor)
                 val token = sessionRepository.accessToken
+                // TASK-3: the backend role decides whether an EMR v2 save is
+                // attempted; Registrar/Lab notes stay local drafts.
+                val actorRole =
+                    (sessionRepository.sessionState.value as? SessionState.Authenticated)?.user?.role
 
-                val saved =
-                    repository.createMedicalRecordOnServerAndLocal(
+                val outcome =
+                    repository.saveMedicalRecordWithEmr(
                         token = token,
                         patientPhone = patientPhone,
                         doctorName = doctor,
                         diagnosis = diagnosis,
                         prescription = prescription,
                         recommendations = recommendations,
+                        actorRole = actorRole,
                     )
+                val saved = outcome.entity
 
                 val patientUser = repository.getUserByPhone(patientPhone)
                 val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
@@ -464,6 +582,22 @@ class StaffViewModel
                     doctor,
                     diagnosis,
                     patientName,
+                )
+
+                // TASK-3: surface the real outcome — a local draft is NEVER
+                // reported as a saved medical record; signing never happens
+                // automatically.
+                _staffMessageEvent.tryEmit(
+                    when (outcome) {
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Confirmed ->
+                            "Запись сохранена в EMR визита #${outcome.visitId} (черновик, без подписания)."
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.LocalDraft ->
+                            "Сохранено как ЛОКАЛЬНЫЙ черновик (${outcome.reason})."
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Conflict ->
+                            "Конфликт версии EMR — черновик сохранён локально: ${outcome.message}"
+                        is com.aistudio.clinicsystem.domain.model.MedicalRecordWriteOutcome.Rejected ->
+                            "Сервер отклонил запись (HTTP ${outcome.httpCode}) — черновик сохранён локально."
+                    },
                 )
 
                 if (patientUser?.telegramChatId != null) {
@@ -494,14 +628,20 @@ class StaffViewModel
             date: String,
             time: String,
             reason: String,
+            doctorServerId: Int? = null,
         ) {
             viewModelScope.launch {
                 val token = sessionRepository.accessToken
+                // TASK-1: the registrar books the CHOSEN patient through the
+                // staff endpoint (never the mobile self-booking route);
+                // doctorServerId is the structured doctor identity.
                 val newApp =
-                    repository.createAppointmentOnServerAndLocal(
+                    repository.createAppointmentForPatientOnServerAndLocal(
                         token = token,
+                        patientId = null, // resolved from the phone via the patient registry
                         patientPhone = patientPhone,
                         patientName = patientName,
+                        doctorId = doctorServerId,
                         doctorName = doctorName,
                         specialty = specialty,
                         date = date,
@@ -559,36 +699,18 @@ class StaffViewModel
 
         fun registerPatientInQueue(appointmentId: String) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
-                // M-CONTRACT-FIX: the backend removed POST /api/v1/queue/register —
-                // joining a queue now works only through the QR-token flow, which
-                // the app does not implement. repository.registerInQueue throws
-                // UnsupportedOperationException; keep the local-snapshot fallback
-                // so the registrar console stays usable.
-                try {
-                    repository.registerInQueue(appointmentId = appointmentId)
-                    repository.addSyncLog("🎟️ Пациент успешно добавлен в живую очередь ожидания.", "SYSTEM_SYNC")
-                } catch (e: Exception) {
-                    val appt = repository.getAppointmentById(appointmentId)
-                    if (appt != null) {
-                        val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                        val nextPosition = (snapshots.maxOfOrNull { it.position } ?: 0) + 1
-                        val localSnapshot =
-                            QueueSnapshotEntity(
-                                id = (appt.serverId ?: 0),
-                                patientName = appt.patientName,
-                                appointmentId = (appt.serverId ?: 0),
-                                position = nextPosition,
-                                status = "WAITING",
-                            )
-                        database.queueSnapshotDao().insertQueueSnapshots(listOf(localSnapshot))
-                        repository.addSyncLog(
-                            "🎟️ Очередь (local-fallback): ${e.message ?: "серверная регистрация недоступна"} Пациент зарегистрирован локально.",
-                            "SYSTEM_SYNC",
+                // TASK-7: server-side registration ONLY. No local "live"
+                // ticket may appear when the server refuses — the old
+                // local-fallback created a phantom entry that never existed
+                // for the web client.
+                val outcome = repository.registerPatientInQueueOnServer(appointmentId, null)
+                when (outcome) {
+                    is com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Registered ->
+                        _staffMessageEvent.tryEmit(
+                            "Пациент поставлен в очередь. Талон(ы): ${outcome.numbers.joinToString(", ")}.",
                         )
-                    }
+                    is com.aistudio.clinicsystem.domain.model.QueueRegistrationOutcome.Failed ->
+                        _staffMessageEvent.tryEmit("Регистрация в очередь не выполнена: ${outcome.reason}")
                 }
             }
         }
@@ -598,13 +720,18 @@ class StaffViewModel
             newStatus: String,
         ) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
                 val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
                 val target = snapshots.find { it.id == snapshotId }
                 if (target != null) {
-                    repository.updateQueueStatusOnServerAndLocal(snapshotId, newStatus)
+                    val ok = repository.updateQueueStatusOnServerAndLocal(snapshotId, newStatus)
+                    if (ok) {
+                        // TASK-7: refresh the queue of THIS specialist only.
+                        target.specialistId?.let {
+                            repository.refreshQueueForSpecialist(it)
+                        }
+                    } else {
+                        _staffMessageEvent.tryEmit("Не удалось изменить статус на сервере — состояние очереди не изменилось.")
+                    }
                 }
             }
         }
@@ -614,46 +741,51 @@ class StaffViewModel
             up: Boolean,
         ) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
-                val snapshots = database.queueSnapshotDao().getAllQueueSnapshots().sortedBy { it.position }
-                val index = snapshots.indexOfFirst { it.id == snapshotId }
+                // TASK-7: reorder through the SERVER. The local cache is
+                // replaced from the server response only — a failed move
+                // never changes the confirmed order locally.
+                val all = database.queueSnapshotDao().getAllQueueSnapshots()
+                val target = all.find { it.id == snapshotId } ?: return@launch
+                // Codex P1 (#150): adjacency is computed ONLY within the
+                // entry's own queue (same specialist / queue / day) — the
+                // table mixes several specialists, and a global sort would
+                // submit an unrelated new_position to the server.
+                val ownQueue =
+                    all
+                        .filter {
+                            it.specialistId == target.specialistId &&
+                                it.queueId == target.queueId &&
+                                it.day == target.day
+                        }.sortedBy { it.position }
+                val index = ownQueue.indexOfFirst { it.id == snapshotId }
                 if (index == -1) return@launch
 
-                if (up && index > 0) {
-                    val current = snapshots[index]
-                    val prev = snapshots[index - 1]
-                    val updated =
-                        listOf(
-                            current.copy(position = prev.position),
-                            prev.copy(position = current.position),
-                        )
-                    database.queueSnapshotDao().insertQueueSnapshots(updated)
-                    repository.addSyncLog("↕️ Очередь переопределена: смещение вверх.", "SYSTEM_SYNC")
-                } else if (!up && index < snapshots.size - 1) {
-                    val current = snapshots[index]
-                    val next = snapshots[index + 1]
-                    val updated =
-                        listOf(
-                            current.copy(position = next.position),
-                            next.copy(position = current.position),
-                        )
-                    database.queueSnapshotDao().insertQueueSnapshots(updated)
-                    repository.addSyncLog("↕️ Очередь переопределена: смещение вниз.", "SYSTEM_SYNC")
+                val targetPosition =
+                    when {
+                        up && index > 0 -> ownQueue[index - 1].position
+                        !up && index < ownQueue.size - 1 -> ownQueue[index + 1].position
+                        else -> return@launch
+                    }
+                val ok = repository.moveQueueEntryOnServer(snapshotId, targetPosition)
+                if (!ok) {
+                    _staffMessageEvent.tryEmit("Перемещение не выполнено: сервер недоступен или отклонил операцию.")
                 }
             }
         }
 
         fun removeQueuePatient(snapshotId: Int) {
             viewModelScope.launch {
-                val oldSnapshots = database.queueSnapshotDao().getAllQueueSnapshots()
-                _undoAction.value = UndoAction.RestoreQueue(oldSnapshots)
-
                 val snapshots = database.queueSnapshotDao().getAllQueueSnapshots()
                 val target = snapshots.find { it.id == snapshotId }
                 if (target != null) {
-                    repository.removeQueueEntryOnServerAndLocal(snapshotId)
+                    val ok = repository.removeQueueEntryOnServerAndLocal(snapshotId)
+                    if (ok) {
+                        target.specialistId?.let {
+                            repository.refreshQueueForSpecialist(it)
+                        }
+                    } else {
+                        _staffMessageEvent.tryEmit("Удаление из очереди не выполнено: сервер недоступен или отклонил операцию.")
+                    }
                 }
             }
         }

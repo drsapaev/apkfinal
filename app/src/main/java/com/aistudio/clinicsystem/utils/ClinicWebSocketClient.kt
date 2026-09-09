@@ -48,6 +48,50 @@ class ClinicWebSocketClient
         private var reconnectAttempt = 0
         private var reconnectJob: kotlinx.coroutines.Job? = null
 
+        // TASK-8: room targeting — the backend broadcasts into per-specialist
+        // rooms "specialist_{id}::{date}". The client must subscribe to the
+        // ALLOWED queue of the selected specialist and date, not a fictitious
+        // "general" room.
+        @Volatile
+        private var targetDepartment: String = "general"
+
+        @Volatile
+        private var targetDate: String = ""
+
+        /**
+         * TASK-8: partial queue events (no full snapshot in the payload). The
+         * client MUST re-read the affected queue through REST instead of
+         * interpreting the event as an empty queue. Emits the department
+         * name of the room the event belongs to.
+         */
+        private val _partialQueueEvents =
+            kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8)
+        val partialQueueEvents: kotlinx.coroutines.flow.SharedFlow<String> = _partialQueueEvents
+
+        /** TASK-8: emitted after (re)connect so a recovery sync can run. */
+        private val _recoveryEvents =
+            kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 4)
+        val recoveryEvents: kotlinx.coroutines.flow.SharedFlow<String> = _recoveryEvents
+
+        /**
+         * TASK-8: subscribe to a specialist queue room. Call with the
+         * doctor's backend id and the queue day; reconnects the socket when
+         * the target room changes. [date] blank = today.
+         */
+        @Synchronized
+        fun subscribeToQueue(
+            department: String,
+            date: String,
+        ) {
+            val changed = department != targetDepartment || date != targetDate
+            targetDepartment = department
+            targetDate = date
+            if (changed && webSocket != null) {
+                Timber.i("WS room changed → reconnect: %s::%s", department, date)
+                start(forceReconnect = true)
+            }
+        }
+
         // P0-2 audit fix: shared Moshi instance — Moshi is thread-safe and
         // constructing a new Builder per message was wasteful (allocation
         // pressure + adapter re-generation).
@@ -124,11 +168,17 @@ class ClinicWebSocketClient
          * matching the backend's queue-date format.
          */
         private fun buildWebSocketUrlWithQueryParams(wsBaseUrl: String): String {
+            // FIX (lint NewApi): java.time needs API 26+ (or desugaring);
+            // minSdk is 24 — use the always-available java.text formatter.
             val today =
-                java.time.LocalDate
-                    .now()
-                    .toString() // YYYY-MM-DD
-            val department = "general"
+                if (targetDate.isBlank()) {
+                    java.text
+                        .SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                        .format(java.util.Date())
+                } else {
+                    targetDate
+                }
+            val department = targetDepartment
 
             // Append query params, preserving any existing query string.
             val separator = if (wsBaseUrl.contains('?')) '&' else '?'
@@ -185,10 +235,14 @@ class ClinicWebSocketClient
                 scope.launch {
                     database.syncLogDao().insertLog(
                         com.aistudio.clinicsystem.data.db.SyncLogEntity(
-                            logMessage = "🟢 WebSocket подключён к /ws/queue (room: general::сегодня). Ожидание событий.",
+                            logMessage = "🟢 WebSocket подключён к /ws/queue (room: $targetDepartment::$targetDate). Ожидание событий.",
                             direction = "SYSTEM_SYNC",
                         ),
                     )
+                    // TASK-8: recovery sync — after every (re)connect the
+                    // client MUST re-read the queue through REST, because
+                    // events missed during the disconnect are lost.
+                    _recoveryEvents.tryEmit("$targetDepartment::$targetDate")
                 }
             }
 
@@ -349,6 +403,17 @@ class ClinicWebSocketClient
                             val event = adapter.fromJson(json)
                             val reason = event?.reason ?: "unknown"
                             Timber.e("WS backend error: $reason")
+                            val isAuthError =
+                                reason.contains("auth", ignoreCase = true) ||
+                                    reason.contains("Authentication", ignoreCase = true)
+                            // FIX (CI test run): the log insert must complete
+                            // BEFORE stop() cancels the scope — stop() cancels
+                            // `scope`, and a sibling `scope.launch { insertLog }`
+                            // coroutine that is still suspended inside Room's
+                            // executor gets cancelled with it, silently losing
+                            // the diagnostic log. The insert now happens in the
+                            // SAME coroutine, and stop() runs only after the
+                            // insert has returned.
                             scope.launch {
                                 database.syncLogDao().insertLog(
                                     com.aistudio.clinicsystem.data.db.SyncLogEntity(
@@ -356,14 +421,12 @@ class ClinicWebSocketClient
                                         direction = "SYSTEM_SYNC",
                                     ),
                                 )
-                            }
-                            // Auth errors are not recoverable via reconnect.
-                            // Force-stop — RealtimeManager will restart on next
-                            // session state change.
-                            if (reason.contains("auth", ignoreCase = true) ||
-                                reason.contains("Authentication", ignoreCase = true)
-                            ) {
-                                stop()
+                                // Auth errors are not recoverable via reconnect.
+                                // Force-stop — RealtimeManager will restart on
+                                // next session state change.
+                                if (isAuthError) {
+                                    stop()
+                                }
                             }
                         }
 
@@ -436,9 +499,15 @@ class ClinicWebSocketClient
                             ),
                         )
                     } else {
+                        // TASK-5: WS events carry backend statuses — normalize
+                        // so realtime, REST and background sync agree on the
+                        // client vocabulary (PENDING/APPROVED/…).
+                        val normalized = ServerStatusMapper.fromServer(status)
                         if (existing != null) {
-                            if (existing.status != status) {
-                                appDao.updateAppointment(existing.copy(status = status, updatedAt = System.currentTimeMillis()))
+                            if (existing.status != normalized) {
+                                appDao.updateAppointment(
+                                    existing.copy(status = normalized, updatedAt = System.currentTimeMillis()),
+                                )
                             }
                         } else {
                             appDao.insertAppointment(
@@ -454,7 +523,7 @@ class ClinicWebSocketClient
                                     specialty = data.specialty ?: "Терапевт",
                                     date = date,
                                     time = time,
-                                    status = status,
+                                    status = normalized,
                                     reason = data.reason ?: "",
                                     updatedAt = System.currentTimeMillis(),
                                 ),
@@ -555,11 +624,62 @@ class ClinicWebSocketClient
                 try {
                     val adapter = moshi.adapter(QueueUpdateEvent::class.java)
                     val event = adapter.fromJson(json)
-                    val activeQueueList = event?.data?.queue ?: emptyList()
-                    Timber.i("Queue length: ${activeQueueList.size}")
+                    val room = event?.room ?: "$targetDepartment::$targetDate"
 
-                    // Clear and store real-time queue snapshots inside the Room cache
-                    database.queueSnapshotDao().clearQueueSnapshots()
+                    // TASK-8: a partial event (backend `broadcast_queue_update`
+                    // sends data={"action":…,"entry_id":…} with NO queue array)
+                    // must NEVER be interpreted as an empty queue — keep the
+                    // cache intact and re-read the affected queue via REST.
+                    if (event?.data?.queue == null) {
+                        Timber.i("Partial queue event (room=%s) — REST re-read scheduled", room)
+                        database.syncLogDao().insertLog(
+                            com.aistudio.clinicsystem.data.db.SyncLogEntity(
+                                logMessage = "⚡ Событие очереди без снимка ($room) — перечитываем очередь через REST.",
+                                direction = "SYSTEM_SYNC",
+                            ),
+                        )
+                        _partialQueueEvents.tryEmit(room)
+                        return@launch
+                    }
+
+                    val activeQueueList = event.data!!.queue
+                    Timber.i("Queue snapshot length: ${activeQueueList.size} (room=$room)")
+
+                    // Codex P1 (#150): a full snapshot belongs to the ROOM it
+                    // was broadcast to — `specialist_{id}::{date}`. It must
+                    // replace ONLY that specialist's cached rows; clearing the
+                    // whole table would erase every other doctor's actionable
+                    // queue entries.
+                    val specialistMatch = Regex("^specialist_(\\d+)::(.+)$").find(room)
+                    if (specialistMatch == null) {
+                        // Unknown room (e.g. the legacy "general") — the
+                        // snapshot cannot be attributed to a queue. Keep the
+                        // cache intact and re-read the affected queue via REST.
+                        Timber.w("Queue snapshot for non-specialist room %s — REST re-read scheduled", room)
+                        database.syncLogDao().insertLog(
+                            com.aistudio.clinicsystem.data.db.SyncLogEntity(
+                                logMessage = "⚡ Снимок очереди для комнаты $room не привязан к специалисту — перечитываем через REST.",
+                                direction = "SYSTEM_SYNC",
+                            ),
+                        )
+                        _partialQueueEvents.tryEmit(room)
+                        return@launch
+                    }
+                    val specialistId = specialistMatch.groupValues[1].toInt()
+                    val snapshotDay = specialistMatch.groupValues[2]
+                    // Carry the REST-established queue identity (queue_id) so
+                    // WS and REST refreshes stay the same logical queue.
+                    val previousRows =
+                        database
+                            .queueSnapshotDao()
+                            .getAllQueueSnapshots()
+                            .filter { it.specialistId == specialistId }
+                    val carriedQueueId = previousRows.firstOrNull()?.queueId
+                    val carriedDay = previousRows.firstOrNull()?.day?.takeIf { it.isNotBlank() } ?: snapshotDay
+
+                    // FULL SNAPSHOT for THIS room — replace that specialist's
+                    // rows inside the Room cache (identity fields preserved).
+                    database.queueSnapshotDao().deleteBySpecialist(specialistId)
                     val snapshotsList =
                         activeQueueList.map { dto ->
                             com.aistudio.clinicsystem.data.db.QueueSnapshotEntity(
@@ -569,6 +689,9 @@ class ClinicWebSocketClient
                                 position = dto.position,
                                 status = dto.status,
                                 timestamp = System.currentTimeMillis(),
+                                queueId = carriedQueueId,
+                                specialistId = specialistId,
+                                day = carriedDay,
                             )
                         }
                     database.queueSnapshotDao().insertQueueSnapshots(snapshotsList)

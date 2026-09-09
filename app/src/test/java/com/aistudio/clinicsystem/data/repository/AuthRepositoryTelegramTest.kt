@@ -139,7 +139,10 @@ class AuthRepositoryTelegramTest {
             )
 
             // Verify the request actually reached the network
-            val recorded = mockWebServer.takeRequest()
+            val recorded =
+                checkNotNull(mockWebServer.takeRequest(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "Request must reach the network"
+                }
             assertTrue(
                 "Request must hit /api/v1/telegram-integration/send-notification, was: ${recorded.path}",
                 recorded.path?.contains("/api/v1/telegram-integration/send-notification") == true,

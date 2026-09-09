@@ -53,8 +53,9 @@ fun StaffAppointmentsSection(
     currentUser: UserEntity?,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    filterTodayOnly: Boolean,
-    onFilterTodayOnlyChange: (Boolean) -> Unit,
+    // TASK-5: 0 = all, 1 = today, 2 = upcoming, 3 = history
+    appointmentFilterMode: Int,
+    onAppointmentFilterModeChange: (Int) -> Unit,
     selectedDoctorFilter: String,
     onDoctorFilterChange: (String) -> Unit,
     selectedStatusFilter: String,
@@ -102,7 +103,15 @@ fun StaffAppointmentsSection(
 
     val displayAppointments =
         allAppointments.filter { appt ->
-            val matchesToday = if (filterTodayOnly) appt.date == todayDateStr else true
+            // TASK-5: explicit upcoming/history split — upcoming = today or
+            // later, history = strictly before today.
+            val matchesToday =
+                when (appointmentFilterMode) {
+                    1 -> appt.date == todayDateStr
+                    2 -> appt.date >= todayDateStr
+                    3 -> appt.date < todayDateStr
+                    else -> true
+                }
             val matchesSearch =
                 if (searchQuery.isNotBlank()) {
                     appt.patientName.contains(searchQuery, ignoreCase = true) ||
@@ -213,9 +222,9 @@ fun StaffAppointmentsSection(
         ) {
             FilterChipBox(
                 text = stringResource(R.string.staff_all_appointments_count, allAppointments.size),
-                isSelected = !filterTodayOnly,
+                isSelected = appointmentFilterMode == 0,
                 accentColor = adminColor,
-                onClick = { onFilterTodayOnlyChange(false) },
+                onClick = { onAppointmentFilterModeChange(0) },
                 testTag = "all_appointments_tab",
             )
             FilterChipBox(
@@ -224,11 +233,26 @@ fun StaffAppointmentsSection(
                         R.string.staff_today_appointments_count,
                         allAppointments.count { it.date == todayDateStr },
                     ),
-                isSelected = filterTodayOnly,
+                isSelected = appointmentFilterMode == 1,
                 accentColor = adminColor,
-                onClick = { onFilterTodayOnlyChange(true) },
+                onClick = { onAppointmentFilterModeChange(1) },
                 testTag = "today_appointments_tab",
                 leadingIcon = Icons.Default.Event,
+            )
+            // TASK-5: explicitly separate upcoming appointments from history.
+            FilterChipBox(
+                text = "Предстоящие: " + allAppointments.count { it.date >= todayDateStr },
+                isSelected = appointmentFilterMode == 2,
+                accentColor = adminColor,
+                onClick = { onAppointmentFilterModeChange(2) },
+                testTag = "upcoming_appointments_tab",
+            )
+            FilterChipBox(
+                text = "История: " + allAppointments.count { it.date < todayDateStr },
+                isSelected = appointmentFilterMode == 3,
+                accentColor = adminColor,
+                onClick = { onAppointmentFilterModeChange(3) },
+                testTag = "history_appointments_tab",
             )
         }
 

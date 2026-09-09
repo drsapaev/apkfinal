@@ -261,6 +261,34 @@ object Migrations {
             }
         }
 
+    /**
+     * TASK-2: Migration 9 → 10 — adds `appointments.syncState`.
+     *
+     * The UI must distinguish a server-confirmed row from a locally-queued
+     * draft and from a server-rejected edit. Existing rows are clean ("")
+     * — they were written by sync flows.
+     */
+    val MIGRATION_9_10 =
+        object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE appointments ADD COLUMN syncState TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+    /**
+     * TASK-7: Migration 10 → 11 — queue_snapshots gain server identity
+     * columns (queueId / specialistId / day) so per-queue cache replacement
+     * works and queues of different specialists never mix.
+     */
+    val MIGRATION_10_11 =
+        object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE queue_snapshots ADD COLUMN queueId INTEGER")
+                db.execSQL("ALTER TABLE queue_snapshots ADD COLUMN specialistId INTEGER")
+                db.execSQL("ALTER TABLE queue_snapshots ADD COLUMN day TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
     val ALL: Array<Migration> =
         arrayOf(
             MIGRATION_4_5,
@@ -268,5 +296,7 @@ object Migrations {
             MIGRATION_6_7,
             MIGRATION_7_8,
             MIGRATION_8_9,
+            MIGRATION_9_10,
+            MIGRATION_10_11,
         )
 }

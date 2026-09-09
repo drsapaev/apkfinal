@@ -10,7 +10,6 @@ import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.data.session.SessionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
 import timber.log.Timber
 
 /**
@@ -95,7 +94,9 @@ class AuthRepository(
                     loginResp.refreshToken
                         ?: return@withContext Result.failure(IllegalStateException("Login response missing refresh_token"))
 
-                // Persist both tokens
+                // Persist both tokens first so the profile request below
+                // carries the fresh Authorization header (AuthInterceptor
+                // reads the token from SessionRepository).
                 sessionRepository.onTokensRefreshed(accessToken, refreshToken)
 
                 // Fetch full profile (loginResp.user is untyped Map; profile endpoint gives typed data)
@@ -116,7 +117,15 @@ class AuthRepository(
                         biometricEnabled = userProfile.biometricEnabled ?: false,
                         telegramChatId = userProfile.telegramChatId,
                     )
-                sessionRepository.onProfileLoaded(cachedUser)
+                // CODEX-P2-FIX (PR #147): complete the login via
+                // onLoginSuccess so SessionManager.saveSession() persists
+                // phone + role, not just the tokens. Previously only
+                // access/refresh tokens were stored —
+                // sessionRepository.phone stayed null (breaking the
+                // Telegram test-notification flow) and an offline process
+                // restart restored an authenticated session with no cached
+                // user, routing staff as patients.
+                sessionRepository.onLoginSuccess(accessToken, refreshToken, cachedUser)
 
                 val existing = userDao.getUserByPhone(cachedUser.phone)
                 if (existing == null) {
@@ -229,7 +238,10 @@ class AuthRepository(
                         biometricEnabled = userProfile.biometricEnabled ?: false,
                         telegramChatId = userProfile.telegramChatId,
                     )
-                sessionRepository.onProfileLoaded(cachedUser)
+                // CODEX-P2-FIX (PR #147): persist phone/role via
+                // saveSession — same rationale as the non-2FA login
+                // branch above.
+                sessionRepository.onLoginSuccess(accessToken, refreshToken, cachedUser)
 
                 val existing = userDao.getUserByPhone(cachedUser.phone)
                 if (existing == null) {
@@ -520,54 +532,28 @@ class AuthRepository(
                     user?.telegramChatId
                         ?: return@withContext Result.failure(Exception("Telegram не привязан"))
 
-                // Use the telegram-integration send-notification endpoint.
-                // Body: {"chat_id": "...", "message": "...", "parse_mode": "HTML"}
-                val payload =
-                    mapOf(
-                        "chat_id" to chatId,
-                        "message" to "🧪 Тестовое уведомление от Clinic System — Telegram интеграция работает корректно.",
-                        "parse_mode" to "HTML",
-                    )
-                val moshi =
-                    com.squareup.moshi.Moshi
-                        .Builder()
-                        .build()
-                val type =
-                    com.squareup.moshi.Types.newParameterizedType(
-                        Map::class.java,
-                        String::class.java,
-                        Any::class.java,
-                    )
-
-                @Suppress("UNCHECKED_CAST")
-                val adapter = moshi.adapter<Map<String, Any>>(type)
-                val body = adapter.toJson(payload)
-
-                // Build a POST request manually — this endpoint is not in the
-                // ApiService interface (it's in telegram_integration router,
-                // not the mobile contract). Using OkHttp directly avoids
-                // adding a one-off method to ApiService.
-                val client = okhttp3.OkHttpClient()
-                val request =
-                    okhttp3.Request
-                        .Builder()
-                        .url(
-                            com.aistudio.clinicsystem.BuildConfig.BASE_URL
-                                .trimEnd('/') + "/api/v1/telegram-integration/send-notification",
-                        ).post(
-                            okhttp3.RequestBody.create(
-                                "application/json; charset=utf-8".toMediaType(),
-                                body,
+                // FIX (testability + contract): route through the typed
+                // Retrofit endpoint instead of a hand-rolled OkHttp call.
+                // The manual call baked BuildConfig.BASE_URL into the URL,
+                // which made the route unreachable from unit tests (the
+                // MockWebServer could never see the request) and duplicated
+                // serialization logic. The bearer token is passed explicitly
+                // — the endpoint lives in the telegram_integration router,
+                // outside the AuthInterceptor-scoped mobile contract family.
+                val response =
+                    mobileApiService.sendTelegramNotification(
+                        authorization = "Bearer $token",
+                        request =
+                            com.aistudio.clinicsystem.data.api.TelegramNotificationRequest(
+                                chatId = chatId,
+                                message = "🧪 Тестовое уведомление от Clinic System — Telegram интеграция работает корректно.",
+                                parseMode = "HTML",
                             ),
-                        ).addHeader("Authorization", "Bearer $token")
-                        .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        Result.success(Unit)
-                    } else {
-                        Result.failure(Exception("HTTP ${response.code}: ${response.message}"))
-                    }
+                    )
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)

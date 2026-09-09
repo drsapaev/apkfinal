@@ -105,6 +105,8 @@ class PatientViewModelTest {
                     any(),
                     any(),
                     any(),
+                    any(),
+                    any(),
                 )
             } returns
                 AppointmentEntity(
@@ -131,8 +133,10 @@ class PatientViewModelTest {
             coVerify {
                 repository.createAppointmentOnServerAndLocal(
                     token = "test-token",
+                    patientId = null,
                     patientPhone = "+77771112233",
                     patientName = "Test Patient",
+                    doctorId = null,
                     doctorName = "Dr. Smith",
                     specialty = "Cardiology",
                     date = "2026-07-10",
@@ -147,7 +151,7 @@ class PatientViewModelTest {
         runTest {
             // First call starts booking — second call should be ignored
             coEvery {
-                repository.createAppointmentOnServerAndLocal(any(), any(), any(), any(), any(), any(), any(), any())
+                repository.createAppointmentOnServerAndLocal(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
             } coAnswers {
                 kotlinx.coroutines.delay(1000) // Simulate slow network
                 AppointmentEntity(
@@ -169,7 +173,7 @@ class PatientViewModelTest {
 
             // Only ONE call should have been made
             coVerify(exactly = 1) {
-                repository.createAppointmentOnServerAndLocal(any(), any(), any(), any(), any(), any(), any(), any())
+                repository.createAppointmentOnServerAndLocal(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
             }
         }
 
@@ -185,6 +189,10 @@ class PatientViewModelTest {
                     id = "apt-123",
                     status = "CANCELLED",
                     cancelReason = "Not available",
+                    // TASK-1: the patient cancels through the mobile contract
+                    // with actorIsPatient = true — the replay can never cross
+                    // to the staff route.
+                    actorIsPatient = true,
                 )
             }
         }

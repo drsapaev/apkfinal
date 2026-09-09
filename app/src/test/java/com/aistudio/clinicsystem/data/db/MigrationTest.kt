@@ -46,8 +46,10 @@ class MigrationTest {
     @Test
     fun allMigrationsAreRegistered() {
         assertNotNull(Migrations.ALL)
-        // Medium-4 audit fix: was 3, now 5 (7→8 doctors + 8→9 lab_results).
-        assertEquals("Should have 5 migrations registered", 5, Migrations.ALL.size)
+        // Medium-4 audit fix: was 3, then 5 (7→8 doctors + 8→9 lab_results);
+        // task-2 added 9→10 (appointments.syncState) and task-7 added
+        // 10→11 (queue identity: queue_id/specialist_id/day).
+        assertEquals("Should have 7 migrations registered", 7, Migrations.ALL.size)
     }
 
     @Test

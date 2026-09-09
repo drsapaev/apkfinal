@@ -66,6 +66,10 @@ interface QueueSnapshotDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQueueSnapshots(snapshots: List<QueueSnapshotEntity>)
 
+    /** TASK-7: per-queue cache replacement — drop one specialist's rows. */
+    @Query("DELETE FROM queue_snapshots WHERE specialistId = :specialistId")
+    suspend fun deleteBySpecialist(specialistId: Int)
+
     @Query("DELETE FROM queue_snapshots")
     suspend fun clearQueueSnapshots()
 }
@@ -102,6 +106,21 @@ interface PendingSyncDao {
         id: String,
         status: String,
         updatedAt: Long = System.currentTimeMillis(),
+    )
+
+    /** TASK-2: rewrite the stored payload of an outbox row (draft amendment). */
+    @Query("UPDATE pending_syncs SET payload = :payload, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updatePayload(
+        id: String,
+        payload: String,
+        updatedAt: Long = System.currentTimeMillis(),
+    )
+
+    /** TASK-2: drop outbox rows of the given types for a client request id. */
+    @Query("DELETE FROM pending_syncs WHERE clientRequestId = :requestId AND type IN (:types)")
+    suspend fun deleteByClientRequestIdAndTypes(
+        requestId: String,
+        types: List<String>,
     )
 
     @Query(
@@ -177,10 +196,19 @@ interface PendingSyncDao {
         // Mark each row as PROCESSING — sets `updatedAt` to now, which
         // prevents another worker from reclaiming it within the 5-min
         // stale threshold.
+        //
+        // FIX (ClinicRepositorySyncTest): return the UPDATED entities — the
+        // previous version updated the rows in the DB but returned the
+        // stale PENDING copies, so any caller reading `status` off the
+        // result saw a lie. The copy mirrors updateStatus (status +
+        // updatedAt = now).
+        val now = System.currentTimeMillis()
+        val claimed = ArrayList<PendingSyncEntity>(allToProcess.size)
         for (sync in allToProcess) {
             updateStatus(sync.id, "PROCESSING")
+            claimed.add(sync.copy(status = "PROCESSING", updatedAt = now))
         }
-        return allToProcess
+        return claimed
     }
 }
 
@@ -194,6 +222,10 @@ interface MedicalRecordDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: MedicalRecordEntity): Long
+
+    /** TASK-3: update after an EMR v2 save anchors the note server-side. */
+    @Update
+    suspend fun updateRecord(record: MedicalRecordEntity)
 
     @Query("SELECT * FROM medical_records WHERE id = :id LIMIT 1")
     suspend fun getRecordById(id: String): MedicalRecordEntity?
@@ -301,7 +333,7 @@ interface LabResultDao {
         LabResultEntity::class,
     ],
     // Stage 6: bumped 8 → 9. Migration 8→9 adds lab_results table.
-    version = 9,
+    version = 11,
     // M1/E4.1: exportSchema is now true. Room will emit a JSON schema file
     // to app/schemas/com.aistudio.clinicsystem.data.db.ClinicDatabase/8.json
     // on every build. This file must be committed to git — it is the

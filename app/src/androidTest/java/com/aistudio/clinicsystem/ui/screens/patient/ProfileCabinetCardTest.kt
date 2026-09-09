@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.data.db.UserEntity
 import com.aistudio.clinicsystem.ui.theme.MyApplicationTheme
 import org.junit.Rule
@@ -24,6 +26,11 @@ import org.junit.runner.RunWith
 class ProfileCabinetCardTest {
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    /** Locale-independent expectations: the device may run any locale
+     *  (CI emulators default to en-US), so expected labels are resolved
+     *  from resources instead of hardcoded Russian literals. */
+    private val appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
     private val testUser =
         UserEntity(
@@ -61,7 +68,7 @@ class ProfileCabinetCardTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Тел: +79991234567").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.phone_label_short, "+79991234567")).assertIsDisplayed()
     }
 
     @Test
@@ -76,7 +83,7 @@ class ProfileCabinetCardTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Вход по биометрии").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.auth_biometric_login)).assertIsDisplayed()
     }
 
     @Test

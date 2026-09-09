@@ -10,6 +10,8 @@ import com.aistudio.clinicsystem.data.session.SessionRepository
 import com.aistudio.clinicsystem.data.session.SessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,12 +35,123 @@ class PatientViewModel
             doctorRepository.allDoctors
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-        init {
-            // P-04: seed fallback doctors if cache is empty, then sync from backend
+        // TASK-6: live queue state of the patient's own queues. A successful
+        // empty response clears old positions; a failed fetch keeps the last
+        // data and flags it stale.
+        private val _queueState =
+            MutableStateFlow(
+                com.aistudio.clinicsystem.domain.model
+                    .PatientQueueUiState(),
+            )
+        val queueState: StateFlow<com.aistudio.clinicsystem.domain.model.PatientQueueUiState> =
+            _queueState.asStateFlow()
+
+        fun refreshQueuePositions() {
+            if (_queueState.value.isLoading) return
             viewModelScope.launch {
-                doctorRepository.seedFallbackDoctorsIfEmpty()
+                _queueState.value = _queueState.value.copy(isLoading = true)
+                when (val result = repository.fetchMyQueuePositions()) {
+                    is com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Success ->
+                        _queueState.value =
+                            com.aistudio.clinicsystem.domain.model.PatientQueueUiState(
+                                positions = result.positions,
+                                lastUpdated = System.currentTimeMillis(),
+                                isStale = false,
+                            )
+                    com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Empty ->
+                        _queueState.value =
+                            com.aistudio.clinicsystem.domain.model.PatientQueueUiState(
+                                positions = emptyList(),
+                                lastUpdated = System.currentTimeMillis(),
+                                isStale = false,
+                            )
+                    is com.aistudio.clinicsystem.domain.model.PatientQueueFetchResult.Error ->
+                        _queueState.value =
+                            _queueState.value.copy(isLoading = false, isStale = true)
+                }
+            }
+        }
+
+        // TASK-4: real availability slots derived from the backend schedule
+        // (GET /mobile/doctors/{id}/schedule) instead of a hardcoded list.
+        private val _availableTimeSlots = MutableStateFlow<List<String>>(emptyList())
+        val availableTimeSlots: StateFlow<List<String>> = _availableTimeSlots.asStateFlow()
+
+        private val _slotsLoading = MutableStateFlow(false)
+        val slotsLoading: StateFlow<Boolean> = _slotsLoading.asStateFlow()
+
+        // Codex P2 (#150): a rapidly changing doctor/date launches concurrent
+        // requests — without cancelling the previous job, whichever completes
+        // last would overwrite the slots even if it belongs to an earlier
+        // selection (slots for the WRONG doctor/day shown and submittable).
+        private var slotsJob: Job? = null
+
+        fun loadTimeSlots(
+            doctorServerId: Int?,
+            date: String,
+        ) {
+            if (doctorServerId == null) {
+                slotsJob?.cancel()
+                _availableTimeSlots.value = emptyList()
+                return
+            }
+            slotsJob?.cancel()
+            slotsJob =
+                viewModelScope.launch {
+                    _slotsLoading.value = true
+                    try {
+                        _availableTimeSlots.value =
+                            doctorRepository.getAvailableTimeSlots(doctorServerId, date)
+                    } catch (e: CancellationException) {
+                        // A newer selection took over — never publish stale
+                        // results and never swallow the cancellation signal.
+                        throw e
+                    } catch (e: Exception) {
+                        _availableTimeSlots.value = emptyList()
+                    } finally {
+                        // Only the CURRENT slots job may clear the loading
+                        // flag — a cancelled job must not clobber the new
+                        // job's in-progress state.
+                        if (coroutineContext[Job] === slotsJob) {
+                            _slotsLoading.value = false
+                        }
+                    }
+                }
+        }
+
+        // TASK-4: doctor directory load state — loading / error / retry, so
+        // a clean installation shows REAL doctors, an explicit empty state,
+        // or an error — never fictitious demo doctors.
+        private val _doctorsLoading = MutableStateFlow(false)
+        val doctorsLoading: StateFlow<Boolean> = _doctorsLoading.asStateFlow()
+
+        private val _doctorsError = MutableStateFlow<String?>(null)
+        val doctorsError: StateFlow<String?> = _doctorsError.asStateFlow()
+
+        fun refreshDoctors() {
+            if (_doctorsLoading.value) return
+            viewModelScope.launch {
+                _doctorsLoading.value = true
+                _doctorsError.value = null
+                try {
+                    val ok = doctorRepository.syncDoctors()
+                    if (!ok) {
+                        _doctorsError.value = "Не удалось загрузить справочник врачей"
+                    }
+                } catch (e: Exception) {
+                    _doctorsError.value = e.localizedMessage ?: "Ошибка сети"
+                } finally {
+                    _doctorsLoading.value = false
+                }
+            }
+        }
+
+        init {
+            // TASK-4: no demo seeding. Refresh the directory when stale
+            // (shouldRefresh keeps the 24h TTL for repeat visits).
+            viewModelScope.launch {
                 if (doctorRepository.shouldRefresh()) {
-                    doctorRepository.syncDoctors()
+                    refreshDoctors()
                 }
             }
         }
@@ -73,6 +186,17 @@ class PatientViewModel
             ) { records, user ->
                 val phone = user?.phone ?: ""
                 records.filter { it.patientPhone == phone }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        // TASK-3: dedicated lab results flow (testName/result/unit/reference —
+        // shown in the Lab section, never as diagnoses/prescriptions).
+        val patientLabResults: StateFlow<List<com.aistudio.clinicsystem.data.db.LabResultEntity>> =
+            combine(
+                repository.allLabResults,
+                currentUser,
+            ) { labs, user ->
+                val phone = user?.phone ?: ""
+                labs.filter { it.patientPhone == phone }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
         val cachedQueueSnapshots: StateFlow<List<QueueSnapshotEntity>> =
@@ -126,6 +250,13 @@ class PatientViewModel
                 when (action) {
                     is UndoAction.RestoreAppointment -> {
                         repository.updateAppointment(action.oldAppt)
+                        // TASK-2: a restored unsynced draft must be re-queued
+                        // for delivery — restoring the local row alone would
+                        // leave a draft that never reaches the server.
+                        repository.reEnqueueCreateForUnsynced(
+                            action.oldAppt,
+                            com.aistudio.clinicsystem.data.outbox.OutboxRouting.OWNER_PATIENT,
+                        )
                         repository.addSyncLog("↩️ Действие отменено (Запись #${action.oldAppt.id} восстановлена).", "SYSTEM_SYNC")
                     }
                 }
@@ -146,8 +277,15 @@ class PatientViewModel
             }
         }
 
+        // FIX (PatientViewModelTest): one-shot operations must not depend on
+        // an ACTIVE collector of the WhileSubscribed [currentUser] flow —
+        // outside UI collection `currentUser.value` is still null and every
+        // action silently returned. Read the session state directly instead;
+        // semantics are identical (same SSOT), without the collector caveat.
+        private fun currentUserOrNull(): UserEntity? = (sessionRepository.sessionState.value as? SessionState.Authenticated)?.user
+
         fun setBiometricEnrollment(enabled: Boolean) {
-            val user = currentUser.value ?: return
+            val user = currentUserOrNull() ?: return
             viewModelScope.launch {
                 val updatedUser = user.copy(biometricEnabled = enabled)
                 repository.updateUser(updatedUser)
@@ -157,7 +295,7 @@ class PatientViewModel
         }
 
         fun updateProfileName(newName: String) {
-            val user = currentUser.value ?: return
+            val user = currentUserOrNull() ?: return
             if (newName.isBlank()) return
             viewModelScope.launch {
                 val updatedUser = user.copy(fullName = newName)
@@ -240,32 +378,51 @@ class PatientViewModel
             }
         }
 
+        /**
+         * TASK-1: patient self-booking. `doctorServerId` comes from the selected
+         * [DoctorEntity] in the doctor directory — the booking identity is
+         * structural, never derived from the display name.
+         */
         fun createAppointment(
             doctorName: String,
             specialty: String,
             date: String,
             time: String,
             reason: String,
+            doctorServerId: Int? = null,
         ) {
             if (_isBookingInProgress.value) return
-            val user = currentUser.value ?: return
+            val user = currentUserOrNull() ?: return
             viewModelScope.launch {
                 _isBookingInProgress.value = true
                 try {
                     val token = sessionRepository.accessToken
-                    repository.createAppointmentOnServerAndLocal(
-                        token = token,
-                        patientPhone = user.phone,
-                        patientName = user.fullName,
-                        doctorName = doctorName,
-                        specialty = specialty,
-                        date = date,
-                        time = time,
-                        reason = reason,
-                    )
+                    val saved =
+                        repository.createAppointmentOnServerAndLocal(
+                            token = token,
+                            patientId = null, // mobile contract derives the patient from the JWT
+                            patientPhone = user.phone,
+                            patientName = user.fullName,
+                            doctorId = doctorServerId,
+                            doctorName = doctorName,
+                            specialty = specialty,
+                            date = date,
+                            time = time,
+                            reason = reason,
+                        )
 
-                    // P-17 fix: emit event for Snackbar
-                    _appointmentCreatedEvent.tryEmit("Запись к врачу $doctorName на $date в $time создана. Ожидает подтверждения клиники.")
+                    // TASK-2: the message reflects the REAL outcome — server
+                    // confirmation, queued draft, or rejection. No fake "saved".
+                    _appointmentCreatedEvent.tryEmit(
+                        when (saved.syncState) {
+                            com.aistudio.clinicsystem.data.db.AppointmentEntity.SYNC_STATE_REJECTED ->
+                                "Сервер отклонил запись. Измените параметры и повторите — запись помечена как отклонённая."
+                            com.aistudio.clinicsystem.data.db.AppointmentEntity.SYNC_STATE_QUEUED ->
+                                "Нет связи с сервером: запись сохранена и будет отправлена автоматически."
+                            else ->
+                                "Запись к врачу $doctorName на $date в $time создана."
+                        },
+                    )
 
                     // High-4 audit fix: replaced `delay(400)` + fake sync log
                     // with a note that the backend's book endpoint already
@@ -299,14 +456,38 @@ class PatientViewModel
                         id = id,
                         status = "CANCELLED",
                         cancelReason = cancelReason,
+                        // TASK-1: the patient cancels their own appointment
+                        // through the mobile contract — no staff-route fallback.
+                        actorIsPatient = true,
                     )
                 if (updated != null) {
-                    // P-18 fix: set undo action if we have the old state
-                    if (oldAppt != null) {
+                    // P-18 fix: set undo action if we have the old state.
+                    // TASK-2: undo must NOT be offered for a server-confirmed
+                    // cancel as a "restore" that lies — restoring a cancelled
+                    // appointment re-books it via the original route. Only a
+                    // Queued/CancelledLocally/Rejected cancel offers undo.
+                    if (oldAppt != null &&
+                        updated !is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Confirmed
+                    ) {
                         _undoAction.value = UndoAction.RestoreAppointment(oldAppt)
                     }
 
-                    val patientUser = repository.getUserByPhone(updated.patientPhone)
+                    // TASK-2: surface the real outcome — no fake "saved".
+                    _appointmentCreatedEvent.tryEmit(
+                        when (updated) {
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Confirmed ->
+                                "Приём отменён на сервере."
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Queued ->
+                                "Отмена сохранена локально и будет отправлена автоматически."
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.Rejected ->
+                                "Сервер отклонил отмену: ${updated.message}"
+                            is com.aistudio.clinicsystem.domain.model.AppointmentWriteOutcome.CancelledLocally ->
+                                "Offline-запись отменена (черновик удалён, на сервере не создавался)."
+                        },
+                    )
+
+                    val entity = updated.entity
+                    val patientUser = repository.getUserByPhone(entity.patientPhone)
                     val patientName = patientUser?.fullName ?: appContext.getString(com.aistudio.clinicsystem.R.string.vm_patient_default)
                     // Stage 6 TODO: NotificationHelper should accept a Context
                     // from Hilt-provided ApplicationContext, not via getApplication().
@@ -327,6 +508,11 @@ class PatientViewModel
             }
         }
 
+        /**
+         * TASK-3: fetches LAB RESULTS into the dedicated lab_results table.
+         * No lab→medical-record mapping anymore: a test name is a test name,
+         * never a diagnosis.
+         */
         fun fetchMedicalReports() {
             val user = currentUser.value ?: return
             viewModelScope.launch {
@@ -334,13 +520,9 @@ class PatientViewModel
                 _isFetchingReports.value = true
 
                 val token = sessionRepository.accessToken
-                repository.fetchMedicalRecordsFromServer(
+                repository.fetchLabResultsFromServer(
                     token = token,
                     phone = user.phone,
-                    onNewRecordAction = { record ->
-                        // Stage 6 TODO: same as cancelAppointment — notification
-                        // wiring via Hilt-injected NotificationController.
-                    },
                 )
                 _isFetchingReports.value = false
             }

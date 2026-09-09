@@ -27,7 +27,7 @@ import com.aistudio.clinicsystem.ui.screens.staff.StaffEditAppointmentDialog
 import com.aistudio.clinicsystem.ui.screens.staff.StaffMedicalRecordDialog
 import com.aistudio.clinicsystem.ui.screens.staff.StaffNotesDialog
 import com.aistudio.clinicsystem.ui.screens.staff.StaffQueueSection
-import com.aistudio.clinicsystem.ui.screens.staff.staffPatientsSection
+import com.aistudio.clinicsystem.ui.screens.staff.staffPatientRegistrySection
 import com.aistudio.clinicsystem.ui.theme.Radius
 import com.aistudio.clinicsystem.ui.viewmodel.StaffViewModel
 
@@ -116,6 +116,17 @@ private fun StaffScreenContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val undoState by viewModel.undoAction.collectAsStateWithLifecycle()
 
+    // TASK-2: surface the real write outcomes (confirmed/queued/rejected)
+    // coming from the staff ViewModel.
+    LaunchedEffect(Unit) {
+        viewModel.staffMessageEvent.collect { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long,
+            )
+        }
+    }
+
     // BUILD-FIX: hoist composable stringResource calls out of LaunchedEffect.
     val actionDoneMsg = stringResource(R.string.staff_action_done)
     val undoLabel = stringResource(R.string.staff_undo)
@@ -159,7 +170,8 @@ private fun StaffScreenContent(
     var notesInput by remember { mutableStateOf("") }
 
     // Appointments filter state
-    var filterTodayOnly by remember { mutableStateOf(false) }
+    // TASK-5: 0 = all, 1 = today, 2 = upcoming, 3 = history
+    var appointmentFilterMode by remember { mutableStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     // BUILD-FIX: composable calls hoisted out of remember {}.
     val allDoctorsLabel = stringResource(R.string.dlg_all_doctors)
@@ -219,6 +231,19 @@ private fun StaffScreenContent(
     // P-03 completion: Bottom Navigation tab state
     var selectedTab by rememberSaveable { mutableStateOf(0) }
 
+    // TASK-9: clinical patient registry state.
+    val patientRegistry by viewModel.patientRegistry.collectAsStateWithLifecycle()
+    val registryQuery by viewModel.registryQuery.collectAsStateWithLifecycle()
+    val registryLoading by viewModel.registryLoading.collectAsStateWithLifecycle()
+    val registryError by viewModel.registryError.collectAsStateWithLifecycle()
+
+    // TASK-9: load the registry when the Patients tab opens first time.
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 2 && patientRegistry.isEmpty()) {
+            viewModel.setRegistryQuery(registryQuery)
+        }
+    }
+
     val availableDocs =
         allDoctors.map { doctor ->
             doctor.fullName to doctor.specialty
@@ -236,18 +261,30 @@ private fun StaffScreenContent(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    if (patientRoleUsers.isNotEmpty()) {
-                        selectedPatientPhone = patientRoleUsers.first().phone
-                        showAddRecordDialog = true
-                    }
-                },
-                icon = { Icon(Icons.Default.PostAdd, contentDescription = "Add Medical Record") },
-                text = { Text(stringResource(R.string.staff_fill_medcard)) },
-                containerColor = adminColor,
-                contentColor = MaterialTheme.colorScheme.surface,
-            )
+            // TASK-9: offer "fill medical record" only to roles that can
+            // actually save into EMR v2 (Doctor family / Admin). A Registrar
+            // would only ever produce a local draft — the UI must not promise
+            // an action the server forbids (the server still enforces it).
+            val emrWriteAllowed =
+                staffRole == com.aistudio.clinicsystem.domain.model.UserRole.ADMIN ||
+                    staffRole == com.aistudio.clinicsystem.domain.model.UserRole.DOCTOR ||
+                    staffRole == com.aistudio.clinicsystem.domain.model.UserRole.CARDIO ||
+                    staffRole == com.aistudio.clinicsystem.domain.model.UserRole.DERMA ||
+                    staffRole == com.aistudio.clinicsystem.domain.model.UserRole.DENTIST
+            if (emrWriteAllowed) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        if (patientRoleUsers.isNotEmpty()) {
+                            selectedPatientPhone = patientRoleUsers.first().phone
+                            showAddRecordDialog = true
+                        }
+                    },
+                    icon = { Icon(Icons.Default.PostAdd, contentDescription = "Add Medical Record") },
+                    text = { Text(stringResource(R.string.staff_fill_medcard)) },
+                    containerColor = adminColor,
+                    contentColor = MaterialTheme.colorScheme.surface,
+                )
+            }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
@@ -296,128 +333,143 @@ private fun StaffScreenContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
             ) {
-                // ROLE-FIX: role chip + Admin-only Administration section
+                // ROLE-FIX: role chip shown on every tab.
                 item { StaffRoleCard(staffRole) }
-                if (staffRole == com.aistudio.clinicsystem.domain.model.UserRole.ADMIN) {
-                    item {
-                        StaffAdminUsersCard(
-                            users = adminUsers,
-                            loading = adminUsersLoading,
-                            error = adminUsersError,
+
+                // TASK-9: the bottom navigation actually switches content —
+                // tabs no longer dump every section at once.
+                when (selectedTab) {
+                    // Tab 0: Live Waiting Room Queue
+                    0 -> {
+                        item {
+                            StaffQueueSection(
+                                cachedQueueSnapshots = cachedQueueSnapshots,
+                                adminColor = adminColor,
+                                onShiftQueuePosition = { id, up -> viewModel.shiftQueuePosition(id, up) },
+                                onUpdateQueueStatus = { id, status -> viewModel.updateQueueStatus(id, status) },
+                                onRemoveQueuePatient = { q -> viewModel.removeQueuePatient(q.id) },
+                            )
+                        }
+                    }
+
+                    // Tab 1: Appointments with search + filters
+                    1 -> {
+                        item {
+                            StaffAppointmentsSection(
+                                allAppointments = allAppointments,
+                                allPendingSyncs = allPendingSyncs,
+                                patientRoleUsers = patientRoleUsers,
+                                currentUser = currentUser,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                appointmentFilterMode = appointmentFilterMode,
+                                onAppointmentFilterModeChange = { appointmentFilterMode = it },
+                                selectedDoctorFilter = selectedDoctorFilter,
+                                onDoctorFilterChange = { selectedDoctorFilter = it },
+                                selectedStatusFilter = selectedStatusFilter,
+                                onStatusFilterChange = { selectedStatusFilter = it },
+                                todayDateStr = todayDateStr,
+                                adminColor = adminColor,
+                                onCreateAppointmentClick = {
+                                    if (patientRoleUsers.isNotEmpty()) {
+                                        val def = patientRoleUsers.first()
+                                        createPatientPhone = def.phone
+                                        createPatientName = def.fullName
+                                    } else {
+                                        createPatientPhone = ""
+                                        createPatientName = ""
+                                    }
+                                    showCreateAppointmentDialog = true
+                                },
+                                onApprove = { viewModel.approveAppointment(it.id) },
+                                onCancelClick = { appt ->
+                                    targetAppointmentIdToCancel = appt.id
+                                    cancelReasonInput = ""
+                                    showCancelReasonDialog = true
+                                },
+                                onAddNotesClick = { appt ->
+                                    targetAppointmentIdForNotes = appt.id
+                                    notesInput = appt.notes
+                                    showNotesDialog = true
+                                },
+                                onEditClick = { appt ->
+                                    editAppointmentId = appt.id
+                                    editPatientPhone = appt.patientPhone
+                                    editPatientName = appt.patientName
+                                    editDoctorSelected = appt.doctorName
+                                    editSpecialtySelected = appt.specialty
+                                    editDate = appt.date
+                                    editTime = appt.time
+                                    editReason = appt.reason
+                                    editStatusSelected = appt.status
+                                    showEditAppointmentDialog = true
+                                },
+                                onRegisterQueue = { viewModel.registerPatientInQueue(it.id) },
+                            )
+                        }
+                    }
+
+                    // Tab 2: clinical patient registry (TASK-9)
+                    2 -> {
+                        staffPatientRegistrySection(
+                            patients = patientRegistry,
+                            query = registryQuery,
+                            onQueryChange = { viewModel.setRegistryQuery(it) },
+                            loading = registryLoading,
+                            error = registryError,
+                            onLoadMore = { viewModel.loadMoreRegistryPatients() },
+                            adminColor = adminColor,
+                            onWriteRecord = { phone ->
+                                selectedPatientPhone = phone
+                                diagnosisInput = ""
+                                prescriptionInput = ""
+                                recommendationsInput = ""
+                                showAddRecordDialog = true
+                            },
                         )
                     }
-                }
 
-                // Analytics micro-cards row
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        AnalyticsCard(
-                            title = stringResource(R.string.staff_requests),
-                            count = "${pendingAppts.size}",
-                            icon = Icons.Default.PendingActions,
-                            indicatorColor = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.weight(1f),
-                        )
-                        AnalyticsCard(
-                            title = stringResource(R.string.staff_analytics_approved),
-                            count = "${approvedAppts.size}",
-                            icon = Icons.Default.CheckCircle,
-                            indicatorColor = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f),
-                        )
-                        AnalyticsCard(
-                            title = stringResource(R.string.staff_tab_patients),
-                            count = "${patientRoleUsers.size}",
-                            icon = Icons.Default.Group,
-                            indicatorColor = adminColor,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-
-                // Section 0: Live Waiting Room Queue
-                item {
-                    StaffQueueSection(
-                        cachedQueueSnapshots = cachedQueueSnapshots,
-                        adminColor = adminColor,
-                        onShiftQueuePosition = { id, up -> viewModel.shiftQueuePosition(id, up) },
-                        onUpdateQueueStatus = { id, status -> viewModel.updateQueueStatus(id, status) },
-                        onRemoveQueuePatient = { q -> viewModel.removeQueuePatient(q.id) },
-                    )
-                }
-
-                // Section 1: Appointments with search + filters
-                item {
-                    StaffAppointmentsSection(
-                        allAppointments = allAppointments,
-                        allPendingSyncs = allPendingSyncs,
-                        patientRoleUsers = patientRoleUsers,
-                        currentUser = currentUser,
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        filterTodayOnly = filterTodayOnly,
-                        onFilterTodayOnlyChange = { filterTodayOnly = it },
-                        selectedDoctorFilter = selectedDoctorFilter,
-                        onDoctorFilterChange = { selectedDoctorFilter = it },
-                        selectedStatusFilter = selectedStatusFilter,
-                        onStatusFilterChange = { selectedStatusFilter = it },
-                        todayDateStr = todayDateStr,
-                        adminColor = adminColor,
-                        onCreateAppointmentClick = {
-                            if (patientRoleUsers.isNotEmpty()) {
-                                val def = patientRoleUsers.first()
-                                createPatientPhone = def.phone
-                                createPatientName = def.fullName
-                            } else {
-                                createPatientPhone = ""
-                                createPatientName = ""
+                    // Tab 3: analytics + Administration (Admin only)
+                    else -> {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                AnalyticsCard(
+                                    title = stringResource(R.string.staff_requests),
+                                    count = "${pendingAppts.size}",
+                                    icon = Icons.Default.PendingActions,
+                                    indicatorColor = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                AnalyticsCard(
+                                    title = stringResource(R.string.staff_analytics_approved),
+                                    count = "${approvedAppts.size}",
+                                    icon = Icons.Default.CheckCircle,
+                                    indicatorColor = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                AnalyticsCard(
+                                    title = stringResource(R.string.staff_tab_patients),
+                                    count = "${patientRoleUsers.size}",
+                                    icon = Icons.Default.Group,
+                                    indicatorColor = adminColor,
+                                    modifier = Modifier.weight(1f),
+                                )
                             }
-                            showCreateAppointmentDialog = true
-                        },
-                        onApprove = { viewModel.approveAppointment(it.id) },
-                        onCancelClick = { appt ->
-                            targetAppointmentIdToCancel = appt.id
-                            cancelReasonInput = ""
-                            showCancelReasonDialog = true
-                        },
-                        onAddNotesClick = { appt ->
-                            targetAppointmentIdForNotes = appt.id
-                            notesInput = appt.notes
-                            showNotesDialog = true
-                        },
-                        onEditClick = { appt ->
-                            editAppointmentId = appt.id
-                            editPatientPhone = appt.patientPhone
-                            editPatientName = appt.patientName
-                            editDoctorSelected = appt.doctorName
-                            editSpecialtySelected = appt.specialty
-                            editDate = appt.date
-                            editTime = appt.time
-                            editReason = appt.reason
-                            editStatusSelected = appt.status
-                            showEditAppointmentDialog = true
-                        },
-                        onRegisterQueue = { viewModel.registerPatientInQueue(it.id) },
-                    )
+                        }
+                        if (staffRole == com.aistudio.clinicsystem.domain.model.UserRole.ADMIN) {
+                            item {
+                                StaffAdminUsersCard(
+                                    users = adminUsers,
+                                    loading = adminUsersLoading,
+                                    error = adminUsersError,
+                                )
+                            }
+                        }
+                    }
                 }
-
-                // Section 2: Patients Directory
-                staffPatientsSection(
-                    patientRoleUsers = patientRoleUsers,
-                    allRecords = allRecords,
-                    searchQuery = searchQuery,
-                    adminColor = adminColor,
-                    onWriteRecord = { phone ->
-                        selectedPatientPhone = phone
-                        diagnosisInput = ""
-                        prescriptionInput = ""
-                        recommendationsInput = ""
-                        showAddRecordDialog = true
-                    },
-                )
             }
         }
     }
@@ -529,6 +581,9 @@ private fun StaffScreenContent(
         onDoctorSelectedChange = {
             createDoctorSelected = it
             viewModel.setDraftCreateDoctorSelected(it)
+            // TASK-4: a time picked for another doctor/day must not survive.
+            createTime = ""
+            viewModel.setDraftCreateTime("")
         },
         specialtySelected = createSpecialtySelected,
         onSpecialtySelectedChange = {
@@ -539,6 +594,9 @@ private fun StaffScreenContent(
         onDateChange = {
             createDate = it
             viewModel.setDraftCreateDate(it)
+            // TASK-4: reset the time on day change as well.
+            createTime = ""
+            viewModel.setDraftCreateTime("")
         },
         time = createTime,
         onTimeChange = {
@@ -551,7 +609,14 @@ private fun StaffScreenContent(
             viewModel.setDraftCreateReason(it)
         },
         onCreate = {
-            if (createPatientPhone.isNotBlank() && createPatientName.isNotBlank()) {
+            // TASK-4: a doctor must be explicitly picked from the real
+            // directory — no implicit/fictitious doctor bookings.
+            if (createPatientPhone.isNotBlank() && createPatientName.isNotBlank() && createDoctorSelected.isNotBlank()) {
+                // TASK-1: resolve the structured doctor id from the synced
+                // directory — the staff booking carries doctor_id + patient
+                // identity, never a name-derived guess.
+                val selectedDoctorEntity =
+                    allDoctors.firstOrNull { it.fullName == createDoctorSelected }
                 viewModel.createAppointment(
                     patientPhone = createPatientPhone,
                     patientName = createPatientName,
@@ -560,6 +625,7 @@ private fun StaffScreenContent(
                     date = createDate,
                     time = createTime,
                     reason = createReason,
+                    doctorServerId = selectedDoctorEntity?.serverId,
                 )
                 viewModel.clearCreateAppointmentDraft()
                 showCreateAppointmentDialog = false

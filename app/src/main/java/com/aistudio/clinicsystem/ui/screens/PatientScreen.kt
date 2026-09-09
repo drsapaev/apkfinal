@@ -61,6 +61,13 @@ private fun PatientScreenContent(
     val isFetchingRecords by viewModel.isFetchingReports.collectAsStateWithLifecycle()
     val isBookingInProgress by viewModel.isBookingInProgress.collectAsStateWithLifecycle()
     val cachedQueueSnapshots by viewModel.cachedQueueSnapshots.collectAsStateWithLifecycle()
+    val labResults by viewModel.patientLabResults.collectAsStateWithLifecycle()
+    val queueState by viewModel.queueState.collectAsStateWithLifecycle()
+
+    // TASK-6: refresh the patient's queue positions when the screen opens.
+    LaunchedEffect(Unit) {
+        viewModel.refreshQueuePositions()
+    }
 
     var showEditProfile by remember { mutableStateOf(false) }
     var editNameInput by remember { mutableStateOf(currentUser?.fullName ?: "") }
@@ -74,7 +81,9 @@ private fun PatientScreenContent(
     val defaultBookingReason = stringResource(R.string.ui_default_reason)
     var selectedSpecialty by remember { mutableStateOf(defaultSpecialty) }
     var selectedDateIdx by remember { mutableStateOf(0) }
-    var selectedTimeSlot by remember { mutableStateOf("11:00") }
+    // TASK-4: no pre-selected fixed time — the slot must come from the real
+    // backend schedule for the chosen doctor and day.
+    var selectedTimeSlot by remember { mutableStateOf("") }
     var bookingReasonInput by remember { mutableStateOf("") }
 
     // Navigation and filters
@@ -104,7 +113,19 @@ private fun PatientScreenContent(
     // P-04: doctors loaded from DoctorRepository (backend-synced, offline-cached)
     val doctors by viewModel.doctors.collectAsStateWithLifecycle()
     val doctorsList = doctors.map { Pair(it.fullName, it.specialty) }
-    val timeSlots = listOf("09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00")
+    // TASK-4: real availability slots from the doctor's backend schedule.
+    val availableTimeSlots by viewModel.availableTimeSlots.collectAsStateWithLifecycle()
+    val slotsLoading by viewModel.slotsLoading.collectAsStateWithLifecycle()
+    val doctorsLoading by viewModel.doctorsLoading.collectAsStateWithLifecycle()
+    val doctorsError by viewModel.doctorsError.collectAsStateWithLifecycle()
+    val selectedDoctorEntity = doctors.firstOrNull { it.fullName == selectedDoctor }
+    val selectedDateStr = bookingDatesList[selectedDateIdx]
+    // TASK-4: reset the picked time whenever the doctor or the day changes —
+    // a slot from another doctor/day must never be submitted.
+    LaunchedEffect(selectedDoctorEntity?.serverId, selectedDateStr) {
+        selectedTimeSlot = ""
+        viewModel.loadTimeSlots(selectedDoctorEntity?.serverId, selectedDateStr)
+    }
 
     // P-03 refactor: filteredAppointments and filteredRecords moved into
     // PatientAppointmentsTab and PatientMedicalTab respectively.
@@ -317,6 +338,8 @@ private fun PatientScreenContent(
                             appointments = appointments,
                             records = records,
                             cachedQueueSnapshots = cachedQueueSnapshots,
+                            queueState = queueState,
+                            onQueueRefresh = { viewModel.refreshQueuePositions() },
                         )
                     1 ->
                         PatientAppointmentsTab(
@@ -335,6 +358,7 @@ private fun PatientScreenContent(
                             expandedRecords = expandedRecords,
                             isFetching = isFetchingRecords,
                             onFetchClick = { viewModel.fetchMedicalReports() },
+                            labResults = labResults,
                             onRecordToggle = { id ->
                                 expandedRecords =
                                     if (expandedRecords.contains(id)) {
@@ -384,7 +408,8 @@ private fun PatientScreenContent(
         BookAppointmentDialog(
             doctors = doctorsList,
             bookingDatesList = bookingDatesList,
-            timeSlots = timeSlots,
+            timeSlots = availableTimeSlots,
+            slotsLoading = slotsLoading,
             selectedDoctor = selectedDoctor,
             selectedSpecialty = selectedSpecialty,
             selectedDateIdx = selectedDateIdx,
@@ -399,13 +424,18 @@ private fun PatientScreenContent(
             onSelectTimeSlot = { slot -> selectedTimeSlot = slot },
             onReasonInputChange = { bookingReasonInput = it },
             onConfirm = {
-                if (!isBookingInProgress) {
+                if (!isBookingInProgress && selectedTimeSlot.isNotBlank()) {
+                    // TASK-1: resolve the structured doctor id from the synced
+                    // directory — the booking carries doctor_id, not just a name.
+                    val selectedEntity =
+                        doctors.firstOrNull { it.fullName == selectedDoctor }
                     viewModel.createAppointment(
                         doctorName = selectedDoctor,
                         specialty = selectedSpecialty,
                         date = bookingDatesList[selectedDateIdx],
                         time = selectedTimeSlot,
                         reason = bookingReasonInput.ifBlank { defaultBookingReason },
+                        doctorServerId = selectedEntity?.serverId,
                     )
                     showBookDialog = false
                     bookingReasonInput = ""

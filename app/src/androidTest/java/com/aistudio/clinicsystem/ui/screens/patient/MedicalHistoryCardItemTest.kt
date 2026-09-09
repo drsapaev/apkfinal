@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.aistudio.clinicsystem.R
 import com.aistudio.clinicsystem.data.db.MedicalRecordEntity
 import com.aistudio.clinicsystem.ui.theme.MyApplicationTheme
 import org.junit.Rule
@@ -27,6 +29,11 @@ import org.junit.runner.RunWith
 class MedicalHistoryCardItemTest {
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    /** Locale-independent expectations: the device may run any locale
+     *  (CI emulators default to en-US), so expected labels are resolved
+     *  from resources instead of hardcoded Russian literals. */
+    private val appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
     private val testRecord =
         MedicalRecordEntity(
@@ -68,7 +75,7 @@ class MedicalHistoryCardItemTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Доктор: Dr. Test").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.med_record_doctor, testRecord.doctorName)).assertIsDisplayed()
     }
 
     @Test
@@ -99,7 +106,7 @@ class MedicalHistoryCardItemTest {
         }
 
         // P-25 fix: Download button visible when expanded
-        composeTestRule.onNodeWithText("Скачать").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_download)).assertIsDisplayed()
     }
 
     @Test
@@ -115,7 +122,7 @@ class MedicalHistoryCardItemTest {
         }
 
         // P-25 fix: Share button visible when expanded
-        composeTestRule.onNodeWithText("Поделиться").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.ui_share)).assertIsDisplayed()
     }
 
     @Test
