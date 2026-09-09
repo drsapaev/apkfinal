@@ -75,7 +75,9 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   unit-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The full Robolectric suite (all 35 classes, incl. the ones that used to
+    # be env-blocked) under JaCoCo needs >45 min on a cold runner cache.
+    timeout-minutes: 75
     steps:
       - name: Checkout
         uses: actions/checkout@v4
