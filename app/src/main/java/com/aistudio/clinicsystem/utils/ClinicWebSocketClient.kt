@@ -168,11 +168,12 @@ class ClinicWebSocketClient
          * matching the backend's queue-date format.
          */
         private fun buildWebSocketUrlWithQueryParams(wsBaseUrl: String): String {
+            // FIX (lint NewApi): java.time needs API 26+ (or desugaring);
+            // minSdk is 24 — use the always-available java.text formatter.
             val today =
                 if (targetDate.isBlank()) {
-                    java.time.LocalDate
-                        .now()
-                        .toString()
+                    java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                        .format(java.util.Date())
                 } else {
                     targetDate
                 }
