@@ -82,7 +82,7 @@ class ClinicRepository
             // silently dropped. See FINAL_RELEASE_AUDIT.md finding C-1.
             appointmentDao.insertAppointment(appointment)
             addSyncLog(
-                logMessage = "Created appointment: ${appointment.patientName} -> ${appointment.doctorName} (${appointment.date} ${appointment.time})",
+                logMessage = "Created appointment: ${appointment.patientName} (${appointment.date} ${appointment.time})",
                 direction = "PATIENT_TO_STAFF",
             )
             return appointment
