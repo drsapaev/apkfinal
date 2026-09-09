@@ -27,7 +27,7 @@ android {
         // this stage before the signing-secret fix, so the backlog went
         // unnoticed. Downgraded to a warning until the translation pass;
         // genuine API-level errors (NewApi etc.) remain fatal.
-        warning += ["MissingTranslation"]
+        warning += "MissingTranslation"
     }
     // Stage 1.4 (fix M5 build): the block-with-release() DSL is not a real
     // AGP API. Use the standard integer form. If SDK extension 1 is
